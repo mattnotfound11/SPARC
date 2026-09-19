@@ -22,8 +22,8 @@ import { Hero } from "@/components/Hero";
 import { SubNav } from "@/components/SubNav";
 import { OverviewSection } from "@/components/OverviewSection";
 import { FeaturesSection } from "@/components/FeaturesSection";
-import { HowItWorksSection } from "@/components/HowItWorksSection";
 import { LoginEntryCards } from "@/components/LoginEntryCards";
+import { HowItWorksSection } from "@/components/HowItWorksSection";
 import { TechStackSection } from "@/components/TechStackSection";
 import { TeamSection } from "@/components/TeamSection";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -76,13 +76,13 @@ export default function LandingPage() {
         {/* 6. How it works */}
         <HowItWorksSection />
 
-        {/* 7. Access Portals */}
+        {/* 8. Access Portals */}
         <LoginEntryCards />
 
-        {/* 8. Tech Stack */}
+        {/* 9. Tech Stack */}
         <TechStackSection />
 
-        {/* 9. Team */}
+        {/* 10. Team */}
         <TeamSection />
       </main>
 
