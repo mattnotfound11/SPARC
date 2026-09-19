@@ -1,28 +1,75 @@
 "use client";
 
 import { NumberTicker } from "@/components/ui/number-ticker";
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { HeroRadarBg } from "@/components/ui/hero-radar-bg";
+import { useTelemetry } from "@/components/TelemetryProvider";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from "framer-motion";
+import { ChevronDown, ArrowRight, LayoutDashboard } from "lucide-react";
+import Image from "next/image";
+
+const HEADLINE_PHRASES = [
+  "Total visibility.",
+  "Zero congestion.",
+  "Smarter campus.",
+];
 
 export function Hero() {
-  const [parkedCount, setParkedCount] = useState(342);
+  const { parkedCount, totalSlots, occupancyPercent } = useTelemetry();
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [displayedText, setDisplayedText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [bgSlide, setBgSlide] = useState(0);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  
+  // Use MotionValues to track mouse position without triggering React re-renders
+  const mouseX = useMotionValue(-9999);
+  const mouseY = useMotionValue(-9999);
 
+  // Background carousel
   useEffect(() => {
     const interval = setInterval(() => {
-      setParkedCount((prev) => {
-        const changes = [1, 2, 5, -1, -3];
-        const randomChange = changes[Math.floor(Math.random() * changes.length)];
-        let nextValue = prev + randomChange;
-        if (nextValue < 300) nextValue = 300;
-        if (nextValue > 450) nextValue = 450;
-        return nextValue;
-      });
-    }, 4500);
+      setBgSlide((prev) => (prev === 0 ? 1 : 0));
+    }, 6000);
     return () => clearInterval(interval);
   }, []);
 
-  const occupancyPercent = Math.round((parkedCount / 500) * 100);
+  // Track raw viewport coordinates relative to the full-width wrapper
+  useEffect(() => {
+    const handleGlobalMouse = (e: MouseEvent) => {
+      if (!wrapperRef.current) return;
+      const rect = wrapperRef.current.getBoundingClientRect();
+      mouseX.set(e.clientX - rect.left);
+      mouseY.set(e.clientY - rect.top);
+    };
+    document.addEventListener('mousemove', handleGlobalMouse);
+    return () => document.removeEventListener('mousemove', handleGlobalMouse);
+  }, []);
+  
+  const spotlightBackground = useMotionTemplate`radial-gradient(700px circle at ${mouseX}px ${mouseY}px, rgba(204,27,43,0.07), rgba(212,175,55,0.025) 40%, transparent 65%)`;
+
+  // Typewriter effect
+  useEffect(() => {
+    const currentPhrase = HEADLINE_PHRASES[phraseIndex];
+    let timeout: ReturnType<typeof setTimeout>;
+
+    if (!isDeleting && displayedText === currentPhrase) {
+      timeout = setTimeout(() => setIsDeleting(true), 2000);
+    } else if (isDeleting && displayedText === "") {
+      setIsDeleting(false);
+      setPhraseIndex((i) => (i + 1) % HEADLINE_PHRASES.length);
+    } else if (isDeleting) {
+      timeout = setTimeout(() => {
+        setDisplayedText(currentPhrase.slice(0, displayedText.length - 1));
+      }, 40);
+    } else {
+      timeout = setTimeout(() => {
+        setDisplayedText(currentPhrase.slice(0, displayedText.length + 1));
+      }, 70);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [displayedText, isDeleting, phraseIndex]);
 
   // SVG ring math
   const radius = 56;
@@ -30,12 +77,61 @@ export function Hero() {
   const strokeDashoffset = circumference * (1 - occupancyPercent / 100);
 
   return (
-    <section
-      aria-labelledby="hero-heading"
-      className="relative mx-auto w-full max-w-[1400px] px-8 lg:px-12 pt-32 pb-20 lg:pt-32 lg:pb-24 flex flex-col justify-center min-h-[75vh] overflow-hidden"
-    >
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-24">
-        {/* Left Column: Text */}
+    <div ref={wrapperRef} className="w-full relative">
+      {/* Absolute backgrounds that span the full viewport width but are contained within Hero's height */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        
+        {/* Slide 0: Previous Background (Radar + Gradient) */}
+        <motion.div
+          className="absolute inset-0"
+          animate={{ opacity: bgSlide === 0 ? 1 : 0 }}
+          transition={{ duration: 1.5, ease: "easeInOut" }}
+        >
+          <HeroRadarBg />
+          
+          {/* Ambient lamp cone: static, fades naturally */}
+          <div
+            className="absolute inset-0"
+            aria-hidden="true"
+            style={{
+              background: 'radial-gradient(ellipse 55% 65% at 30% 40%, rgba(204,27,43,0.09) 0%, rgba(212,175,55,0.04) 45%, transparent 70%)',
+            }}
+          />
+          
+          {/* Cursor spotlight: tracks mouse within this section using motion template */}
+          <motion.div
+            className="absolute inset-0 transition-opacity duration-300"
+            aria-hidden="true"
+            style={{ background: spotlightBackground }}
+          />
+        </motion.div>
+
+        {/* Slide 1: Image Background */}
+        <motion.div
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: bgSlide === 1 ? 1 : 0 }}
+          transition={{ duration: 1.5, ease: "easeInOut" }}
+        >
+          <Image 
+            src="/parkingan.png"
+            alt="SPARC Parking Overview"
+            fill
+            className="object-cover object-center"
+            priority
+          />
+          {/* Overlay to ensure text readability */}
+          <div className="absolute inset-0 bg-background/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+        </motion.div>
+      </div>
+
+      <section
+        aria-labelledby="hero-heading"
+        className="relative mx-auto w-full max-w-[1400px] px-8 lg:px-12 pt-32 pb-20 lg:pt-32 lg:pb-24 flex flex-col justify-center min-h-[75vh]"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-24">
+          {/* Left Column: Text */}
         <div className="flex-1 max-w-2xl">
           {/* System tag */}
           <motion.div
@@ -60,7 +156,12 @@ export function Hero() {
             Verified access.
             <br />
             <span className="text-gradient-red-gold">
-              Total visibility.
+              {displayedText}
+              {/* Blinking cursor */}
+              <span
+                className="ml-1 inline-block w-[3px] h-[0.85em] align-middle bg-[var(--color-primary)] rounded-sm"
+                style={{ animation: "blink-status 1s step-end infinite" }}
+              />
             </span>
           </motion.h1>
 
@@ -75,11 +176,36 @@ export function Hero() {
             Built for the University of San Agustin.
           </motion.p>
 
+          {/* CTA buttons */}
+          <motion.div
+            className="mt-10 flex flex-col sm:flex-row gap-3"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+          >
+            <a
+              href="#how-it-works"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold shadow-lg shadow-[var(--color-primary)]/25 hover:brightness-110 hover:shadow-[var(--color-primary)]/40 transition-all duration-300 active:scale-[0.98] group"
+            >
+              See How It Works
+              <ArrowRight
+                className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                strokeWidth={2.5}
+              />
+            </a>
+            <a
+              href="#login"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-[var(--color-border-hover)] text-sm font-semibold text-[var(--color-foreground)] hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300 active:scale-[0.98] group"
+            >
+              <LayoutDashboard className="h-4 w-4 text-[var(--color-muted-foreground)] group-hover:text-[var(--color-foreground)] transition-colors" strokeWidth={1.5} />
+              Access Portals
+            </a>
+          </motion.div>
         </div>
 
         {/* Right Column: Live Telemetry Widget */}
         <motion.div
-          className="flex-none lg:w-[340px] w-full"
+          className="flex-none lg:w-[340px] w-full mt-12 lg:mt-0"
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -146,7 +272,7 @@ export function Hero() {
                   <NumberTicker value={parkedCount} />
                 </span>
                 <span className="text-sm font-medium text-[var(--color-muted-foreground)] mt-1">
-                  of 500 slots occupied
+                  of {totalSlots} slots occupied
                 </span>
               </div>
             </div>
@@ -158,21 +284,7 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* Scroll down indicator */}
-      <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.5 }}
-      >
-        <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-[var(--color-muted-foreground)]">
-          Scroll
-        </span>
-        <ChevronDown
-          className="h-4 w-4 text-[var(--color-muted-foreground)] animate-bounce"
-          strokeWidth={1.5}
-        />
-      </motion.div>
     </section>
+    </div>
   );
 }

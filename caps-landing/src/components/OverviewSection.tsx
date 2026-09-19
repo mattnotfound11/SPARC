@@ -1,14 +1,151 @@
 "use client";
 
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { Wifi, CreditCard, Server, Monitor } from "lucide-react";
+import { useRef, useState, useCallback } from "react";
+import { motion } from "framer-motion";
+import {
+  Wifi, CreditCard, Server, Monitor,
+  ClipboardList, AlertTriangle, Clock, UserCheck,
+  ShieldCheck, BarChart3, Zap, Eye,
+} from "lucide-react";
 
-const archSteps = [
-  { icon: CreditCard, label: "RFID / QR Reader", sub: "Gate hardware" },
-  { icon: Server, label: "SPARC Engine", sub: "Validation & logging" },
-  { icon: Wifi, label: "IoT Sensors", sub: "Ultrasonic per-slot" },
-  { icon: Monitor, label: "Live Dashboard", sub: "Guard & Admin UI" },
+// ── Before / After data ──────────────────────────────────────────────────────
+
+const beforeItems = [
+  { icon: ClipboardList, label: "Paper logbook", sub: "Manual entry, error-prone" },
+  { icon: AlertTriangle, label: "No access control", sub: "Anyone can tailgate" },
+  { icon: Clock, label: "Long queues", sub: "Guard checks each plate manually" },
+  { icon: UserCheck, label: "No real-time data", sub: "Slot count unknown until guard walks lot" },
 ];
+
+const afterItems = [
+  { icon: CreditCard, label: "RFID / QR tap", sub: "Instant verification < 1s" },
+  { icon: ShieldCheck, label: "Automated gate control", sub: "Allow / Deny in real time" },
+  { icon: Zap, label: "Zero queue friction", sub: "Barrier opens automatically" },
+  { icon: BarChart3, label: "Live dashboard", sub: "Occupancy & logs updated instantly" },
+];
+
+// ── Compare Slider component ─────────────────────────────────────────────────
+
+function CompareSlider() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dividerPos, setDividerPos] = useState(50);
+  const isDragging = useRef(false);
+
+  const updatePos = useCallback((clientX: number) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+    setDividerPos((x / rect.width) * 100);
+  }, []);
+
+  const handleMouseDown = () => { isDragging.current = true; };
+  const handleMouseUp   = () => { isDragging.current = false; };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging.current) updatePos(e.clientX);
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    updatePos(e.touches[0].clientX);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative h-[380px] rounded-2xl overflow-hidden border border-white/[0.07] cursor-col-resize select-none touch-none"
+      onMouseMove={handleMouseMove}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchMove={handleTouchMove}
+      aria-label="Drag to compare manual vs SPARC process"
+    >
+      {/* ── SPARC side (right / base layer) ───────────────────── */}
+      <div className="absolute inset-0 bg-[#0F0F11] flex flex-col justify-between p-7">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-[var(--color-success)]" />
+          <span className="text-[11px] font-bold tracking-[0.15em] uppercase text-[var(--color-success)]">
+            With SPARC
+          </span>
+        </div>
+        <div className="flex flex-col gap-4">
+          {afterItems.map(({ icon: Icon, label, sub }) => (
+            <div key={label} className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-secondary-subtle)] text-[var(--color-secondary)]">
+                <Icon style={{ width: 16, height: 16 }} strokeWidth={1.5} />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-[var(--color-foreground)]">{label}</div>
+                <div className="text-[11px] text-[var(--color-muted-foreground)]">{sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between pt-3 border-t border-white/[0.05]">
+          <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-[var(--color-secondary)]">
+            Automated · Real-time · Secure
+          </span>
+          <span className="text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded bg-[var(--color-secondary-subtle)] border border-[var(--color-secondary)]/20 text-[var(--color-secondary)]">
+            After
+          </span>
+        </div>
+      </div>
+
+      {/* ── Manual side (left / overlay, clips based on divider) ─── */}
+      <div
+        className="absolute inset-0 flex flex-col justify-between p-7 overflow-hidden"
+        style={{
+          clipPath: `inset(0 ${100 - dividerPos}% 0 0)`,
+          background: 'linear-gradient(135deg, #151212 0%, #0F0F11 100%)',
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-red-400/60" />
+          <span className="text-[11px] font-bold tracking-[0.15em] uppercase text-red-400/80">
+            Manual Process
+          </span>
+        </div>
+        <div className="flex flex-col gap-4">
+          {beforeItems.map(({ icon: Icon, label, sub }) => (
+            <div key={label} className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-400/70">
+                <Icon style={{ width: 16, height: 16 }} strokeWidth={1.5} />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-[var(--color-foreground)]">{label}</div>
+                <div className="text-[11px] text-[var(--color-muted-foreground)]">{sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between pt-3 border-t border-white/[0.05]">
+          <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-red-400/60">
+            Slow · Error-prone · No visibility
+          </span>
+          <span className="text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-red-400/70">
+            Before
+          </span>
+        </div>
+      </div>
+
+      {/* ── Draggable divider handle ─────────────────────────────── */}
+      <div
+        className="absolute top-0 bottom-0 flex flex-col items-center pointer-events-none"
+        style={{ left: `${dividerPos}%`, transform: 'translateX(-50%)' }}
+      >
+        {/* Vertical line */}
+        <div className="w-px h-full bg-white/20" />
+        {/* Handle circle */}
+        <div className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/25 backdrop-blur-sm shadow-lg">
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+            <path d="M1 5h12M1 5L4 2M1 5L4 8M13 5L10 2M13 5L10 8" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main section ─────────────────────────────────────────────────────────────
 
 export function OverviewSection() {
   const { ref, isVisible } = useScrollReveal(0.2);
@@ -45,80 +182,14 @@ export function OverviewSection() {
                 that combines per-slot occupancy sensors with automated RFID and QR-code vehicle identification.
               </p>
               <p>
-                Our aim is to significantly reduce the time spent searching for parking, decrease vehicular congestion at campus entrances, and improve overall security through automated, real-time access control.
+                Drag the slider to see exactly what SPARC replaces.
               </p>
             </div>
           </div>
 
-          {/* System Architecture Diagram */}
+          {/* Compare Slider column */}
           <div className="relative">
-            <div className="glass-card-elevated p-8 lg:p-10">
-              <div className="mb-8">
-                <span className="text-xs font-bold tracking-[0.15em] uppercase text-[var(--color-muted-foreground)]">
-                  System Architecture
-                </span>
-              </div>
-
-              {/* Architecture flow — vertical steps with connectors */}
-              <div className="flex flex-col gap-1">
-                {archSteps.map(({ icon: Icon, label, sub }, i) => (
-                  <div key={label}>
-                    {/* Step row */}
-                    <div className="flex items-center gap-4 group">
-                      {/* Step number */}
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-[var(--color-muted-foreground)] border border-[var(--color-border)] bg-white/[0.02]">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-
-                      {/* Icon badge */}
-                      <span
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors duration-300"
-                        style={{
-                          backgroundColor: i % 2 === 0
-                            ? "var(--color-primary-subtle)"
-                            : "var(--color-secondary-subtle)",
-                          color: i % 2 === 0
-                            ? "var(--color-primary)"
-                            : "var(--color-secondary)",
-                        }}
-                      >
-                        <Icon style={{ width: "var(--icon-md)", height: "var(--icon-md)" }} strokeWidth={1.5} />
-                      </span>
-
-                      {/* Label */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-[var(--color-foreground)]">{label}</div>
-                        <div className="text-xs text-[var(--color-muted-foreground)]">{sub}</div>
-                      </div>
-
-                      {/* Status dot */}
-                      <span className="h-2 w-2 rounded-full bg-[var(--color-success)] opacity-60" />
-                    </div>
-
-                    {/* Connector line */}
-                    {i < archSteps.length - 1 && (
-                      <div className="ml-[15px] my-1 h-5 w-[1px] bg-gradient-to-b from-[var(--color-border)] to-transparent" />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* University badge */}
-              <div className="mt-8 pt-6 border-t border-[var(--color-border)] flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-[var(--color-secondary)]/10 flex items-center justify-center text-[var(--color-secondary)] text-[10px] font-bold">
-                  USA
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-[var(--color-foreground)]">
-                    University of San Agustin
-                  </div>
-                  <div className="text-[10px] text-[var(--color-muted-foreground)]">
-                    Iloilo City, Philippines
-                  </div>
-                </div>
-              </div>
-            </div>
-
+            <CompareSlider />
             {/* Background glow */}
             <div className="absolute -bottom-10 -right-10 h-48 w-48 rounded-full bg-[var(--color-primary)]/5 blur-[80px] -z-10" />
           </div>

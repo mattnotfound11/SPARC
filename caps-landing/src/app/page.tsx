@@ -5,14 +5,16 @@
  * Login portals are below the fold as a secondary action.
  *
  * Page flow:
- *   1. Hero — cinematic intro with live telemetry widget
- *   2. SubNav — sticky section navigation
- *   3. Overview — the challenge & solution
- *   4. Features — bento grid
- *   5. How It Works — 4-step flow
- *   6. Login Cards — Guard Console | Admin Dashboard
- *   7. Tech Stack — what it's built with
- *   8. Team — proponents & university credit
+ *   1. Hero — cinematic intro with live telemetry widget + radar bg
+ *   2. SubNav — sticky section navigation with active glow
+ *   3. Stats — animated counters bar
+ *   4. Overview — the challenge & solution
+ *   5. Features — bento grid with SVG illustrations
+ *   6. How It Works — 4-step flow with connector path
+ *   7. Live Event Feed — scrolling access log
+ *   8. Login Cards — Guard Console | Admin Dashboard
+ *   9. Tech Stack — what it's built with
+ *  10. Team — proponents & university credit
  */
 
 import { SiteHeader } from "@/components/SiteHeader";
@@ -20,21 +22,38 @@ import { Hero } from "@/components/Hero";
 import { SubNav } from "@/components/SubNav";
 import { OverviewSection } from "@/components/OverviewSection";
 import { FeaturesSection } from "@/components/FeaturesSection";
-import { LoginEntryCards } from "@/components/LoginEntryCards";
 import { HowItWorksSection } from "@/components/HowItWorksSection";
+import { LoginEntryCards } from "@/components/LoginEntryCards";
 import { TechStackSection } from "@/components/TechStackSection";
 import { TeamSection } from "@/components/TeamSection";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Component as GradientBackground } from "@/components/ui/gradient-background-4";
 import { FloatingTelemetry } from "@/components/FloatingTelemetry";
+import { TelemetryProvider } from "@/components/TelemetryProvider";
+
+/** Animated section divider — red to gold gradient line */
+function SectionDivider() {
+  return (
+    <div className="relative mx-auto max-w-6xl px-8 lg:px-12">
+      <div
+        className="h-px w-full"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, rgba(204,27,43,0.3), rgba(212,175,55,0.4), rgba(204,27,43,0.3), transparent)",
+          boxShadow: "0 0 12px rgba(204,27,43,0.15)",
+        }}
+      />
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
-    <>
+    <TelemetryProvider>
       <SiteHeader />
 
       <main id="main-content" className="flex-1 relative z-10">
-        {/* 1. Hero with ambient gradient background */}
+        {/* 1. Hero with ambient gradient + radar background */}
         <div className="relative w-full overflow-hidden">
           <GradientBackground />
           <Hero />
@@ -43,33 +62,32 @@ export default function LandingPage() {
         {/* 2. Secondary Navigation */}
         <SubNav />
 
-        {/* 3. Overview */}
+
+        {/* 4. Overview */}
         <OverviewSection />
 
-        {/* Section divider */}
-        <div className="section-divider mx-auto max-w-6xl" />
+        <SectionDivider />
 
-        {/* 4. Features */}
+        {/* 5. Features */}
         <FeaturesSection />
 
-        {/* Section divider */}
-        <div className="section-divider mx-auto max-w-6xl" />
+        <SectionDivider />
 
-        {/* 5. How it works */}
+        {/* 6. How it works */}
         <HowItWorksSection />
 
-        {/* 6. Access Portals */}
+        {/* 7. Access Portals */}
         <LoginEntryCards />
 
-        {/* 7. Tech Stack */}
+        {/* 8. Tech Stack */}
         <TechStackSection />
 
-        {/* 8. Team */}
+        {/* 9. Team */}
         <TeamSection />
       </main>
 
       <SiteFooter />
       <FloatingTelemetry />
-    </>
+    </TelemetryProvider>
   );
 }
