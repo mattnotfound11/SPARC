@@ -35,9 +35,9 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 lg:px-12 py-4">
         {/* Left: Logo + tagline */}
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center gap-4 group">
             <span
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20 transition-transform duration-300 group-hover:scale-105"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20 transition-transform duration-300 group-hover:scale-105"
               aria-hidden="true"
             >
               <ShieldCheck
@@ -45,13 +45,13 @@ export function SiteHeader() {
                 strokeWidth={2}
               />
             </span>
-            <span className="text-lg font-bold tracking-tight text-[var(--color-foreground)]">
+            <span className="text-2xl font-bold tracking-tight text-[var(--color-foreground)]">
               SPARC
             </span>
           </Link>
 
           <span
-            className="hidden text-xs font-medium text-[var(--color-muted-foreground)] lg:inline-block border-l border-white/[0.08] pl-4"
+            className="hidden text-base font-medium text-[var(--color-muted-foreground)] lg:inline-block border-l border-white/[0.08] pl-5 ml-2"
             aria-hidden="true"
           >
             Smart Parking Access and Real-Time Count
@@ -61,7 +61,7 @@ export function SiteHeader() {
         {/* Right: Login button */}
         <a
           href="#login"
-          className="inline-flex h-9 items-center justify-center rounded-lg bg-[var(--color-primary)] px-5 text-xs font-semibold tracking-wide text-white shadow-md shadow-[var(--color-primary)]/20 transition-all duration-300 hover:shadow-lg hover:shadow-[var(--color-primary)]/30 hover:brightness-110 active:scale-[0.97]"
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-7 text-base font-semibold tracking-wide text-white shadow-md shadow-[var(--color-primary)]/20 transition-all duration-300 hover:shadow-lg hover:shadow-[var(--color-primary)]/30 hover:brightness-110 active:scale-[0.97]"
         >
           Log In
         </a>

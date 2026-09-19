@@ -15,8 +15,10 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      touchMultiplier: 2,
+      touchMultiplier: 2.2,
+      wheelMultiplier: 0.9,
       infinite: false,
+      autoResize: true,
     });
 
     lenisRef.current = lenis;
@@ -25,7 +27,12 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
       lenis.raf(time);
       requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    const rafId = requestAnimationFrame(raf);
+
+    const resizeObserver = new ResizeObserver(() => {
+      lenis.resize();
+    });
+    resizeObserver.observe(document.body);
 
     // Handle anchor links (e.g. href="#features")
     const handleAnchorClick = (e: MouseEvent) => {
@@ -46,6 +53,8 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
     document.addEventListener("click", handleAnchorClick);
 
     return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
       document.removeEventListener("click", handleAnchorClick);
       lenis.destroy();
     };
