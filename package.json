@@ -1,0 +1,17 @@
+{
+  "name": "sparc",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "caps-landing"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w caps-landing",
+    "build": "npm run build -w caps-landing",
+    "start": "npm run start -w caps-landing",
+    "lint": "npm run lint -w caps-landing"
+  },
+  "dependencies": {
+    "@designcodeio/threeui": "^1.2.0"
+  }
+}

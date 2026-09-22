@@ -1,141 +1,168 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────
-   SPARC Design System — "Control Room Elegance"
-   Dark mode foundation · Red & Gold dominant palette
-   University of San Agustin institutional identity
+   SPARC Design System
+   Near-black canvas · Augustinian gold actions · crimson accents
+   Tokens are sampled from the approved landing / login / signup mockups.
    ──────────────────────────────────────────────────────────── */
 @theme inline {
-  /* Typography — Inter single-family system */
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: ui-monospace, monospace;
+  /* Typography — set by next/font variables in app/layout.tsx */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-outfit), var(--font-inter), system-ui, sans-serif;
+  --font-jakarta: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
+  --font-grotesk: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
 
-  /* Icon sizing tokens */
-  --icon-sm:  1rem;     /* 16px */
-  --icon-md:  1.25rem;  /* 20px */
-  --icon-lg:  1.5rem;   /* 24px */
-  --icon-xl:  2rem;     /* 32px */
+  /* Canvas & surfaces */
+  --color-canvas: #08090d;
+  --color-surface: #0f121a;
+  --color-surface-raised: #131722;
+  --color-field: #0b0e15;
+  --color-line: rgba(255, 255, 255, 0.07);
+  --color-line-strong: rgba(255, 255, 255, 0.12);
 
-  /* ── Color Palette — Dark Canvas, Red & Gold Stars ────── */
-  --color-background:      #0B0A0F;
-  --color-surface:         #110F17;
-  --color-foreground:      #F1F0F5;
+  /* Text */
+  --color-ink: #f5f6f8;
+  --color-ink-soft: #c9ccd4;
+  --color-ink-muted: #8b909c;
+  --color-ink-faint: #5d6270;
 
-  /* Primary — University Red */
-  --color-primary:         #CC1B2B;
-  --color-primary-glow:    rgba(204, 27, 43, 0.25);
-  --color-primary-subtle:  rgba(204, 27, 43, 0.10);
-  --color-on-primary:      #FFFFFF;
+  /* Gold — primary actions & highlights */
+  --color-gold: #f5b301;
+  --color-gold-bright: #ffc424;
+  --color-gold-deep: #e39a0b;
+  --color-on-gold: #16110a;
 
-  /* Secondary — Metallic Gold */
-  --color-secondary:       #D4AF37;
-  --color-secondary-glow:  rgba(212, 175, 55, 0.25);
-  --color-secondary-subtle:rgba(212, 175, 55, 0.08);
-  --color-on-secondary:    #0B0A0F;
-
-  /* Guard Console — Red tint */
-  --color-accent:          #CC1B2B;
-  --color-accent-subtle:   rgba(204, 27, 43, 0.12);
-  --color-on-accent:       #FFFFFF;
-
-  /* Admin Dashboard — Gold tint */
-  --color-admin:           #D4AF37;
-  --color-admin-subtle:    rgba(212, 175, 55, 0.12);
-  --color-on-admin:        #0B0A0F;
-
-  /* Card surfaces — Glassmorphism */
-  --color-card:            rgba(255, 255, 255, 0.03);
-  --color-card-elevated:   rgba(255, 255, 255, 0.05);
-  --color-card-foreground: #F1F0F5;
-
-  /* Muted text */
-  --color-muted:           #1A1823;
-  --color-muted-foreground:#8B8798;
-
-  /* Borders — glass edges */
-  --color-border:          rgba(255, 255, 255, 0.06);
-  --color-border-hover:    rgba(255, 255, 255, 0.12);
-  --color-ring:            rgba(204, 27, 43, 0.4);
+  /* Crimson — secondary accent from the seal */
+  --color-crimson: #e0455e;
+  --color-crimson-deep: #8e0f1f;
 
   /* Status */
-  --color-success:         #22C55E;
-  --color-success-bg:      rgba(34, 197, 94, 0.12);
+  --color-live: #22c55e;
 
-  /* Spacing scale */
-  --spacing-section: clamp(4rem, 10vw, 7rem);
-  --spacing-gutter:  clamp(1rem, 4vw, 1.5rem);
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-float-y: float-y 2.4s ease-in-out infinite;
 
-  /* Border radius */
-  --radius-sm:  0.25rem;
-  --radius-md:  0.5rem;
-  --radius-lg:  0.75rem;
-  --radius-xl:  1rem;
-  --radius-2xl: 1.25rem;
-  --radius-3xl: 1.5rem;
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
-  /* Shadow — Dark theme elevation with color tints */
-  --shadow-card:       0 2px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  --shadow-card-hover: 0 8px 40px rgba(204, 27, 43, 0.08), 0 0 0 1px rgba(204, 27, 43, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-glow-red:   0 0 40px rgba(204, 27, 43, 0.15), 0 0 80px rgba(204, 27, 43, 0.05);
-  --shadow-glow-gold:  0 0 40px rgba(212, 175, 55, 0.15), 0 0 80px rgba(212, 175, 55, 0.05);
-
-  /* Motion tokens */
-  --motion-duration-fast:   150ms;
-  --motion-duration-base:   250ms;
-  --motion-duration-slow:   400ms;
-  --motion-easing:          cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* Blink animation for live indicator */
-  --animate-blink-status: blink-status 2s ease-in-out infinite;
-  @keyframes blink-status {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+  @keyframes float-y {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(4px);
+    }
   }
 }
 
-/* ── Global resets ─────────────────────────────────────────── */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ── Lenis Smooth Scroll Boilerplate ──────────────────────── */
-html.lenis, html.lenis body {
-  height: auto;
-}
-
+/* ── Lenis smooth scroll ───────────────────────────────────── */
 .lenis.lenis-smooth {
   scroll-behavior: auto !important;
 }
-
 .lenis.lenis-smooth [data-lenis-prevent] {
   overscroll-behavior: contain;
 }
-
 .lenis.lenis-stopped {
   overflow: hidden;
 }
 
-.lenis.lenis-scrolling iframe {
-  pointer-events: none;
-}
-
-/* Offset for sticky navigation headers */
 section[id] {
-  scroll-margin-top: 90px;
+  scroll-margin-top: 96px;
 }
 
-/* Reduced motion — global kill switch */
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Browser surfaces themed from the palette */
+input,
+textarea {
+  caret-color: var(--color-gold);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid var(--color-canvas);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 179, 1, 0.45);
+}
+
+::selection {
+  background: rgba(245, 179, 1, 0.3);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+/* Autofill: keep dark fields dark instead of Chrome's pale yellow */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-field) inset;
+  caret-color: var(--color-ink);
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* ── Skip link ─────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 1rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-gold);
+  color: var(--color-on-gold);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.skip-link:focus {
+  left: 1rem;
+}
+
+/* ── Gold button glow (matches the soft halo in the mockups) ─ */
+.gold-glow {
+  box-shadow:
+    0 0 0 1px rgba(255, 196, 36, 0.35) inset,
+    0 8px 28px -6px rgba(245, 179, 1, 0.45);
+}
+.gold-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 214, 102, 0.5) inset,
+    0 10px 34px -6px rgba(245, 179, 1, 0.6);
+}
+
+/* ── Reduced motion ────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
   *,
   *::before,
   *::after {
@@ -143,128 +170,4 @@ section[id] {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
-  min-height: 100vh;
-}
-
-/* ── Focus styles (keyboard nav) ───────────────────────────── */
-:focus-visible {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* ── Skip link (accessibility) ─────────────────────────────── */
-.skip-link {
-  position: absolute;
-  left: -9999px;
-  top: 1rem;
-  z-index: 9999;
-  padding: 0.5rem 1rem;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-.skip-link:focus {
-  left: 1rem;
-}
-
-/* ── Glass card base ──────────────────────────────────────── */
-.glass-card {
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-.glass-card-elevated {
-  background: var(--color-card-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: var(--shadow-card);
-}
-
-/* ── Card hover lift ──────────────────────────────────────── */
-.card-interactive {
-  transition:
-    box-shadow var(--motion-duration-base) var(--motion-easing),
-    border-color var(--motion-duration-base) var(--motion-easing),
-    transform  var(--motion-duration-base) var(--motion-easing);
-}
-.card-interactive:hover {
-  box-shadow: var(--shadow-card-hover);
-  border-color: var(--color-border-hover);
-  transform: translateY(-2px);
-}
-
-/* ── Gradient text utility ────────────────────────────────── */
-.text-gradient-red-gold {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ── Dot grid background ──────────────────────────────────── */
-.bg-dot-grid {
-  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-/* ── Subtle noise texture ─────────────────────────────────── */
-.bg-noise::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.03;
-  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ── Section divider line ─────────────────────────────────── */
-.section-divider {
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--color-border),
-    rgba(204, 27, 43, 0.15),
-    var(--color-border),
-    transparent
-  );
-}
-
-/* ── Scroll progress bar (in header) ──────────────────────── */
-.scroll-progress {
-  height: 2px;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
-  transform-origin: left;
-  transition: transform 50ms linear;
-}
-
-/* ── Custom scrollbar ─────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-background);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
 }
