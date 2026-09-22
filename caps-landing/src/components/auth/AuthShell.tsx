@@ -1,3 +1,4 @@
+import { AmbientBlobs } from "@/components/brand/AmbientBlobs";
 import { SealBackdrop } from "@/components/brand/SealBackdrop";
 
 type AuthShellProps = {
@@ -11,17 +12,9 @@ type AuthShellProps = {
 
 export function AuthShell({ children, below, footer, width = 446 }: AuthShellProps) {
   return (
-    <div className="relative isolate flex min-h-svh flex-col items-center overflow-hidden px-4 pt-5 pb-6 font-jakarta sm:pt-5">
-      <SealBackdrop size="min(1320px, 190vw)" centerY="52%" opacity={0.3} blur={1.5} className="-z-10" />
-      {/* Vignette: keep edges and bottom in the canvas color */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(120% 80% at 50% 38%, transparent 30%, rgba(8,9,13,0.75) 75%, #08090d 100%)",
-        }}
-      />
+    <div className="fade-in relative isolate flex min-h-svh flex-col items-center overflow-hidden px-4 pt-5 pb-6 font-jakarta sm:pt-5">
+      <AmbientBlobs darker />
+      <SealBackdrop size="min(810px, 150vw)" opacity={0.05} blur={1.5} className="inset-0 -z-10" />
 
       <main id="main-content" className="flex w-full flex-1 flex-col items-center justify-center">
         <div

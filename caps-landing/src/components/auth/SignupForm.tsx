@@ -152,7 +152,7 @@ export function SignupForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="gold-glow mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-bright to-gold-deep text-sm font-bold text-on-gold transition-[filter,box-shadow] hover:brightness-105 disabled:cursor-wait disabled:opacity-80"
+          className="btn btn-gold pulse-gold gold-glow mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-bright to-gold-deep text-sm font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
         >
           {status === "submitting" ? (
             <>
@@ -170,7 +170,7 @@ export function SignupForm() {
 
       <div className="mt-5 border-t border-line pt-5 text-center text-[0.8125rem] text-ink-muted">
         Already have an account?{" "}
-        <Link href="/login" className="font-bold text-gold underline-offset-4 hover:underline">
+        <Link href="/login" className="font-bold text-gold underline-offset-4 transition-colors hover:text-gold-bright hover:underline">
           Sign In
         </Link>
       </div>

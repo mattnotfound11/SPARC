@@ -94,7 +94,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="gold-glow flex h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-gold text-[0.9375rem] font-bold text-on-gold transition-colors hover:bg-gold-bright disabled:cursor-wait disabled:opacity-80"
+          className="btn btn-gold pulse-gold gold-glow flex h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-gold text-[0.9375rem] font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
         >
           {status === "submitting" ? (
             <>
@@ -119,7 +119,7 @@ export function LoginForm() {
       <button
         type="button"
         onClick={() => setStatus("unavailable")}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-white/[0.02] text-[0.9375rem] font-medium text-ink transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+        className="btn btn-outline flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-white/[0.02] text-[0.9375rem] font-medium text-ink"
       >
         <GoogleIcon className="size-[1.125rem]" />
         Continue with Google
@@ -127,7 +127,7 @@ export function LoginForm() {
 
       <div className="mt-6 border-t border-line pt-6 text-center text-[0.9375rem] text-ink-muted">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="font-bold text-ink underline-offset-4 hover:underline">
+        <Link href="/signup" className="font-bold text-ink underline-offset-4 transition-colors hover:text-gold-bright hover:underline">
           Register here
         </Link>
       </div>

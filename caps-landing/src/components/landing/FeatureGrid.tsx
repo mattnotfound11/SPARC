@@ -58,9 +58,9 @@ export function FeatureGrid() {
           {features.map(({ title, body, icon: Icon, tone }) => (
             <li
               key={title}
-              className="group rounded-2xl border border-line bg-surface p-6 transition-[border-color,box-shadow,transform] duration-300 ease-out hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-[0_18px_40px_-18px_rgba(245,179,1,0.28)] sm:p-7"
+              className="feature-card rounded-2xl border border-line bg-surface p-6 sm:p-7"
             >
-              <span className={`grid size-10 place-items-center rounded-lg border ${toneStyles[tone]}`}>
+              <span data-tone={tone} className={`feature-icon grid size-10 place-items-center rounded-lg border ${toneStyles[tone]}`}>
                 <Icon className="size-[1.125rem]" strokeWidth={2} aria-hidden />
               </span>
               <h3 className="mt-5 font-display text-[1.0625rem] font-semibold text-ink">{title}</h3>

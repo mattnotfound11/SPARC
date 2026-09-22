@@ -39,29 +39,6 @@
   /* Status */
   --color-live: #22c55e;
 
-  --animate-fade-up: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-float-y: float-y 2.4s ease-in-out infinite;
-
-  @keyframes fade-up {
-    from {
-      opacity: 0;
-      transform: translateY(14px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes float-y {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(4px);
-    }
-  }
 }
 
 /* ── Lenis smooth scroll ───────────────────────────────────── */
@@ -159,6 +136,115 @@ input:-webkit-autofill:focus {
   box-shadow:
     0 0 0 1px rgba(255, 214, 102, 0.5) inset,
     0 10px 34px -6px rgba(245, 179, 1, 0.6);
+}
+
+/* ── Motion — timings mirror the lsgph-pharmatrack.com reference ── */
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-up {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pulse-gold {
+  0% { box-shadow: 0 0 0 0 rgba(245, 179, 1, 0.45); }
+  70% { box-shadow: 0 0 0 15px rgba(245, 179, 1, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 179, 1, 0); }
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes float-blobs {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(8vw, 6vh) scale(1.1); }
+  66% { transform: translate(-6vw, 12vh) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.page-enter { animation: page-fade-in 0.3s ease both; }
+.fade-in { animation: fade-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.fade-in.delay-1 { animation-delay: 0.15s; }
+.fade-in.delay-2 { animation-delay: 0.3s; }
+.fade-in.delay-3 { animation-delay: 0.45s; }
+.pulse-gold { animation: pulse-gold 2.5s ease 3; }
+.dot-pulse { animation: dot-pulse 3s ease-in-out infinite; }
+
+/* Ambient drifting blobs */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.25;
+  animation: float-blobs 35s ease-in-out infinite;
+}
+.blob-1 { top: -10vh; left: -20vw; width: 60vw; height: 60vw; background: #7a1022; }
+.blob-2 { top: 65vh; left: 75vw; width: 43vw; height: 43vw; background: rgba(245, 179, 1, 0.1); animation-duration: 28s; animation-delay: -5s; }
+.blob-3 { top: 40vh; left: 41vw; width: 35vw; height: 35vw; background: rgba(142, 15, 31, 0.35); animation-duration: 22s; animation-delay: -10s; }
+.blobs-darker .blob { opacity: 0.18; }
+
+/* Buttons: lift on hover */
+.btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0); }
+.btn-gold:hover {
+  box-shadow: 0 6px 20px rgba(245, 179, 1, 0.25);
+  filter: brightness(1.1);
+}
+.btn-outline:hover {
+  background: rgba(245, 179, 1, 0.08);
+  border-color: rgba(245, 179, 1, 0.55);
+  box-shadow: 0 0 30px rgba(245, 179, 1, 0.18);
+}
+
+/* Scroll indicator */
+.scroll-circle {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.scroll-circle:hover {
+  background: rgba(245, 179, 1, 0.15);
+  border-color: var(--color-gold);
+  transform: translateY(-4px);
+  box-shadow: 0 0 20px rgba(245, 179, 1, 0.3);
+}
+
+/* Feature cards: gold top edge + deep shadow; icon tile lights up */
+.feature-card {
+  transition: border-top-color 0.3s ease, box-shadow 0.3s ease;
+}
+.feature-card:hover {
+  border-top-color: rgba(245, 179, 1, 0.5);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.7),
+    0 0 40px rgba(245, 179, 1, 0.05),
+    inset 0 1px 0 rgba(245, 179, 1, 0.12);
+}
+.feature-icon { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.feature-card:hover .feature-icon[data-tone="gold"] {
+  border-color: var(--color-gold);
+  box-shadow: 0 4px 16px rgba(245, 179, 1, 0.25), inset 0 1px 2px rgba(245, 179, 1, 0.2);
+}
+.feature-card:hover .feature-icon[data-tone="crimson"] {
+  border-color: var(--color-crimson);
+  box-shadow: 0 4px 16px rgba(224, 69, 94, 0.25), inset 0 1px 2px rgba(224, 69, 94, 0.2);
+}
+
+/* Auth fields: gold ring and a 1px lift on focus */
+.input-field {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, background-color 0.3s ease;
+}
+.input-field:focus {
+  border-color: var(--color-gold);
+  background-color: rgba(122, 16, 34, 0.12);
+  box-shadow: 0 0 0 4px rgba(245, 179, 1, 0.15), 0 8px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+.input-field[aria-invalid="true"] {
+  border-color: rgba(224, 69, 94, 0.7);
+  box-shadow: 0 0 0 4px rgba(224, 69, 94, 0.14);
 }
 
 /* ── Reduced motion ────────────────────────────────────────── */

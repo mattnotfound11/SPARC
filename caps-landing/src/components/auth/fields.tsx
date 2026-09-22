@@ -15,7 +15,7 @@ const iconPos: Record<FieldSize, string> = {
 };
 
 const base =
-  "w-full border border-line-strong bg-field text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] outline-none hover:border-white/20 focus:border-gold/60 focus:shadow-[0_0_0_3px_rgba(245,179,1,0.14)] aria-invalid:border-crimson/70 aria-invalid:shadow-[0_0_0_3px_rgba(224,69,94,0.14)]";
+  "input-field w-full border border-line-strong bg-field text-ink placeholder:text-ink-muted outline-none hover:border-white/20";
 
 type IconInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   icon: LucideIcon;

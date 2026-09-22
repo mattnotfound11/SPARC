@@ -19,7 +19,7 @@ export function GateAccessCta() {
         </div>
         <Link
           href="/signup"
-          className="gold-glow shrink-0 rounded-xl bg-gold px-6 py-3.5 text-sm font-semibold text-on-gold transition-colors hover:bg-gold-bright"
+          className="btn btn-gold gold-glow shrink-0 rounded-xl bg-gold px-6 py-3.5 text-sm font-semibold text-on-gold"
         >
           Register Vehicle RFID
         </Link>
