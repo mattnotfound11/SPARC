@@ -28,26 +28,28 @@ export function SignupForm() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-6 sm:px-7">
+    <div className="px-5 py-[clamp(0.75rem,2.4vh,2.25rem)] sm:px-10">
       <div className="flex flex-col items-center text-center">
         <SparcSeal
-          size={50}
+          size={72}
           priority
-          className="ring-[3px] ring-[#f6eee0] shadow-[0_0_0_5px_rgba(245,179,1,0.12),0_6px_24px_-4px_rgba(245,179,1,0.5)]"
+          className="size-[clamp(2.25rem,5vh,4.5rem)] ring-[3px] ring-[#f6eee0] shadow-[0_0_0_5px_rgba(245,179,1,0.12),0_6px_24px_-4px_rgba(245,179,1,0.5)]"
         />
-        <h1 className="mt-4 text-[1.5rem] leading-tight font-bold tracking-tight text-ink">Create Account</h1>
-        <p className="mx-auto mt-1.5 max-w-[17rem] text-[0.8125rem] leading-snug text-ink-muted">
+        <h1 className="mt-[clamp(0.5rem,1.4vh,1.125rem)] text-[clamp(1.375rem,3.2vh,2rem)] leading-tight font-bold tracking-tight text-ink">
+          Create Account
+        </h1>
+        <p className="mt-1.5 text-[0.9375rem] leading-snug text-balance text-ink-muted sm:text-base">
           Register for campus parking access &amp; digital RFID pass
         </p>
       </div>
 
-      <div className="mt-5">
-        <AuthTabs active="signup" size="sm" />
+      <div className="mt-[clamp(0.625rem,1.6vh,1.5rem)]">
+        <AuthTabs active="signup" />
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+      <form onSubmit={handleSubmit} className="mt-[clamp(0.625rem,1.6vh,1.25rem)] space-y-[clamp(0.375rem,1vh,0.875rem)]">
         <label htmlFor="signup-name" className="sr-only">Full name</label>
-        <IconInput id="signup-name" name="fullName" icon={User} fieldSize="sm" autoComplete="name" placeholder="Full Name" required />
+        <IconInput id="signup-name" name="fullName" icon={User} autoComplete="name" placeholder="Full Name" required />
 
         <label htmlFor="signup-email" className="sr-only">University email</label>
         <IconInput
@@ -55,7 +57,7 @@ export function SignupForm() {
           name="email"
           type="email"
           icon={Mail}
-          fieldSize="sm"
+         
           autoComplete="email"
           placeholder="University Email"
           required
@@ -68,12 +70,12 @@ export function SignupForm() {
           <option value="staff">Administrative Staff</option>
         </IconSelect>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.2fr_1fr]">
+        <div className="grid grid-cols-1 gap-[clamp(0.375rem,1vh,0.875rem)] sm:grid-cols-[1.12fr_1fr]">
           <div>
             <label htmlFor="signup-vehicle" className="sr-only">Vehicle type</label>
             <IconSelect id="signup-vehicle" name="vehicleType" icon={Car} defaultValue="4-wheel">
-              <option value="4-wheel">4-Wheel (Car / SUV)</option>
-              <option value="2-wheel">2-Wheel (Motorcycle)</option>
+              <option value="4-wheel">4-Wheel (Car/SUV)</option>
+              <option value="2-wheel">2-Wheel (Motor)</option>
             </IconSelect>
           </div>
           <div>
@@ -82,10 +84,10 @@ export function SignupForm() {
               id="signup-plate"
               name="plate"
               icon={FileText}
-              fieldSize="sm"
+             
               autoComplete="off"
-              placeholder="PLATE NO. / MV FILE"
-              className="uppercase"
+              placeholder="Plate No. / MV File"
+              className="uppercase placeholder:normal-case"
               required
             />
           </div>
@@ -96,7 +98,7 @@ export function SignupForm() {
           id="signup-password"
           name="password"
           icon={Lock}
-          fieldSize="sm"
+         
           autoComplete="new-password"
           placeholder="Password"
           minLength={8}
@@ -111,7 +113,7 @@ export function SignupForm() {
             id="signup-confirm"
             name="confirmPassword"
             icon={ShieldCheck}
-            fieldSize="sm"
+           
             autoComplete="new-password"
             placeholder="Confirm Password"
             value={confirm}
@@ -122,14 +124,14 @@ export function SignupForm() {
             required
           />
           {mismatch && (
-            <p id="signup-confirm-error" className="mt-1.5 pl-1 text-xs text-crimson">
+            <p id="signup-confirm-error" className="mt-1.5 pl-1 text-sm text-crimson">
               Passwords don&apos;t match — re-enter the same password.
             </p>
           )}
         </div>
 
-        <label className="flex cursor-pointer items-start gap-2.5 pt-1 text-xs leading-relaxed text-ink-soft">
-          <input type="checkbox" name="agree" required className="mt-0.5 size-3.5 shrink-0 cursor-pointer accent-gold" />
+        <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink-soft">
+          <input type="checkbox" name="agree" required className="mt-0.5 size-4 shrink-0 cursor-pointer accent-gold" />
           <span>
             I agree to the{" "}
             <a href="#" className="font-medium text-ink underline underline-offset-2 hover:text-gold">
@@ -152,23 +154,23 @@ export function SignupForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="btn btn-gold pulse-gold gold-glow mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-bright to-gold-deep text-sm font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
+          className="btn btn-gold pulse-gold gold-glow flex h-[clamp(2.625rem,6vh,3.375rem)] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-bright to-gold-deep text-base font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
         >
           {status === "submitting" ? (
             <>
-              <LoaderCircle className="size-4 animate-spin" aria-hidden />
+              <LoaderCircle className="size-[1.125rem] animate-spin" aria-hidden />
               Creating Account…
             </>
           ) : (
             <>
               Create Account &amp; Register Vehicle
-              <ArrowRight className="size-4" strokeWidth={2.25} aria-hidden />
+              <ArrowRight className="size-[1.125rem]" strokeWidth={2.25} aria-hidden />
             </>
           )}
         </button>
       </form>
 
-      <div className="mt-5 border-t border-line pt-5 text-center text-[0.8125rem] text-ink-muted">
+      <div className="mt-[clamp(0.5rem,1.6vh,1.5rem)] border-t border-line pt-[clamp(0.5rem,1.6vh,1.5rem)] text-center text-base text-ink-muted">
         Already have an account?{" "}
         <Link href="/login" className="font-bold text-gold underline-offset-4 transition-colors hover:text-gold-bright hover:underline">
           Sign In

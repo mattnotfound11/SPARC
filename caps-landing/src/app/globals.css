@@ -53,11 +53,18 @@
 }
 
 section[id] {
-  scroll-margin-top: 96px;
+  scroll-margin-top: calc(var(--header-h) + 8px);
 }
 
 html {
   color-scheme: dark;
+  /* Height of the floating landing header; the hero tucks underneath it */
+  --header-h: 76px;
+}
+@media (min-width: 640px) {
+  html {
+    --header-h: 88px;
+  }
 }
 
 body {

@@ -36,35 +36,32 @@ const toneStyles: Record<Tone, string> = {
 
 export function FeatureGrid() {
   return (
-    <section id="features" aria-labelledby="features-title" className="px-4 pt-12 pb-16 sm:px-6 sm:pt-14 sm:pb-20">
-      <div className="mx-auto max-w-5xl">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-gold uppercase">
+    <section id="features" aria-labelledby="features-title" className="px-4 pt-[clamp(4rem,9vh,6rem)] pb-[clamp(3rem,7vh,5rem)] sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-5xl text-center">
+          <p className="text-xs font-semibold tracking-[0.16em] text-gold uppercase sm:text-[0.8125rem]">
             Institutional Precision
           </p>
           <h2
             id="features-title"
-            className="mt-3 font-display text-[clamp(1.625rem,4vw,2.25rem)] leading-tight font-bold tracking-tight text-balance text-ink"
+            className="mt-4 font-display text-[clamp(1.875rem,3.6vw,3rem)] leading-tight font-bold tracking-tight text-balance text-ink"
           >
             Engineered for Frictionless Campus Transit
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-[0.9375rem] leading-relaxed text-ink-muted">
+          <p className="mx-auto mt-4 max-w-2xl text-[clamp(1rem,1.2vw,1.1875rem)] leading-relaxed text-ink-muted">
             Designed specifically to eradicate perimeter traffic queues along General Luna and protect
             parking security for Augustinians.
           </p>
         </div>
 
-        <ul className="mt-10 grid gap-4 sm:grid-cols-2 sm:gap-5">
+        <ul className="mt-[clamp(2.5rem,5vh,3.5rem)] grid gap-5 sm:grid-cols-2 lg:gap-6">
           {features.map(({ title, body, icon: Icon, tone }) => (
-            <li
-              key={title}
-              className="feature-card rounded-2xl border border-line bg-surface p-6 sm:p-7"
-            >
-              <span data-tone={tone} className={`feature-icon grid size-10 place-items-center rounded-lg border ${toneStyles[tone]}`}>
-                <Icon className="size-[1.125rem]" strokeWidth={2} aria-hidden />
+            <li key={title} className="feature-card rounded-2xl border border-line bg-surface p-7 lg:p-9">
+              <span data-tone={tone} className={`feature-icon grid size-12 place-items-center rounded-xl border ${toneStyles[tone]}`}>
+                <Icon className="size-[1.375rem]" strokeWidth={2} aria-hidden />
               </span>
-              <h3 className="mt-5 font-display text-[1.0625rem] font-semibold text-ink">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">{body}</p>
+              <h3 className="mt-6 font-display text-xl font-semibold text-ink lg:text-[1.375rem]">{title}</h3>
+              <p className="mt-2.5 text-[0.9375rem] leading-relaxed text-ink-muted lg:text-base">{body}</p>
             </li>
           ))}
         </ul>

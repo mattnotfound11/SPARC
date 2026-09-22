@@ -4,10 +4,10 @@ import { SparcWordmark } from "@/components/brand/SparcWordmark";
 export function LandingFooter() {
   return (
     <footer className="border-t border-line px-4 py-8 sm:px-6">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <SparcSeal size={22} />
-          <SparcWordmark className="text-[0.8125rem] text-ink" />
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-ink-muted md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-2.5">
+          <SparcSeal size={28} />
+          <SparcWordmark className="text-base text-ink" />
           <span aria-hidden className="text-ink-faint">•</span>
           <span>University of San Agustin, Iloilo City</span>
         </div>
