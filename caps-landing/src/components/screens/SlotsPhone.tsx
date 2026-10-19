@@ -1,4 +1,5 @@
 import { Navigation } from "lucide-react";
+import { SparcSeal } from "@/components/brand/SparcSeal";
 import { HomeBar, StatusBar } from "./PhoneChrome";
 
 const decks = [
@@ -21,7 +22,10 @@ export function SlotsPhone() {
 
       <div className="flex-1 px-6 pt-4">
         <div className="flex items-center justify-between">
-          <p className="font-display text-[20px] font-semibold tracking-tight">Available slots</p>
+          <p className="flex items-center gap-2.5 font-display text-[19px] font-semibold tracking-tight">
+            <SparcSeal size={26} />
+            Available slots
+          </p>
           <span className="flex items-center gap-1.5 text-[12px] text-ink-muted">
             <span className="dot-pulse size-1.5 rounded-full bg-live" />
             Live

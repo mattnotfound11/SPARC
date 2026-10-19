@@ -1,4 +1,5 @@
 import { Nfc } from "lucide-react";
+import { SparcSeal } from "@/components/brand/SparcSeal";
 import { HomeBar, StatusBar } from "./PhoneChrome";
 
 const history = [
@@ -15,9 +16,12 @@ export function PassPhone() {
 
       <div className="flex-1 px-6 pt-4">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[13px] text-ink-muted">Good morning,</p>
-            <p className="font-display text-[20px] font-semibold tracking-tight">Dexter</p>
+          <div className="flex items-center gap-2.5">
+            <SparcSeal size={30} />
+            <div>
+              <p className="text-[12px] text-ink-muted">Good morning,</p>
+              <p className="font-display text-[18px] font-semibold tracking-tight">Dexter</p>
+            </div>
           </div>
           <span className="flex items-center gap-1.5 rounded-lg border border-line bg-surface/70 px-2.5 py-1.5 text-[12px] text-ink-soft">
             <span className="dot-pulse size-1.5 rounded-full bg-live" />

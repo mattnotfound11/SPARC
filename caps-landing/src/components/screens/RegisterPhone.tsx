@@ -1,4 +1,5 @@
 import { Car, Check, Mail, User } from "lucide-react";
+import { SparcSeal } from "@/components/brand/SparcSeal";
 import { HomeBar, StatusBar } from "./PhoneChrome";
 
 /** Registering a vehicle from a phone. */
@@ -9,7 +10,7 @@ export function RegisterPhone() {
 
       <div className="flex-1 px-6 pt-4">
         <div className="flex items-center gap-2.5">
-          <span className="grid size-8 place-items-center rounded-lg bg-gold text-[14px] font-bold text-on-gold">S</span>
+          <SparcSeal size={30} />
           <span className="font-display text-[17px] font-semibold tracking-tight">
             SPAR<span className="text-gold">C</span>
           </span>

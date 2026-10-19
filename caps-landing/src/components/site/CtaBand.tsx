@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { ScrubStage } from "@/components/ui/ScrubStage";
+import { SparcSeal } from "@/components/brand/SparcSeal";
 import { IPhone } from "@/components/ui/IPhone";
 import { RegisterPhone } from "@/components/screens/RegisterPhone";
 import { PassPhone } from "@/components/screens/PassPhone";
@@ -27,11 +28,12 @@ export function CtaBand() {
             }}
           />
 
-          <p className="relative text-[clamp(0.8125rem,1vw,0.9375rem)] text-ink-muted">Campus gate access</p>
-          <h2 id="cta-title" className="display relative mt-4 px-6 text-[clamp(1.5rem,3.4vw,3rem)] text-ink">
+          <SparcSeal size={52} className="relative size-10 sm:size-13" />
+          <p className="relative mt-3 text-[clamp(0.8125rem,1vw,0.9375rem)] text-ink-muted">Campus gate access</p>
+          <h2 id="cta-title" className="display relative mt-3 px-6 text-[clamp(1.5rem,3.4vw,3rem)] text-ink">
             Register once, then just tap.
           </h2>
-          <div className="relative mt-6 flex flex-wrap items-center justify-center gap-3 px-6">
+          <div className="relative mt-5 flex flex-wrap items-center justify-center gap-3 px-6">
             <Link href="/signup" className="btn btn-gold link-arrow px-6 py-3 text-[0.9375rem]">
               Register your vehicle
               <ArrowUpRight className="size-4" strokeWidth={2.5} aria-hidden />

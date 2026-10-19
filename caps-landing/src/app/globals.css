@@ -392,7 +392,7 @@ input:-webkit-autofill:focus {
   border: 1px solid var(--color-line);
   border-radius: 24px;
   background: color-mix(in srgb, var(--color-surface) 80%, transparent);
-  padding-top: clamp(1.5rem, 11.1svh, 6.25rem);
+  padding-top: clamp(1.25rem, 4.6svh, 2.75rem);
   text-align: center;
 }
 
@@ -403,7 +403,7 @@ input:-webkit-autofill:focus {
   height: auto;
   min-height: 0;
   flex: 1 1 auto;
-  margin-top: clamp(1.5rem, 5.3svh, 3rem);
+  margin-top: clamp(1.25rem, 4svh, 2.25rem);
   --w: 378;
   --split: 400px;
 }
@@ -425,15 +425,21 @@ input:-webkit-autofill:focus {
     padding-inline: 0;
   }
   .cta-box {
-    height: 100svh;
+    /* Hug the content: one phone, fully visible, no gap underneath */
+    height: auto;
     max-height: none;
     border-inline: 0;
     border-radius: 0;
+    padding-bottom: clamp(1.25rem, 4svh, 2.5rem);
+  }
+  .device-stack.device-stack--cta {
+    flex: 0 0 auto;
+    height: calc(var(--w) * 2.1 * 1px);
   }
   /* The reference shows a single phone here; stacked frames at different
      scales would just read as rings around each other. */
   .device-stack.device-stack--cta {
-    --w: 300;
+    --w: 264;
     --split: 0px;
   }
   .device-stack.device-stack--cta .device-left,
@@ -447,7 +453,7 @@ input:-webkit-autofill:focus {
 }
 @media (max-width: 420px) {
   .device-stack.device-stack--cta {
-    --w: 250;
+    --w: 214;
   }
 }
 
