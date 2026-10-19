@@ -1,5 +1,4 @@
-import { AmbientBlobs } from "@/components/brand/AmbientBlobs";
-import { SealBackdrop } from "@/components/brand/SealBackdrop";
+import { AuthBackdrop } from "@/components/ui/AuthBackdrop";
 
 type AuthShellProps = {
   children: React.ReactNode;
@@ -15,18 +14,17 @@ type AuthShellProps = {
  */
 export function AuthShell({ children, below, footer }: AuthShellProps) {
   return (
-    <div className="fade-in relative isolate flex min-h-svh flex-col items-center overflow-hidden px-4 py-[clamp(0.5rem,2vh,2rem)] font-jakarta">
-      <AmbientBlobs darker />
-      <SealBackdrop size="min(clamp(620px, 60vw, 1050px), 150vw)" opacity={0.05} blur={1.5} className="inset-0 -z-10" />
+    <div className="relative isolate flex min-h-svh flex-col items-center overflow-hidden px-4 py-[clamp(0.5rem,2vh,2rem)]">
+      <AuthBackdrop />
 
       <main id="main-content" className="flex w-full flex-1 flex-col items-center justify-center">
-        <div className="w-full max-w-[34rem] rounded-[28px] border border-line-strong bg-[#11141c]/95 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9),0_0_0_1px_rgba(0,0,0,0.4)] backdrop-blur-sm">
+        <div className="panel panel-lit w-full max-w-[34rem] bg-surface/90 shadow-[0_40px_90px_-40px_rgba(0,0,0,0.95)] backdrop-blur-xl">
           {children}
         </div>
         {below}
       </main>
 
-      <footer className="mt-[clamp(0.5rem,1.6vh,1.5rem)] font-grotesk text-xs text-ink-muted">{footer}</footer>
+      <footer className="mt-[clamp(0.5rem,1.6vh,1.5rem)] text-xs text-ink-muted">{footer}</footer>
     </div>
   );
 }

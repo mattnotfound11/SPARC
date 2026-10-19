@@ -1,29 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Outfit, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import { Figtree, Inter } from "next/font/google";
 import { SmoothScrollProvider } from "@/components/SmoothScrollProvider";
 import "./globals.css";
 
-/* Landing body copy */
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-/* Landing display: the geometric SPARC wordmark and headings */
-const outfit = Outfit({
+const figtree = Figtree({
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  variable: "--font-outfit",
-  display: "swap",
-});
-/* Auth screens */
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-plus-jakarta",
-  display: "swap",
-});
-/* Auth footer micro-type */
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-space-grotesk",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-figtree",
   display: "swap",
 });
 
@@ -33,7 +17,7 @@ export const metadata: Metadata = {
     template: "%s · SPARC",
   },
   description:
-    "Tap your Augustinian RFID card at the gate. SPARC gives University of San Agustin drivers and campus marshals real-time parking slot availability and bay status.",
+    "RFID gate access and live parking slot counts for the University of San Agustin. Tap your Augustinian card, the barrier lifts, and every bay is counted in real time.",
 };
 
 export const viewport: Viewport = {
@@ -44,8 +28,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${outfit.variable} ${plusJakarta.variable} ${spaceGrotesk.variable} h-full`}
+      className={`${inter.variable} ${figtree.variable} h-full`}
+      // the head script below adds a `js` class before hydration
+      suppressHydrationWarning
     >
+      <head>
+        {/* Scroll reveals only arm when JS runs, so content is never stuck hidden. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: `document.documentElement.classList.add("js")` }}
+        />
+      </head>
       <body className="flex min-h-full flex-col">
         <a href="#main-content" className="skip-link">
           Skip to main content

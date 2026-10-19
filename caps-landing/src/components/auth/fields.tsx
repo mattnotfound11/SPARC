@@ -7,8 +7,7 @@ import { ChevronDown, Eye, EyeOff, type LucideIcon } from "lucide-react";
 const shell = "h-[clamp(2.5rem,5.6vh,3.375rem)] rounded-xl pl-12 pr-4 text-base";
 const iconPos = "left-4 size-[1.125rem]";
 
-const base =
-  "input-field w-full border border-line-strong bg-field text-ink placeholder:text-ink-muted outline-none hover:border-white/20";
+const base = "input-field w-full";
 
 type IconInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   icon: LucideIcon;

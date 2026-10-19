@@ -31,7 +31,7 @@ export function LoginForm() {
           priority
           className="size-[clamp(3rem,7vh,6rem)] ring-4 ring-[#f6eee0] shadow-[0_0_0_7px_rgba(245,179,1,0.1),0_10px_40px_-6px_rgba(245,179,1,0.45)]"
         />
-        <h1 className="mt-[clamp(0.625rem,1.8vh,1.5rem)] text-[clamp(1.5rem,3.4vh,2.125rem)] leading-tight font-bold tracking-tight text-ink">
+        <h1 className="mt-[clamp(0.625rem,1.8vh,1.5rem)] text-[clamp(1.5rem,3.4vh,2.125rem)] display text-ink">
           Welcome Back
         </h1>
         <p className="mt-1.5 text-[0.9375rem] text-ink-muted sm:text-base">Sign in to access your SPARC parking portal</p>
@@ -96,7 +96,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="btn btn-gold pulse-gold gold-glow flex h-[clamp(2.625rem,6vh,3.375rem)] w-full items-center justify-center gap-2 rounded-xl bg-gold text-base font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
+          className="btn btn-gold w-full flex h-[clamp(2.625rem,6vh,3.375rem)] w-full items-center justify-center gap-2 rounded-xl bg-gold text-base font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
         >
           {status === "submitting" ? (
             <>
@@ -121,7 +121,7 @@ export function LoginForm() {
       <button
         type="button"
         onClick={() => setStatus("unavailable")}
-        className="btn btn-outline flex h-[clamp(2.5rem,5.6vh,3.25rem)] w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-white/[0.02] text-base font-medium text-ink"
+        className="btn btn-ghost flex h-[clamp(2.5rem,5.6vh,3.25rem)] w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-white/[0.02] text-base font-medium text-ink"
       >
         <GoogleIcon className="size-5" />
         Continue with Google

@@ -35,7 +35,7 @@ export function SignupForm() {
           priority
           className="size-[clamp(2.25rem,5vh,4.5rem)] ring-[3px] ring-[#f6eee0] shadow-[0_0_0_5px_rgba(245,179,1,0.12),0_6px_24px_-4px_rgba(245,179,1,0.5)]"
         />
-        <h1 className="mt-[clamp(0.5rem,1.4vh,1.125rem)] text-[clamp(1.375rem,3.2vh,2rem)] leading-tight font-bold tracking-tight text-ink">
+        <h1 className="mt-[clamp(0.5rem,1.4vh,1.125rem)] text-[clamp(1.375rem,3.2vh,2rem)] display text-ink">
           Create Account
         </h1>
         <p className="mt-1.5 text-[0.9375rem] leading-snug text-balance text-ink-muted sm:text-base">
@@ -154,7 +154,7 @@ export function SignupForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="btn btn-gold pulse-gold gold-glow flex h-[clamp(2.625rem,6vh,3.375rem)] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-bright to-gold-deep text-base font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
+          className="btn btn-gold w-full flex h-[clamp(2.625rem,6vh,3.375rem)] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-bright to-gold-deep text-base font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
         >
           {status === "submitting" ? (
             <>

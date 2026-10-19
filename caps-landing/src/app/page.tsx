@@ -1,23 +1,27 @@
-import { LandingHeader } from "@/components/landing/LandingHeader";
-import { LandingHero } from "@/components/landing/LandingHero";
-import { FeatureGrid } from "@/components/landing/FeatureGrid";
-import { GateAccessCta } from "@/components/landing/GateAccessCta";
-import { LandingFooter } from "@/components/landing/LandingFooter";
-import { AmbientBlobs } from "@/components/brand/AmbientBlobs";
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { Hero } from "@/components/site/Hero";
+import { StatStrip } from "@/components/site/StatStrip";
+import { FeatureRows } from "@/components/site/FeatureRows";
+import { ProcessSteps } from "@/components/site/ProcessSteps";
+import { BenefitsGrid } from "@/components/site/BenefitsGrid";
+import { FaqAccordion } from "@/components/site/FaqAccordion";
+import { CtaBand } from "@/components/site/CtaBand";
+import { SiteFooter } from "@/components/site/SiteFooter";
 
 export default function LandingPage() {
   return (
-    <div className="page-enter relative isolate flex flex-1 flex-col">
-      <AmbientBlobs />
-      <LandingHeader />
+    <>
+      <SiteHeader />
       <main id="main-content" className="flex-1">
-        <LandingHero />
-        <div className="fade-in delay-3">
-          <FeatureGrid />
-          <GateAccessCta />
-        </div>
+        <Hero />
+        <StatStrip />
+        <FeatureRows />
+        <ProcessSteps />
+        <BenefitsGrid />
+        <FaqAccordion />
+        <CtaBand />
       </main>
-      <LandingFooter />
-    </div>
+      <SiteFooter />
+    </>
   );
 }
