@@ -371,61 +371,89 @@ input:-webkit-autofill:focus {
   --s1: 1;
   z-index: 3;
 }
-/* Phones inside the closing CTA box: equal size, side by side with a small
-   gap, cropped by the box's bottom edge — as in the reference. */
+/* ── Closing CTA, built to the reference's measurements ────────
+   At 1440x900 the reference box is 1344x804, inset 48px, radius 24px;
+   its heading sits 137px down, buttons 24px below that, phones 48px
+   below those, showing 499px of a 746px phone. Below 810px it goes
+   full-bleed and the phones stop fanning.
+   ──────────────────────────────────────────────────────────── */
+.cta-shell {
+  width: 100%;
+  padding-inline: 48px;
+}
+.cta-box {
+  position: relative;
+  display: flex;
+  height: calc(100svh - 96px);
+  max-height: 860px;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  padding-top: clamp(1.5rem, 11.1svh, 6.25rem);
+  text-align: center;
+}
+
+/* Phones take the remaining height; the box crops the rest */
 .device-stack.device-stack--cta {
+  position: relative;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  margin-top: clamp(1.5rem, 5.3svh, 3rem);
   --w: 378;
-  --split: 399px;
-  /* show a little over half the phone; the box crops the rest */
-  height: calc(var(--w) * 1.12 * 1px);
+  --split: 400px;
 }
 .device-stack.device-stack--cta .device-left,
 .device-stack.device-stack--cta .device-right {
   --s1: 1;
 }
-@media (max-width: 1400px) {
+
+/* Reference drops to a 331px phone between 810 and 1199 */
+@media (max-width: 1199px) {
   .device-stack.device-stack--cta {
-    --w: 330;
-    --split: 350px;
+    --w: 331;
   }
 }
-@media (max-width: 1150px) {
-  .device-stack.device-stack--cta {
-    --w: 286;
-    --split: 302px;
+
+/* Under 810px: full-bleed box, phones stacked and scaled up, no fan */
+@media (max-width: 809px) {
+  .cta-shell {
+    padding-inline: 0;
   }
-}
-@media (max-width: 900px) {
-  .device-stack.device-stack--cta {
-    --w: 238;
-    --split: 250px;
+  .cta-box {
+    height: 100svh;
+    max-height: none;
+    border-inline: 0;
+    border-radius: 0;
   }
-}
-@media (max-width: 700px) {
+  /* The reference shows a single phone here; stacked frames at different
+     scales would just read as rings around each other. */
   .device-stack.device-stack--cta {
-    --w: 200;
-    --split: 160px;
+    --w: 300;
+    --split: 0px;
   }
   .device-stack.device-stack--cta .device-left,
   .device-stack.device-stack--cta .device-right {
-    --s1: 0.92;
+    display: none;
+  }
+  .device-stack.device-stack--cta .device-front {
+    --s0: 1;
+    --s1: 1;
   }
 }
-@media (max-width: 470px) {
+@media (max-width: 420px) {
   .device-stack.device-stack--cta {
-    --w: 168;
-    --split: 96px;
-  }
-  .device-stack.device-stack--cta .device-left,
-  .device-stack.device-stack--cta .device-right {
-    --s1: 0.88;
+    --w: 250;
   }
 }
 
 /* ── Pinned track ──────────────────────────────────────────────
-   A tall track with a sticky viewport-height pane, so the box holds
-   still while the phones split. Mirrors the reference's 2250px track
-   over a 900px sticky pane.
+   Tall track, sticky viewport-height pane: the box holds still while
+   the phones split. Mirrors the reference's 2250px over 900px.
    ──────────────────────────────────────────────────────────── */
 .pin-track {
   position: relative;
@@ -439,16 +467,24 @@ input:-webkit-autofill:focus {
   align-items: center;
   overflow: hidden;
 }
-@media (prefers-reduced-motion: reduce) {
+/* Nothing fans below 810px, so there is nothing to pin for */
+@media (max-width: 809px) {
   .pin-track {
     height: auto;
-    padding-bottom: 5rem;
   }
   .pin-sticky {
     position: static;
     min-height: 0;
   }
-  /* ScrubStage sets --p to 1 up front; keep the pin collapsed too. */
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin-track {
+    height: auto;
+  }
+  .pin-sticky {
+    position: static;
+    min-height: 0;
+  }
   .scrub-stack .device {
     --p: 1;
   }
@@ -458,8 +494,8 @@ input:-webkit-autofill:focus {
    ScrubStage, so the devices lag slightly and settle, as the reference does. */
 .scrub-stack .device {
   transition: none;
-  transform: translate3d(calc(-50% + var(--x0, 0px) + (var(--x1, 0px) - var(--x0, 0px)) * var(--p)), 0, 0)
-    scale(calc(var(--s0, 1) + (var(--s1, 1) - var(--s0, 1)) * var(--p)));
+  transform: translate3d(calc(-50% + var(--x0, 0px) + (var(--x1, 0px) - var(--x0, 0px)) * var(--p, 0)), 0, 0)
+    scale(calc(var(--s0, 1) + (var(--s1, 1) - var(--s0, 1)) * var(--p, 0)));
 }
 /* No JS: show the phones already fanned rather than stuck stacked. */
 html:not(.js) .scrub-stack .device {
