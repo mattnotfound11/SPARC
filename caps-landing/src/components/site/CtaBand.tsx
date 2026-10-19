@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { SplitStage } from "@/components/ui/SplitStage";
+import { ScrubStage } from "@/components/ui/ScrubStage";
 import { IPhone } from "@/components/ui/IPhone";
 import { RegisterPhone } from "@/components/screens/RegisterPhone";
 import { PassPhone } from "@/components/screens/PassPhone";
@@ -14,9 +14,8 @@ import { SlotsPhone } from "@/components/screens/SlotsPhone";
  */
 export function CtaBand() {
   return (
-    <section aria-labelledby="cta-title" className="pin-track">
-      <div className="pin-sticky">
-        <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
+    <ScrubStage>
+      <div className="mx-auto w-full max-w-[96rem] px-5 sm:px-8">
           <div className="panel panel-lit relative overflow-hidden px-7 pt-14 text-center sm:px-12 sm:pt-16">
             <div
               aria-hidden
@@ -45,7 +44,7 @@ export function CtaBand() {
             </div>
 
             {/* Phones: stacked, then split across the pinned scroll, cropped by the box */}
-            <SplitStage className="device-stack--cta relative mt-12 sm:mt-14">
+            <div className="device-stack device-stack--cta scrub-stack relative mt-12 sm:mt-14">
               <div className="device device-left">
                 <IPhone label="Creating a SPARC account on a phone, step 2 of 3">
                   <RegisterPhone />
@@ -61,10 +60,9 @@ export function CtaBand() {
                   <PassPhone />
                 </IPhone>
               </div>
-            </SplitStage>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+    </ScrubStage>
   );
 }
