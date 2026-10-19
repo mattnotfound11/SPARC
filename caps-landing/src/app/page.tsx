@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { Hero } from "@/components/site/Hero";
 import { StatStrip } from "@/components/site/StatStrip";
 import { FeatureRows } from "@/components/site/FeatureRows";
+import { DeviceSplit } from "@/components/site/DeviceSplit";
 import { ProcessSteps } from "@/components/site/ProcessSteps";
 import { BenefitsGrid } from "@/components/site/BenefitsGrid";
 import { FaqAccordion } from "@/components/site/FaqAccordion";
@@ -18,6 +19,7 @@ export default function LandingPage() {
         <Hero />
         <StatStrip />
         <FeatureRows />
+        <DeviceSplit />
         <ProcessSteps />
         <BenefitsGrid />
         <FaqAccordion />
