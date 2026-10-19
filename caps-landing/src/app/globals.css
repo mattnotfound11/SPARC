@@ -231,85 +231,87 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* ── MacBook mockups ───────────────────────────────────────────
-   --w is the lid width as a unitless number so the screen scale can be
+/* ── iPhone mockups ────────────────────────────────────────────
+   --w is the frame width as a unitless number so the screen scale can be
    derived from it. Everything else is a ratio of that, so one variable
    resizes the whole device with no half-pixel seams.
    ──────────────────────────────────────────────────────────── */
-.macbook {
-  --bz: calc(var(--w) * 0.018); /* bezel */
-  --sw: calc(var(--w) - 2 * var(--bz)); /* screen width */
+.iphone {
+  --band: calc(var(--w) * 0.028); /* titanium rail */
+  --sw: calc(var(--w) - 2 * var(--band)); /* screen width */
+  position: relative;
   width: calc(var(--w) * 1px);
   margin: 0;
-  filter: drop-shadow(0 34px 44px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 32px 44px rgba(0, 0, 0, 0.62));
 }
-.macbook-lid {
-  border-radius: calc(var(--w) * 0.022 * 1px);
-  padding: calc(var(--bz) * 1px);
-  background:
-    linear-gradient(170deg, #42464f 0%, #23262d 38%, #16181d 100%);
+.iphone-band {
+  border-radius: calc(var(--w) * 0.155 * 1px);
+  padding: calc(var(--band) * 1px);
+  background: linear-gradient(152deg, #5b6069 0%, #2c3038 26%, #1a1d23 58%, #3c4047 100%);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
-.macbook-bezel {
-  position: relative;
-  border-radius: calc(var(--w) * 0.012 * 1px);
-  background: #05060a;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.9);
-}
-.macbook-cam {
-  position: absolute;
-  top: calc(var(--w) * 0.006 * 1px);
-  left: 50%;
-  translate: -50% 0;
-  width: calc(var(--w) * 0.007 * 1px);
-  height: calc(var(--w) * 0.007 * 1px);
-  border-radius: 50%;
-  background: #1b1f27;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-.macbook-screen {
+.iphone-screen {
   position: relative;
   overflow: hidden;
   width: calc(var(--sw) * 1px);
-  /* 1200 x 750 design surface */
-  height: calc(var(--sw) * 0.625 * 1px);
-  border-radius: calc(var(--w) * 0.008 * 1px);
+  /* 390 x 844 design surface */
+  height: calc(var(--sw) * 2.1641 * 1px);
+  border-radius: calc(var(--w) * 0.132 * 1px);
   background: var(--color-canvas);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.9);
 }
-.macbook-screen-inner {
-  width: 1200px;
-  height: 750px;
-  transform: scale(calc(var(--sw) / 1200));
+.iphone-screen-inner {
+  width: 390px;
+  height: 844px;
+  transform: scale(calc(var(--sw) / 390));
   transform-origin: top left;
 }
-/* Glass sheen across the lid */
-.macbook-screen::after {
+.iphone-island {
+  position: absolute;
+  top: calc(var(--sw) * 0.0295 * 1px);
+  left: 50%;
+  translate: -50% 0;
+  width: calc(var(--sw) * 0.315 * 1px);
+  height: calc(var(--sw) * 0.0905 * 1px);
+  border-radius: 999px;
+  background: #000;
+}
+/* Glass sheen */
+.iphone-screen::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(104deg, rgba(255, 255, 255, 0.07) 0%, transparent 38%);
+  background: linear-gradient(118deg, rgba(255, 255, 255, 0.06) 0%, transparent 34%);
 }
-.macbook-base {
-  position: relative;
-  width: calc(var(--w) * 1.064 * 1px);
-  height: calc(var(--w) * 0.0215 * 1px);
-  margin-left: calc(var(--w) * -0.032 * 1px);
-  border-radius: 0 0 calc(var(--w) * 0.018 * 1px) calc(var(--w) * 0.018 * 1px);
-  background: linear-gradient(180deg, #3a3e46 0%, #23262d 52%, #0f1116 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-.macbook-notch {
+/* Side buttons */
+.iphone-btn {
   position: absolute;
-  top: 0;
-  left: 50%;
-  translate: -50% 0;
-  width: calc(var(--w) * 0.12 * 1px);
-  height: calc(var(--w) * 0.0075 * 1px);
-  border-radius: 0 0 calc(var(--w) * 0.006 * 1px) calc(var(--w) * 0.006 * 1px);
-  background: #0b0d12;
+  width: calc(var(--w) * 0.0085 * 1px);
+  border-radius: calc(var(--w) * 0.004 * 1px);
+  background: linear-gradient(180deg, #4a4f58, #24272e);
+}
+.iphone-btn-silence {
+  left: calc(var(--w) * -0.006 * 1px);
+  top: calc(var(--w) * 0.19 * 1px);
+  height: calc(var(--w) * 0.066 * 1px);
+}
+.iphone-btn-up {
+  left: calc(var(--w) * -0.006 * 1px);
+  top: calc(var(--w) * 0.285 * 1px);
+  height: calc(var(--w) * 0.115 * 1px);
+}
+.iphone-btn-down {
+  left: calc(var(--w) * -0.006 * 1px);
+  top: calc(var(--w) * 0.425 * 1px);
+  height: calc(var(--w) * 0.115 * 1px);
+}
+.iphone-btn-power {
+  right: calc(var(--w) * -0.006 * 1px);
+  top: calc(var(--w) * 0.33 * 1px);
+  height: calc(var(--w) * 0.145 * 1px);
 }
 
 /* ── Split stack ───────────────────────────────────────────────
@@ -318,7 +320,8 @@ input:-webkit-autofill:focus {
    ──────────────────────────────────────────────────────────── */
 .device-stack {
   position: relative;
-  height: calc((var(--w) * 0.625) * 1px + var(--w) * 0.06 * 1px);
+  /* tallest device: frame width x phone aspect */
+  height: calc(var(--w) * 2.07 * 1px);
 }
 .device {
   position: absolute;
@@ -340,10 +343,10 @@ input:-webkit-autofill:focus {
 }
 
 /* Device positions: stacked at rest, fanned once split.
-   --w is the lid width; --split is how far the outer two travel. */
+   --w is the frame width; --split is how far the outer two travel. */
 .device-stack {
-  --w: 520;
-  --split: 420px;
+  --w: 286;
+  --split: 232px;
 }
 .device-left {
   --x0: 0px;
@@ -368,36 +371,26 @@ input:-webkit-autofill:focus {
   --s1: 1;
   z-index: 3;
 }
-@media (max-width: 1340px) {
+@media (max-width: 900px) {
   .device-stack {
-    --w: 500;
-    --split: 380px;
+    --w: 248;
+    --split: 192px;
   }
 }
-@media (max-width: 1100px) {
+@media (max-width: 640px) {
   .device-stack {
-    --w: 420;
-    --split: 330px;
-  }
-}
-@media (max-width: 820px) {
-  .device-stack {
-    --w: 330;
-    --split: 245px;
+    --w: 204;
+    --split: 126px;
   }
   .device-left,
   .device-right {
     --s1: 0.8;
   }
 }
-@media (max-width: 560px) {
+@media (max-width: 400px) {
   .device-stack {
-    --w: 236;
-    --split: 84px;
-  }
-  .device-left,
-  .device-right {
-    --s1: 0.74;
+    --w: 182;
+    --split: 104px;
   }
 }
 
@@ -407,33 +400,6 @@ input:-webkit-autofill:focus {
    browser supports them, so they cost no JavaScript and degrade to a
    static state everywhere else.
    ──────────────────────────────────────────────────────────── */
-
-/* Reading progress — a hairline that fills as the page scrolls */
-.scroll-progress {
-  position: fixed;
-  inset-inline: 0;
-  top: 0;
-  height: 2px;
-  z-index: 60;
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  background: linear-gradient(90deg, var(--color-crimson-deep), var(--color-crimson), var(--color-gold));
-  pointer-events: none;
-}
-@supports (animation-timeline: scroll()) {
-  .scroll-progress {
-    animation: progress-grow linear both;
-    animation-timeline: scroll(root block);
-  }
-}
-@keyframes progress-grow {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
 
 /* Header settles into a denser bar after the first scroll */
 @supports (animation-timeline: scroll()) {
@@ -722,7 +688,6 @@ input:-webkit-autofill:focus {
   .marquee-track {
     animation: none;
   }
-  .scroll-progress,
   .header-shell,
   .hero-drift {
     animation: none !important;

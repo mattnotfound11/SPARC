@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LockKeyhole } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { SignupForm } from "@/components/auth/SignupForm";
+import { PhoneShowcase } from "@/components/site/PhoneShowcase";
 
 export const metadata: Metadata = {
   title: "Create Account",
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 export default function SignupPage() {
   return (
     <AuthShell
+      after={<PhoneShowcase />}
       footer={
         <p className="flex items-center gap-1.5">
           <LockKeyhole aria-hidden className="size-4" strokeWidth={2} />
