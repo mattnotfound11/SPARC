@@ -6,7 +6,7 @@ import { Reveal } from "@/components/ui/Reveal";
 export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="relative isolate overflow-hidden">
-      <GlowField />
+      <GlowField className="hero-drift" />
 
       <div className="mx-auto flex min-h-[min(880px,calc(100svh-var(--header-h)))] max-w-5xl flex-col items-center justify-center px-5 py-20 text-center sm:px-8">
         <Reveal>
@@ -17,11 +17,13 @@ export function Hero() {
         </Reveal>
 
         <Reveal delay={90}>
-          <h1
-            id="hero-title"
-            className="display-xl mt-8 text-[clamp(2.75rem,7.4vw,4.75rem)] text-ink"
-          >
-            Smart parking access for a campus that never waits.
+          <h1 id="hero-title" className="display-xl mt-8 text-[clamp(2.75rem,7.4vw,4.75rem)] text-ink">
+            <span className="line-mask" style={{ "--line-delay": "120ms" } as React.CSSProperties}>
+              <span>Smart parking access</span>
+            </span>
+            <span className="line-mask" style={{ "--line-delay": "260ms" } as React.CSSProperties}>
+              <span>for a campus that never waits.</span>
+            </span>
           </h1>
         </Reveal>
 
@@ -34,7 +36,7 @@ export function Hero() {
 
         <Reveal delay={240}>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/signup" className="btn btn-gold px-6 py-3.5 text-[0.9375rem]">
+            <Link href="/signup" className="btn btn-gold link-arrow px-6 py-3.5 text-[0.9375rem]">
               Register your vehicle
               <ArrowUpRight className="size-4" strokeWidth={2.5} aria-hidden />
             </Link>

@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/ui/Reveal";
+import { Spotlight } from "@/components/ui/Spotlight";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 
 const steps = [
@@ -38,11 +39,11 @@ export function ProcessSteps() {
         <ol className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map(({ n, title, body }, i) => (
             <Reveal as="li" key={n} delay={i * 90}>
-              <div className="panel panel-lit h-full p-7">
+              <Spotlight className="panel panel-lit h-full p-7">
                 <span className="font-mono text-sm text-gold">{n}</span>
                 <h3 className="display mt-5 text-xl text-ink">{title}</h3>
                 <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-muted">{body}</p>
-              </div>
+              </Spotlight>
             </Reveal>
           ))}
         </ol>

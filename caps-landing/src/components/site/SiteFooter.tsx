@@ -36,7 +36,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2.5" aria-label="SPARC home">
+            <Link href="/" className="brand-mark inline-flex items-center gap-2.5" aria-label="SPARC home">
               <SparcSeal size={32} />
               <SparcWordmark className="text-lg text-ink" />
             </Link>

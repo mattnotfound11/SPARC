@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/ui/Reveal";
+import { Spotlight } from "@/components/ui/Spotlight";
 import { Pill } from "@/components/ui/Pill";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { GateTapDemo } from "@/components/demos/GateTapDemo";
@@ -71,7 +72,7 @@ export function FeatureRows() {
               </Reveal>
 
               <Reveal delay={120} className={i % 2 === 1 ? "lg:order-1" : ""}>
-                <div className="panel panel-lit p-3 sm:p-4">{demo}</div>
+                <Spotlight className="panel panel-lit demo-panel block p-3 sm:p-4">{demo}</Spotlight>
               </Reveal>
             </div>
           ))}

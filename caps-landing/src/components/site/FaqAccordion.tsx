@@ -43,7 +43,11 @@ export function FaqAccordion() {
                     aria-hidden
                   />
                 </summary>
-                <p className="faq-answer pb-5 text-[0.9375rem] leading-relaxed text-ink-muted">{a}</p>
+                <div className="faq-answer-wrap">
+                  <div>
+                    <p className="faq-answer pb-5 text-[0.9375rem] leading-relaxed text-ink-muted">{a}</p>
+                  </div>
+                </div>
               </details>
             </Reveal>
           ))}

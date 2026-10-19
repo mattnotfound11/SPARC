@@ -1,5 +1,6 @@
 import { BarChart3, Clock, FileCheck2, ShieldCheck, Users, Zap } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
+import { Spotlight } from "@/components/ui/Spotlight";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 
 const benefits = [
@@ -49,13 +50,13 @@ export function BenefitsGrid() {
         <ul className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3">
           {benefits.map(({ icon: Icon, title, body }, i) => (
             <Reveal as="li" key={title} delay={(i % 3) * 90}>
-              <div className="panel panel-lit group h-full p-7 transition-colors duration-300 hover:border-gold/35">
+              <Spotlight className="panel panel-lit group h-full p-7 transition-colors duration-300 hover:border-gold/35">
                 <span className="grid size-11 place-items-center rounded-xl border border-line bg-white/[0.04] text-gold transition-colors duration-300 group-hover:border-gold/40 group-hover:bg-gold/10">
                   <Icon className="size-5" strokeWidth={1.75} aria-hidden />
                 </span>
                 <h3 className="display mt-6 text-lg text-ink">{title}</h3>
                 <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-muted">{body}</p>
-              </div>
+              </Spotlight>
             </Reveal>
           ))}
         </ul>

@@ -1,3 +1,5 @@
+import { CountUp } from "@/components/ui/CountUp";
+
 const decks = [
   { name: "Ground deck", free: 12, total: 96, tone: "crimson" },
   { name: "Level 2", free: 48, total: 120, tone: "gold" },
@@ -17,12 +19,13 @@ export function BayCountDemo() {
       <div className="flex items-baseline justify-between">
         <p className="text-sm font-medium text-ink-soft">Available now</p>
         <p className="font-display text-3xl font-semibold tracking-tight text-ink">
-          133<span className="text-base font-normal text-ink-faint"> / 350</span>
+          <CountUp to={133} />
+          <span className="text-base font-normal text-ink-faint"> / 350</span>
         </p>
       </div>
 
       <ul className="mt-5 space-y-4">
-        {decks.map(({ name, free, total, tone }) => {
+        {decks.map(({ name, free, total, tone }, i) => {
           const pct = Math.round((free / total) * 100);
           return (
             <li key={name}>
@@ -33,7 +36,10 @@ export function BayCountDemo() {
                 </span>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                <div className={`h-full rounded-full ${bar[tone]}`} style={{ width: `${pct}%` }} />
+                <div
+                  className={`bar-grow h-full rounded-full ${bar[tone]}`}
+                  style={{ width: `${pct}%`, "--bar-delay": `${i * 140}ms` } as React.CSSProperties}
+                />
               </div>
             </li>
           );

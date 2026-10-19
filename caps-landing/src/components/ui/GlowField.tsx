@@ -22,9 +22,9 @@ const FIELD = stars(90);
  * Hero backdrop: starfield, a crimson/gold bloom, and the University of
  * San Agustin seal sitting faintly inside the bloom. Decorative only.
  */
-export function GlowField() {
+export function GlowField({ className = "" }: { className?: string }) {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+    <div aria-hidden className={`pointer-events-none absolute inset-0 -z-10 overflow-hidden ${className}`}>
       {/* Stars */}
       <div className="absolute inset-0">
         {FIELD.map((s, i) => (
