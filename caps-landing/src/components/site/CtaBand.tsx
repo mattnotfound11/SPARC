@@ -2,12 +2,17 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 import { Spotlight } from "@/components/ui/Spotlight";
+import { SplitStage } from "@/components/ui/SplitStage";
+import { IPhone } from "@/components/ui/IPhone";
+import { RegisterPhone } from "@/components/screens/RegisterPhone";
+import { PassPhone } from "@/components/screens/PassPhone";
+import { SlotsPhone } from "@/components/screens/SlotsPhone";
 
 export function CtaBand() {
   return (
     <section aria-labelledby="cta-title" className="px-5 pb-20 sm:px-8 sm:pb-24">
       <Reveal className="mx-auto block max-w-6xl">
-        <Spotlight className="panel panel-lit relative block overflow-hidden px-7 py-16 text-center sm:px-12 sm:py-20">
+        <Spotlight className="panel panel-lit relative block overflow-hidden px-7 pt-16 text-center sm:px-12 sm:pt-20">
           <div
             aria-hidden
             className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[720px] max-w-none -translate-x-1/2 -translate-y-1/2 rounded-full"
@@ -32,6 +37,25 @@ export function CtaBand() {
               I already have an account
             </Link>
           </div>
+
+          {/* The phones sit inside the box and are cropped by its bottom edge */}
+          <SplitStage className="device-stack--cta relative mt-14 sm:mt-16">
+            <div className="device device-left">
+              <IPhone label="Creating a SPARC account on a phone, step 2 of 3">
+                <RegisterPhone />
+              </IPhone>
+            </div>
+            <div className="device device-right">
+              <IPhone label="Live campus slot availability by deck">
+                <SlotsPhone />
+              </IPhone>
+            </div>
+            <div className="device device-front">
+              <IPhone label="The SPARC campus gate pass with plate and recent entries">
+                <PassPhone />
+              </IPhone>
+            </div>
+          </SplitStage>
         </Spotlight>
       </Reveal>
     </section>

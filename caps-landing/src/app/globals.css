@@ -371,6 +371,31 @@ input:-webkit-autofill:focus {
   --s1: 1;
   z-index: 3;
 }
+/* Phones inside the closing CTA box: smaller, and cropped by its edge */
+.device-stack--cta {
+  --w: 250;
+  --split: 200px;
+  height: calc(var(--w) * 1.5 * 1px);
+}
+@media (max-width: 900px) {
+  .device-stack--cta {
+    --w: 220;
+    --split: 170px;
+  }
+}
+@media (max-width: 640px) {
+  .device-stack--cta {
+    --w: 170;
+    --split: 96px;
+  }
+}
+@media (max-width: 430px) {
+  .device-stack--cta {
+    --w: 140;
+    --split: 70px;
+  }
+}
+
 @media (max-width: 900px) {
   .device-stack {
     --w: 248;

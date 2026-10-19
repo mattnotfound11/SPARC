@@ -55,7 +55,7 @@ export function FeatureRows() {
               key={title}
               className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16"
             >
-              <Reveal className={i % 2 === 1 ? "lg:order-2" : ""}>
+              <Reveal className={`min-w-0 ${i % 2 === 1 ? "lg:order-2" : ""}`}>
                 <Pill>{label}</Pill>
                 <h3 className="display mt-6 text-[clamp(1.75rem,3.4vw,2.1875rem)] text-ink">{title}</h3>
                 <p className="mt-5 max-w-xl text-[1.0625rem] leading-relaxed text-ink-muted">{body}</p>
@@ -71,7 +71,7 @@ export function FeatureRows() {
                 </ul>
               </Reveal>
 
-              <Reveal delay={120} className={i % 2 === 1 ? "lg:order-1" : ""}>
+              <Reveal delay={120} className={`min-w-0 ${i % 2 === 1 ? "lg:order-1" : ""}`}>
                 <Spotlight className="panel panel-lit demo-panel block p-3 sm:p-4">{demo}</Spotlight>
               </Reveal>
             </div>
