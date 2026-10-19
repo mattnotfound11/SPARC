@@ -371,28 +371,115 @@ input:-webkit-autofill:focus {
   --s1: 1;
   z-index: 3;
 }
-/* Phones inside the closing CTA box: smaller, and cropped by its edge */
-.device-stack--cta {
-  --w: 250;
-  --split: 200px;
-  height: calc(var(--w) * 1.5 * 1px);
+/* Phones inside the closing CTA box: equal size, side by side with a small
+   gap, cropped by the box's bottom edge — as in the reference. */
+.device-stack.device-stack--cta {
+  --w: 330;
+  --split: 362px;
+  /* show a little over half the phone; the box crops the rest */
+  height: calc(var(--w) * 1.18 * 1px);
 }
-@media (max-width: 900px) {
-  .device-stack--cta {
-    --w: 220;
-    --split: 170px;
+.device-stack.device-stack--cta .device-left,
+.device-stack.device-stack--cta .device-right {
+  --s1: 1;
+}
+@media (max-width: 1100px) {
+  .device-stack.device-stack--cta {
+    --w: 280;
+    --split: 300px;
+  }
+}
+@media (max-width: 860px) {
+  .device-stack.device-stack--cta {
+    --w: 228;
+    --split: 220px;
   }
 }
 @media (max-width: 640px) {
-  .device-stack--cta {
-    --w: 170;
-    --split: 96px;
+  .device-stack.device-stack--cta {
+    --w: 190;
+    --split: 150px;
+  }
+  .device-stack.device-stack--cta .device-left,
+  .device-stack.device-stack--cta .device-right {
+    --s1: 0.92;
   }
 }
 @media (max-width: 430px) {
-  .device-stack--cta {
-    --w: 140;
-    --split: 70px;
+  .device-stack.device-stack--cta {
+    --w: 148;
+    --split: 86px;
+  }
+  .device-stack.device-stack--cta .device-left,
+  .device-stack.device-stack--cta .device-right {
+    --s1: 0.88;
+  }
+}
+
+/* ── Pinned track ──────────────────────────────────────────────
+   A tall track with a sticky viewport-height pane, so the box holds
+   still while the phones split. Mirrors the reference's 2250px track
+   over a 900px sticky pane.
+   ──────────────────────────────────────────────────────────── */
+.pin-track {
+  position: relative;
+  height: 250svh;
+  /* The phones are pinned, so they can't drive their own timeline — the
+     track moves through the viewport, so it owns it. */
+  view-timeline-name: --pin;
+  view-timeline-axis: block;
+}
+.pin-sticky {
+  position: sticky;
+  top: 0;
+  display: flex;
+  min-height: 100svh;
+  align-items: center;
+  overflow: hidden;
+}
+/* Without scroll-driven animation support the pin adds nothing, so collapse
+   it back to a normal section. */
+@supports not (animation-timeline: view()) {
+  .pin-track {
+    height: auto;
+    padding-bottom: 5rem;
+  }
+  .pin-sticky {
+    position: static;
+    min-height: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin-track {
+    height: auto;
+    padding-bottom: 5rem;
+  }
+  .pin-sticky {
+    position: static;
+    min-height: 0;
+  }
+  /* The scrub would otherwise hold its first (stacked) frame */
+  .device-stack.device-stack--cta .device {
+    animation: none !important;
+    transform: translate3d(calc(-50% + var(--x1, 0px)), 0, 0) scale(var(--s1, 1));
+  }
+}
+
+/* Scroll-scrubbed split: progress follows the track through the viewport. */
+@supports (animation-timeline: view()) {
+  .device-stack.device-stack--cta .device {
+    transition: none;
+    animation: split-scrub linear both;
+    animation-timeline: --pin;
+    animation-range: contain 0% contain 90%;
+  }
+  @keyframes split-scrub {
+    from {
+      transform: translate3d(calc(-50% + var(--x0, 0px)), 0, 0) scale(var(--s0, 1));
+    }
+    to {
+      transform: translate3d(calc(-50% + var(--x1, 0px)), 0, 0) scale(var(--s1, 1));
+    }
   }
 }
 
