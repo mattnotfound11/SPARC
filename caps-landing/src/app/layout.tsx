@@ -1,29 +1,44 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Figtree, Inter } from "next/font/google";
 import { SmoothScrollProvider } from "@/components/SmoothScrollProvider";
 import "./globals.css";
 
-const inter = Inter({
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const figtree = Figtree({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-figtree",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "SPARC — Smart Parking Access and Real-Time Count",
+  title: {
+    default: "SPARC — Smart Parking Access and Real-Time Count",
+    template: "%s · SPARC",
+  },
   description:
-    "SPARC is an RFID-based vehicle access recording and parking slot monitoring system for higher education institutions. Tap your campus ID to verify access instantly.",
+    "RFID gate access and live parking slot counts for the University of San Agustin. Tap your Augustinian card, the barrier lifts, and every bay is counted in real time.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  themeColor: "#08090d",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.className} h-full`}>
-      <body className="flex min-h-full flex-col antialiased">
-        {/* Accessibility: skip to main content */}
+    <html
+      lang="en"
+      className={`${inter.variable} ${figtree.variable} h-full`}
+      // the head script below adds a `js` class before hydration
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Scroll reveals only arm when JS runs, so content is never stuck hidden. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: `document.documentElement.classList.add("js")` }}
+        />
+      </head>
+      <body className="flex min-h-full flex-col">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
