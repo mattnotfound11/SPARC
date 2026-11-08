@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useReveal } from "@/hooks/useReveal";
 
 type RevealProps = {
   children: React.ReactNode;
@@ -12,31 +12,7 @@ type RevealProps = {
 
 /** Fades + lifts its children into view once, the first time they are seen. */
 export function Reveal({ children, delay = 0, className = "", as: Tag = "div" }: RevealProps) {
-  const ref = useRef<HTMLElement>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      // Very old browser: just show it, no state round-trip needed.
-      el.classList.add("in");
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setShown(true);
-            io.disconnect();
-          }
-        }
-      },
-      { rootMargin: "0px 0px -12% 0px", threshold: 0.08 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+  const { ref, shown } = useReveal<HTMLElement>();
 
   return (
     <Tag

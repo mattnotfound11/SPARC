@@ -1,20 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, LoaderCircle, Lock, Mail } from "lucide-react";
-import { SparcSeal } from "@/components/brand/SparcSeal";
+import { LoaderCircle } from "lucide-react";
+import { useAuthMotion } from "@/hooks/useAuthMotion";
 import { AuthTabs } from "./AuthTabs";
 import { FormNotice } from "./FormNotice";
 import { GoogleIcon } from "./GoogleIcon";
-import { IconInput, PasswordInput } from "./fields";
+import { PasswordField, TextField } from "./fields";
 
 type Status = "idle" | "submitting" | "unavailable";
 
-const labelClass = "mb-[clamp(0.25rem,0.8vh,0.5rem)] block text-[0.8125rem] font-semibold tracking-[0.06em] text-ink-soft uppercase";
-
 export function LoginForm() {
+  const root = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("idle");
+  useAuthMotion(root);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,115 +24,95 @@ export function LoginForm() {
   }
 
   return (
-    <div className="px-5 py-[clamp(1rem,3vh,2.5rem)] sm:px-10">
-      <div className="flex flex-col items-center text-center">
-        <SparcSeal
-          size={96}
-          priority
-          className="size-[clamp(3rem,7vh,6rem)] ring-4 ring-[#f6eee0] shadow-[0_0_0_7px_rgba(245,179,1,0.1),0_10px_40px_-6px_rgba(245,179,1,0.45)]"
+    <div ref={root} className="flex flex-1 flex-col lg:flex-none">
+      <h1 data-anim className="mt-[1.125rem] font-display text-[1.875rem] leading-[1.1] font-bold tracking-[-0.02em] text-ink lg:mt-0 lg:text-[2.125rem]">
+        Welcome back
+      </h1>
+      <p data-anim className="mt-2 mb-[1.375rem] text-ink-muted">
+        Sign in to access your SPARC parking portal
+      </p>
+
+      <AuthTabs active="login" />
+
+      <form onSubmit={handleSubmit} className="mt-[1.375rem] flex flex-1 flex-col lg:flex-none">
+        <TextField
+          label="Institutional email or ID"
+          name="identifier"
+          type="text"
+          inputMode="email"
+          autoComplete="username"
+          placeholder="student@usa.edu.ph"
+          required
         />
-        <h1 className="mt-[clamp(0.625rem,1.8vh,1.5rem)] text-[clamp(1.5rem,3.4vh,2.125rem)] display text-ink">
-          Welcome Back
-        </h1>
-        <p className="mt-1.5 text-[0.9375rem] text-ink-muted sm:text-base">Sign in to access your SPARC parking portal</p>
-      </div>
+        <PasswordField
+          label="Password"
+          name="password"
+          autoComplete="current-password"
+          placeholder="Enter your password"
+          required
+        />
 
-      <div className="mt-[clamp(0.75rem,2vh,1.75rem)]">
-        <AuthTabs active="login" />
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-[clamp(0.75rem,2vh,1.75rem)] space-y-[clamp(0.5rem,1.5vh,1.25rem)]">
-        <div>
-          <label htmlFor="login-identifier" className={labelClass}>
-            Institutional Email or ID
-          </label>
-          <IconInput
-            id="login-identifier"
-            name="identifier"
-            icon={Mail}
-            type="text"
-            inputMode="email"
-            autoComplete="username"
-            placeholder="student@usa.edu.ph"
-            required
-          />
-        </div>
-
-        <div>
-          <label htmlFor="login-password" className={labelClass}>
-            Password
-          </label>
-          <PasswordInput
-            id="login-password"
-            name="password"
-            icon={Lock}
-            autoComplete="current-password"
-            placeholder="Enter your password"
-            required
-          />
-        </div>
-
-        <div className="flex items-center justify-between text-base">
-          <label className="flex cursor-pointer items-center gap-2.5 text-ink-soft">
-            <input
-              type="checkbox"
-              name="remember"
-              className="size-4 cursor-pointer rounded border-line-strong accent-gold"
-            />
+        <div data-anim className="mb-4 flex items-center justify-between text-[0.9375rem]">
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-ink-soft">
+            <input type="checkbox" name="remember" className="size-5 cursor-pointer accent-gold" />
             Remember me
           </label>
-          <a href="#" className="text-ink-soft underline-offset-4 transition-colors hover:text-ink hover:underline">
+          <a href="#" className="font-semibold text-ink underline underline-offset-4 transition-colors hover:text-gold">
             Forgot password?
           </a>
         </div>
 
+        <button
+          type="button"
+          data-anim
+          onClick={() => setStatus("unavailable")}
+          className="mb-3 flex h-[3.25rem] w-full items-center justify-center gap-3 rounded-lg border border-line-strong bg-surface-raised text-base font-semibold text-ink transition-colors hover:border-gold/50"
+        >
+          <GoogleIcon className="size-5" />
+          Continue with Google
+        </button>
+
         {status === "unavailable" && (
-          <FormNotice>
-            Sign-in isn&apos;t live yet — the SPARC account service hasn&apos;t been connected to this
-            portal. Your details were not sent anywhere.
-          </FormNotice>
+          <div className="mb-3">
+            <FormNotice>
+              Sign-in isn&apos;t live yet — the SPARC account service hasn&apos;t been connected to this
+              portal. Your details were not sent anywhere.
+            </FormNotice>
+          </div>
         )}
 
-        <button
-          type="submit"
-          disabled={status === "submitting"}
-          className="btn btn-gold w-full flex h-[clamp(2.625rem,6vh,3.375rem)] w-full items-center justify-center gap-2 rounded-xl bg-gold text-base font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
+        <div
+          data-anim
+          className="sticky bottom-0 mt-auto -mx-5 bg-canvas px-5 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:mt-2 sm:bg-transparent sm:px-0 sm:pt-0 sm:pb-0"
         >
-          {status === "submitting" ? (
-            <>
-              <LoaderCircle className="size-[1.125rem] animate-spin" aria-hidden />
-              Signing In…
-            </>
-          ) : (
-            <>
-              Sign In
-              <ArrowRight className="size-[1.125rem]" strokeWidth={2.25} aria-hidden />
-            </>
-          )}
-        </button>
+          <button
+            type="submit"
+            disabled={status === "submitting"}
+            className="flex h-[3.375rem] w-full items-center justify-center gap-2 rounded-lg bg-gold text-[1.0625rem] font-bold text-on-gold transition-colors hover:bg-gold-bright disabled:cursor-wait disabled:opacity-80"
+          >
+            {status === "submitting" ? (
+              <>
+                <LoaderCircle className="size-[1.125rem] animate-spin" aria-hidden />
+                Signing in…
+              </>
+            ) : (
+              "Sign in"
+            )}
+          </button>
+        </div>
       </form>
 
-      <div className="my-[clamp(0.625rem,1.8vh,1.5rem)] flex items-center gap-4 text-xs font-medium tracking-[0.12em] text-ink-muted">
-        <span className="h-px flex-1 bg-line-strong" />
-        OR
-        <span className="h-px flex-1 bg-line-strong" />
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setStatus("unavailable")}
-        className="btn btn-ghost flex h-[clamp(2.5rem,5.6vh,3.25rem)] w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-white/[0.02] text-base font-medium text-ink"
-      >
-        <GoogleIcon className="size-5" />
-        Continue with Google
-      </button>
-
-      <div className="mt-[clamp(0.625rem,1.8vh,1.5rem)] border-t border-line pt-[clamp(0.625rem,1.8vh,1.5rem)] text-center text-base text-ink-muted">
+      <p data-anim className="pt-4 text-center text-[0.9375rem] leading-[1.9] text-ink-muted">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="font-bold text-ink underline-offset-4 transition-colors hover:text-gold-bright hover:underline">
+        <Link href="/signup" className="font-semibold text-ink underline-offset-4 transition-colors hover:text-gold hover:underline">
           Register here
         </Link>
-      </div>
+        <br />
+        Parking administrator?{" "}
+        <Link href="/admin/login" className="font-semibold text-ink underline-offset-4 transition-colors hover:text-gold hover:underline">
+          Open the admin console
+        </Link>
+      </p>
     </div>
   );
 }
