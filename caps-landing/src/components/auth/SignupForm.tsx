@@ -1,20 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Car, FileText, IdCard, LoaderCircle, Lock, Mail, ShieldCheck, User } from "lucide-react";
-import { SparcSeal } from "@/components/brand/SparcSeal";
+import { LoaderCircle } from "lucide-react";
+import { useAuthMotion } from "@/hooks/useAuthMotion";
 import { AuthTabs } from "./AuthTabs";
 import { FormNotice } from "./FormNotice";
-import { IconInput, IconSelect, PasswordInput } from "./fields";
+import { PasswordField, SelectField, TextField } from "./fields";
 
 type Status = "idle" | "submitting" | "unavailable";
 
 export function SignupForm() {
+  const root = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [confirmTouched, setConfirmTouched] = useState(false);
+  useAuthMotion(root);
 
   const mismatch = confirmTouched && confirm.length > 0 && confirm !== password;
 
@@ -28,110 +30,83 @@ export function SignupForm() {
   }
 
   return (
-    <div className="px-5 py-[clamp(0.75rem,2.4vh,2.25rem)] sm:px-10">
-      <div className="flex flex-col items-center text-center">
-        <SparcSeal
-          size={72}
-          priority
-          className="size-[clamp(2.25rem,5vh,4.5rem)] ring-[3px] ring-[#f6eee0] shadow-[0_0_0_5px_rgba(245,179,1,0.12),0_6px_24px_-4px_rgba(245,179,1,0.5)]"
-        />
-        <h1 className="mt-[clamp(0.5rem,1.4vh,1.125rem)] text-[clamp(1.375rem,3.2vh,2rem)] display text-ink">
-          Create Account
-        </h1>
-        <p className="mt-1.5 text-[0.9375rem] leading-snug text-balance text-ink-muted sm:text-base">
-          Register for campus parking access &amp; digital RFID pass
-        </p>
-      </div>
+    <div ref={root} className="flex flex-1 flex-col lg:flex-none">
+      <h1 data-anim className="mt-[1.125rem] font-display text-[1.875rem] leading-[1.1] font-bold tracking-[-0.02em] text-ink lg:mt-0 lg:text-[2.125rem]">
+        Create account
+      </h1>
+      <p data-anim className="mt-2 mb-[1.375rem] text-ink-muted">
+        Register for campus parking access &amp; digital RFID pass
+      </p>
 
-      <div className="mt-[clamp(0.625rem,1.6vh,1.5rem)]">
-        <AuthTabs active="signup" />
-      </div>
+      <AuthTabs active="signup" />
 
-      <form onSubmit={handleSubmit} className="mt-[clamp(0.625rem,1.6vh,1.25rem)] space-y-[clamp(0.375rem,1vh,0.875rem)]">
-        <label htmlFor="signup-name" className="sr-only">Full name</label>
-        <IconInput id="signup-name" name="fullName" icon={User} autoComplete="name" placeholder="Full Name" required />
-
-        <label htmlFor="signup-email" className="sr-only">University email</label>
-        <IconInput
-          id="signup-email"
+      <form onSubmit={handleSubmit} className="mt-[1.375rem] flex flex-1 flex-col lg:flex-none">
+        <TextField label="Full name" name="fullName" autoComplete="name" placeholder="Full Name" required />
+        <TextField
+          label="University email"
           name="email"
           type="email"
-          icon={Mail}
-         
           autoComplete="email"
           placeholder="University Email"
           required
         />
 
-        <label htmlFor="signup-role" className="sr-only">Campus role</label>
-        <IconSelect id="signup-role" name="role" icon={IdCard} defaultValue="student">
-          <option value="student">Student</option>
-          <option value="faculty">Faculty</option>
-          <option value="staff">Administrative Staff</option>
-        </IconSelect>
-
-        <div className="grid grid-cols-1 gap-[clamp(0.375rem,1vh,0.875rem)] sm:grid-cols-[1.12fr_1fr]">
-          <div>
-            <label htmlFor="signup-vehicle" className="sr-only">Vehicle type</label>
-            <IconSelect id="signup-vehicle" name="vehicleType" icon={Car} defaultValue="4-wheel">
-              <option value="4-wheel">4-Wheel (Car/SUV)</option>
-              <option value="2-wheel">2-Wheel (Motor)</option>
-            </IconSelect>
-          </div>
-          <div>
-            <label htmlFor="signup-plate" className="sr-only">Plate number or MV file number</label>
-            <IconInput
-              id="signup-plate"
-              name="plate"
-              icon={FileText}
-             
-              autoComplete="off"
-              placeholder="Plate No. / MV File"
-              className="uppercase placeholder:normal-case"
-              required
-            />
-          </div>
+        <div className="sm:grid sm:grid-cols-2 sm:gap-x-4">
+          <SelectField label="Campus role" name="role" defaultValue="student">
+            <option value="student">Student</option>
+            <option value="faculty">Faculty</option>
+            <option value="staff">Administrative Staff</option>
+          </SelectField>
+          <SelectField label="Vehicle type" name="vehicleType" defaultValue="4-wheel">
+            <option value="4-wheel">4-Wheel (Car/SUV)</option>
+            <option value="2-wheel">2-Wheel (Motor)</option>
+          </SelectField>
         </div>
 
-        <label htmlFor="signup-password" className="sr-only">Password</label>
-        <PasswordInput
-          id="signup-password"
-          name="password"
-          icon={Lock}
-         
-          autoComplete="new-password"
-          placeholder="Password"
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+        <TextField
+          label="Plate no. / MV file"
+          name="plate"
+          autoComplete="off"
+          autoCapitalize="characters"
+          placeholder="ABC 1234"
+          className="uppercase placeholder:normal-case"
           required
         />
 
-        <div>
-          <label htmlFor="signup-confirm" className="sr-only">Confirm password</label>
-          <PasswordInput
-            id="signup-confirm"
-            name="confirmPassword"
-            icon={ShieldCheck}
-           
+        <div className="sm:grid sm:grid-cols-2 sm:gap-x-4">
+          <PasswordField
+            label="Password"
+            name="password"
             autoComplete="new-password"
-            placeholder="Confirm Password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            onBlur={() => setConfirmTouched(true)}
-            aria-invalid={mismatch || undefined}
-            aria-describedby={mismatch ? "signup-confirm-error" : undefined}
+            placeholder="Password"
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
-          {mismatch && (
-            <p id="signup-confirm-error" className="mt-1.5 pl-1 text-sm text-crimson">
-              Passwords don&apos;t match — re-enter the same password.
-            </p>
-          )}
+          <div>
+            <PasswordField
+              label="Confirm password"
+              name="confirmPassword"
+              autoComplete="new-password"
+              placeholder="Confirm Password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              onBlur={() => setConfirmTouched(true)}
+              aria-invalid={mismatch || undefined}
+              aria-describedby={mismatch ? "signup-confirm-error" : undefined}
+              required
+            />
+            {mismatch && (
+              <p id="signup-confirm-error" className="-mt-2.5 mb-4 text-sm text-crimson">
+                Passwords don&apos;t match — re-enter the same password.
+              </p>
+            )}
+          </div>
         </div>
 
-        <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink-soft">
-          <input type="checkbox" name="agree" required className="mt-0.5 size-4 shrink-0 cursor-pointer accent-gold" />
+        <label data-anim className="mb-4 flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink-soft">
+          <input type="checkbox" name="agree" required className="mt-0.5 size-5 shrink-0 cursor-pointer accent-gold" />
           <span>
             I agree to the{" "}
             <a href="#" className="font-medium text-ink underline underline-offset-2 hover:text-gold">
@@ -145,37 +120,41 @@ export function SignupForm() {
         </label>
 
         {status === "unavailable" && (
-          <FormNotice>
-            Registration isn&apos;t live yet — the SPARC account service hasn&apos;t been connected to
-            this portal. Nothing was submitted.
-          </FormNotice>
+          <div className="mb-3">
+            <FormNotice>
+              Registration isn&apos;t live yet — the SPARC account service hasn&apos;t been connected to
+              this portal. Nothing was submitted.
+            </FormNotice>
+          </div>
         )}
 
-        <button
-          type="submit"
-          disabled={status === "submitting"}
-          className="btn btn-gold w-full flex h-[clamp(2.625rem,6vh,3.375rem)] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-bright to-gold-deep text-base font-bold text-on-gold disabled:cursor-wait disabled:opacity-80"
+        <div
+          data-anim
+          className="sticky bottom-0 mt-auto -mx-5 bg-canvas px-5 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:mt-2 sm:bg-transparent sm:px-0 sm:pt-0 sm:pb-0"
         >
-          {status === "submitting" ? (
-            <>
-              <LoaderCircle className="size-[1.125rem] animate-spin" aria-hidden />
-              Creating Account…
-            </>
-          ) : (
-            <>
-              Create Account &amp; Register Vehicle
-              <ArrowRight className="size-[1.125rem]" strokeWidth={2.25} aria-hidden />
-            </>
-          )}
-        </button>
+          <button
+            type="submit"
+            disabled={status === "submitting"}
+            className="flex h-[3.375rem] w-full items-center justify-center gap-2 rounded-lg bg-gold text-[1.0625rem] font-bold text-on-gold transition-colors hover:bg-gold-bright disabled:cursor-wait disabled:opacity-80"
+          >
+            {status === "submitting" ? (
+              <>
+                <LoaderCircle className="size-[1.125rem] animate-spin" aria-hidden />
+                Creating account…
+              </>
+            ) : (
+              "Create account & register vehicle"
+            )}
+          </button>
+        </div>
       </form>
 
-      <div className="mt-[clamp(0.5rem,1.6vh,1.5rem)] border-t border-line pt-[clamp(0.5rem,1.6vh,1.5rem)] text-center text-base text-ink-muted">
+      <p data-anim className="pt-4 text-center text-[0.9375rem] text-ink-muted">
         Already have an account?{" "}
-        <Link href="/login" className="font-bold text-gold underline-offset-4 transition-colors hover:text-gold-bright hover:underline">
-          Sign In
+        <Link href="/login" className="font-semibold text-ink underline-offset-4 transition-colors hover:text-gold hover:underline">
+          Log in
         </Link>
-      </div>
+      </p>
     </div>
   );
 }

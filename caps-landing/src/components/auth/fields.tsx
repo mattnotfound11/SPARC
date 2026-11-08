@@ -1,64 +1,79 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, Eye, EyeOff, type LucideIcon } from "lucide-react";
+import { useId, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
-/* One field size everywhere; height tracks viewport height so long forms fit laptops. */
-const shell = "h-[clamp(2.5rem,5.6vh,3.375rem)] rounded-xl pl-12 pr-4 text-base";
-const iconPos = "left-4 size-[1.125rem]";
+/*
+ * Labelled fields. 16px text (so iOS doesn't zoom on focus) and a 52px target.
+ * Each wrapper carries `data-anim` so the form's entrance motion can stagger it.
+ */
+const control = "input-field h-[3.25rem] w-full rounded-lg px-3.5 text-base";
+const labelClass = "mb-1.5 block text-sm font-semibold text-ink";
 
-const base = "input-field w-full";
+type Common = { label: string };
 
-type IconInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
-  icon: LucideIcon;
-  trailing?: React.ReactNode;
-};
+type TextFieldProps = Common & React.InputHTMLAttributes<HTMLInputElement>;
 
-export function IconInput({ icon: Icon, trailing, className = "", ...props }: IconInputProps) {
+export function TextField({ label, id, className = "", ...props }: TextFieldProps) {
+  const auto = useId();
+  const fieldId = id ?? auto;
   return (
-    <div className="relative">
-      <Icon aria-hidden className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-ink-muted ${iconPos}`} strokeWidth={1.75} />
-      <input className={`${base} ${shell} ${trailing ? "pr-12" : ""} ${className}`} {...props} />
-      {trailing && <div className="absolute inset-y-0 right-1.5 flex items-center">{trailing}</div>}
+    <div data-anim className="mb-4">
+      <label htmlFor={fieldId} className={labelClass}>
+        {label}
+      </label>
+      <input id={fieldId} className={`${control} ${className}`} {...props} />
     </div>
   );
 }
 
-type PasswordInputProps = Omit<IconInputProps, "type" | "trailing">;
+type PasswordFieldProps = Common & Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">;
 
-export function PasswordInput(props: PasswordInputProps) {
+export function PasswordField({ label, id, className = "", ...props }: PasswordFieldProps) {
+  const auto = useId();
+  const fieldId = id ?? auto;
   const [visible, setVisible] = useState(false);
   return (
-    <IconInput
-      {...props}
-      type={visible ? "text" : "password"}
-      trailing={
+    <div data-anim className="mb-4">
+      <label htmlFor={fieldId} className={labelClass}>
+        {label}
+      </label>
+      <div className="relative">
+        <input id={fieldId} type={visible ? "text" : "password"} className={`${control} pr-[4.5rem] ${className}`} {...props} />
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? "Hide password" : "Show password"}
           aria-pressed={visible}
-          className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/[0.06] hover:text-ink"
+          aria-label={visible ? "Hide password" : "Show password"}
+          className="absolute top-1 right-1 min-h-11 rounded-md px-3 text-sm font-semibold text-ink-muted transition-colors hover:text-ink"
         >
-          {visible ? <EyeOff className="size-[1.125rem]" strokeWidth={1.75} /> : <Eye className="size-[1.125rem]" strokeWidth={1.75} />}
+          {visible ? "Hide" : "Show"}
         </button>
-      }
-    />
+      </div>
+    </div>
   );
 }
 
-type IconSelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
-  icon: LucideIcon;
-};
+type SelectFieldProps = Common & React.SelectHTMLAttributes<HTMLSelectElement>;
 
-export function IconSelect({ icon: Icon, className = "", children, ...props }: IconSelectProps) {
+export function SelectField({ label, id, className = "", children, ...props }: SelectFieldProps) {
+  const auto = useId();
+  const fieldId = id ?? auto;
   return (
-    <div className="relative">
-      <Icon aria-hidden className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-ink-muted ${iconPos}`} strokeWidth={1.75} />
-      <select className={`${base} ${shell} cursor-pointer appearance-none pr-9 ${className}`} {...props}>
-        {children}
-      </select>
-      <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-3 size-[1.125rem] -translate-y-1/2 text-ink-muted" strokeWidth={2} />
+    <div data-anim className="mb-4">
+      <label htmlFor={fieldId} className={labelClass}>
+        {label}
+      </label>
+      <div className="relative">
+        <select id={fieldId} className={`${control} cursor-pointer appearance-none pr-10 ${className}`} {...props}>
+          {children}
+        </select>
+        <ChevronDown
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 right-3.5 size-[1.125rem] -translate-y-1/2 text-ink-soft"
+          strokeWidth={2}
+        />
+      </div>
     </div>
   );
 }

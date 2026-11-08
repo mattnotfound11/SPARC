@@ -1,0 +1,201 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
+import gsap from "gsap";
+import { useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
+import { normalizeNfc, normalizePlate, validateUser, type UserErrors } from "@/lib/sparc/store";
+import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
+import type { RegisteredUser, UserInput, UserRole, VehicleClass } from "@/lib/sparc/types";
+import { Field, useToast } from "./ui";
+
+export type PanelMode = { type: "add"; nfc?: string } | { type: "edit"; user: RegisteredUser };
+
+const ROLES: UserRole[] = ["student", "faculty", "staff", "visitor"];
+export const ROLE_LABEL: Record<UserRole, string> = {
+  student: "Student",
+  faculty: "Faculty",
+  staff: "Staff",
+  visitor: "Visitor",
+};
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Slide-over for registering or editing a card holder. */
+export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => void }) {
+  const state = useSparcState();
+  const store = useSparcStore();
+  const toast = useToast();
+  const sheet = useRef<HTMLDivElement>(null);
+  const editing = mode.type === "edit" ? mode.user : null;
+
+  const [form, setForm] = useState<UserInput>(() =>
+    editing
+      ? { name: editing.name, nfcId: editing.nfcId, role: editing.role, vehicle: editing.vehicle, plate: editing.plate, active: editing.active }
+      : { name: "", nfcId: mode.type === "add" ? (mode.nfc ?? "") : "", role: "student", vehicle: "light", plate: "", active: true },
+  );
+  const [errors, setErrors] = useState<UserErrors>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  // Slide in, focus the first field, trap Tab, close on Escape, and hand focus back on exit.
+  useEffect(() => {
+    const el = sheet.current;
+    if (!el) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduced) {
+      gsap.fromTo(el, { xPercent: 100 }, { xPercent: 0, duration: 0.5, ease: "power3.out", clearProps: "transform" });
+      gsap.fromTo("[data-backdrop]", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" });
+    }
+    el.querySelector<HTMLElement>("input, select")?.focus();
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const nodes = Array.from(el!.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+      opener?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function update<K extends keyof UserInput>(key: K, value: UserInput[K]) {
+    const next = { ...form, [key]: value };
+    setForm(next);
+    if (submitted) setErrors(validateUser(next, state.users, editing?.id));
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitted(true);
+    const found = validateUser(form, state.users, editing?.id);
+    setErrors(found);
+    if (Object.keys(found).length) {
+      sheet.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      return;
+    }
+    const result = editing ? store.updateUser(editing.id, form) : store.addUser(form);
+    if (!result.ok) {
+      toast(result.error, "error");
+      return;
+    }
+    toast(editing ? `${form.name.trim()} updated.` : `${form.name.trim()} registered. Their card now opens the gate.`);
+    onClose();
+  }
+
+  const invalid = (k: keyof UserInput) => (errors[k] ? true : undefined);
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div data-backdrop className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div
+        ref={sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="user-panel-title"
+        className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-line-strong bg-surface shadow-[-24px_0_60px_-30px_rgba(0,0,0,0.9)]"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <h2 id="user-panel-title" className="font-display text-xl font-semibold tracking-[-0.01em] text-ink">
+            {editing ? "Edit user" : "Register user"}
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid size-10 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/[0.05] hover:text-ink">
+            <X className="size-5" aria-hidden />
+          </button>
+        </div>
+
+        <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+            <Field label="Full name" htmlFor="u-name" error={errors.name}>
+              <input id="u-name" className="c-input w-full" autoComplete="off" value={form.name} onChange={(e) => update("name", e.target.value)} aria-invalid={invalid("name")} aria-describedby={errors.name ? "u-name-error" : undefined} />
+            </Field>
+
+            <Field label="NFC card ID" htmlFor="u-nfc" error={errors.nfcId} hint="Four hex bytes, as printed by the reader, like 04:A3:5F:1B.">
+              <input
+                id="u-nfc"
+                className="c-input w-full font-mono uppercase"
+                autoComplete="off"
+                spellCheck={false}
+                value={form.nfcId}
+                onChange={(e) => update("nfcId", e.target.value)}
+                onBlur={() => form.nfcId && update("nfcId", normalizeNfc(form.nfcId))}
+                aria-invalid={invalid("nfcId")}
+                aria-describedby={errors.nfcId ? "u-nfc-error" : "u-nfc-hint"}
+              />
+            </Field>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Role" htmlFor="u-role">
+                <select id="u-role" className="c-input w-full" value={form.role} onChange={(e) => update("role", e.target.value as UserRole)}>
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Vehicle" htmlFor="u-vehicle">
+                <select id="u-vehicle" className="c-input w-full" value={form.vehicle} onChange={(e) => update("vehicle", e.target.value as VehicleClass)}>
+                  {(["light", "heavy"] as VehicleClass[]).map((v) => (
+                    <option key={v} value={v}>
+                      {VEHICLE_LABEL[v]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            <Field label="Plate number" htmlFor="u-plate" error={errors.plate}>
+              <input
+                id="u-plate"
+                className="c-input w-full font-mono uppercase"
+                autoComplete="off"
+                spellCheck={false}
+                value={form.plate}
+                onChange={(e) => update("plate", e.target.value)}
+                onBlur={() => form.plate && update("plate", normalizePlate(form.plate))}
+                aria-invalid={invalid("plate")}
+                aria-describedby={errors.plate ? "u-plate-error" : undefined}
+              />
+            </Field>
+
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-line bg-field/60 px-3.5 py-3">
+              <input type="checkbox" checked={form.active} onChange={(e) => update("active", e.target.checked)} className="mt-0.5 size-5 shrink-0 cursor-pointer accent-gold" />
+              <span>
+                <span className="block text-sm font-semibold text-ink">Card is active</span>
+                <span className="block text-[0.8125rem] text-ink-muted">Turn off to suspend this card without deleting the user. The gate will deny it.</span>
+              </span>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <button type="button" className="c-btn" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="c-btn c-btn-gold">
+              {editing ? "Save changes" : "Register user"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

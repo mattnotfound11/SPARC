@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { LayoutDashboard, Menu, X } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 
@@ -38,7 +38,11 @@ export function SiteHeader() {
         </ul>
 
         <div className="flex items-center gap-2">
-          <Link href="/login" className="btn btn-ghost hidden px-4 py-2 text-sm sm:inline-flex">
+          <Link href="/admin" className="btn btn-ghost hidden px-4 py-2 text-sm sm:inline-flex">
+            <LayoutDashboard className="size-4" aria-hidden />
+            Dashboard
+          </Link>
+          <Link href="/login" className="btn btn-ghost hidden px-4 py-2 text-sm md:inline-flex">
             Log in
           </Link>
           <Link href="/signup" className="btn btn-gold px-4 py-2 text-sm sm:px-5">
@@ -71,6 +75,15 @@ export function SiteHeader() {
                 </a>
               </li>
             ))}
+            <li>
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="block rounded-lg px-3 py-3 text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink"
+              >
+                Dashboard
+              </Link>
+            </li>
             <li>
               <Link
                 href="/login"
