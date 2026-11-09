@@ -30,21 +30,24 @@ export type FloorConfig = {
   slots: number;
 };
 
-export type UserRole = "student" | "faculty" | "staff" | "visitor";
+/** Parking is registered to these three roles only; admins manage the data but never park under this role. */
+export type UserRole = "student" | "personnel" | "visitor";
 
 /** D1 Registered Users */
 export type RegisteredUser = {
   id: string;
-  nfcId: string; // "04:A3:5F:1B"
+  nfcId: string; // "1234-5678-9012"
   name: string;
   role: UserRole;
   vehicle: VehicleClass;
   plate: string;
   active: boolean;
   createdAt: number;
+  /** Monthly pass expiry: one calendar month after registration or last renewal. */
+  expiresAt: number;
 };
 
-export type LogEvent = "entry" | "exit" | "denied";
+export type LogEvent = "entry" | "exit";
 
 /** D2 Parking Logs */
 export type LogEntry = {
@@ -59,16 +62,6 @@ export type LogEntry = {
   slot: string | null;
   floor: number | null;
   vehicle: VehicleClass | null;
-  result: "granted" | "denied";
-  reason?: string;
-};
-
-/** Invalid-ID alert raised by an unregistered tap. */
-export type Alert = {
-  id: string;
-  at: number;
-  nfcId: string;
-  acknowledged: boolean;
 };
 
 export type ActionResult = { ok: true } | { ok: false; error: string };

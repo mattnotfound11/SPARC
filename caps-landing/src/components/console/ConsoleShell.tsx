@@ -2,56 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useSyncExternalStore } from "react";
-import { ChartColumn, ExternalLink, Layers, LayoutGrid, LogOut, Pause, Play, ScrollText, Users } from "lucide-react";
+import { ChartColumn, ExternalLink, Layers, LayoutGrid, LogOut, ScrollText, Users } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
-import { SparcGate, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
+import { SparcGate } from "@/lib/sparc/SparcProvider";
 import { ToastProvider } from "./ui";
 
 const NAV = [
   { href: "/admin", label: "Live status", short: "Live", icon: LayoutGrid },
   { href: "/admin/slots", label: "Slots & floors", short: "Floors", icon: Layers },
   { href: "/admin/users", label: "Users", short: "Users", icon: Users },
-  { href: "/admin/logs", label: "Entry & exit log", short: "Log", icon: ScrollText },
+  { href: "/admin/logs", label: "Audit log", short: "Log", icon: ScrollText },
   { href: "/admin/reports", label: "Reports", short: "Reports", icon: ChartColumn },
 ] as const;
 
 function isActive(pathname: string, href: string) {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
-}
-
-function FeedControl({ compact = false }: { compact?: boolean }) {
-  const store = useSparcStoreOrNull();
-  const live = useSyncExternalStore(
-    store ? store.subscribe : () => () => {},
-    () => store?.getState().live ?? false,
-    () => false,
-  );
-
-  if (!store) {
-    return <p className="text-xs text-ink-faint">Connecting to gate feed…</p>;
-  }
-  const Icon = live ? Pause : Play;
-  return (
-    <div className={`flex items-center gap-2.5 ${compact ? "" : "rounded-xl border border-line bg-field px-3 py-2.5"}`}>
-      <span aria-hidden className={`size-2 shrink-0 rounded-full ${live ? "dot-pulse bg-live" : "bg-ink-faint"}`} />
-      {!compact && (
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="text-[0.8125rem] font-semibold text-ink">{live ? "Simulated feed live" : "Feed paused"}</p>
-          <p className="text-xs text-ink-muted">Demo data, not real gate taps</p>
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={() => store.setLive(!live)}
-        aria-label={live ? "Pause simulated feed" : "Resume simulated feed"}
-        className="grid size-9 shrink-0 place-items-center rounded-lg border border-line-strong text-ink-soft transition-colors hover:border-gold/50 hover:text-ink"
-      >
-        <Icon className="size-4" aria-hidden />
-      </button>
-    </div>
-  );
 }
 
 function SignOut({ children, className }: { children: React.ReactNode; className: string }) {
@@ -114,7 +80,6 @@ export function ConsoleShell({
           </nav>
 
           <div className="mt-auto space-y-3">
-            <FeedControl />
             <Link href="/slots" className="side-link">
               <ExternalLink className="size-[1.125rem]" strokeWidth={2} aria-hidden />
               Driver availability page
@@ -146,7 +111,6 @@ export function ConsoleShell({
             <span className="text-xs text-ink-muted">Admin</span>
           </Link>
           <div className="flex items-center gap-1">
-            <FeedControl compact />
             <SignOut className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:text-ink">
               <LogOut className="size-[1.125rem]" aria-hidden />
               <span className="sr-only">Back to the SPARC website</span>

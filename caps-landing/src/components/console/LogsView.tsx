@@ -1,21 +1,24 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowLeftFromLine, ArrowRightToLine, Download, Search, ShieldAlert } from "lucide-react";
+import { ArrowLeftFromLine, ArrowRightToLine, Download, Search } from "lucide-react";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { downloadCsv } from "@/lib/sparc/csv";
 import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
 import { VEHICLE_LABEL, dayRanges, formatDateTime, matchesLog, timeAgo } from "@/lib/sparc/selectors";
-import type { LogEntry, LogEvent } from "@/lib/sparc/types";
+import type { LogEntry, LogEvent, UserRole } from "@/lib/sparc/types";
 import { Badge, EmptyState, PageHeader, Panel, useToast } from "./ui";
 
 const STEP = 25;
+const ROLE_LABEL: Record<UserRole, string> = {
+  student: "Student",
+  personnel: "Personnel",
+  visitor: "Visitor pass",
+};
 const EVENTS: { value: LogEvent | "all"; label: string }[] = [
   { value: "all", label: "All" },
   { value: "entry", label: "Entries" },
   { value: "exit", label: "Exits" },
-  { value: "denied", label: "Denied" },
 ];
 
 function EventBadge({ l }: { l: LogEntry }) {
@@ -26,17 +29,10 @@ function EventBadge({ l }: { l: LogEntry }) {
         Entry
       </Badge>
     );
-  if (l.event === "exit")
-    return (
-      <Badge>
-        <ArrowLeftFromLine className="size-3" aria-hidden />
-        Exit
-      </Badge>
-    );
   return (
-    <Badge tone="crimson">
-      <ShieldAlert className="size-3" aria-hidden />
-      Denied
+    <Badge>
+      <ArrowLeftFromLine className="size-3" aria-hidden />
+      Exit
     </Badge>
   );
 }
@@ -48,10 +44,16 @@ export function LogsView() {
   const now = useNow(30000);
   useEnter(root);
 
+  const roleById = useMemo(() => {
+    const map = new Map<string, UserRole>();
+    for (const u of state.users) map.set(u.id, u.role);
+    return map;
+  }, [state.users]);
+  const roleOf = (l: LogEntry) => (l.userId ? roleById.get(l.userId) : undefined);
+
   const days = useMemo(() => dayRanges(state.now), [state.now]);
   const [event, setEvent] = useState<LogEvent | "all">("all");
   const [dayKey, setDayKey] = useState<string>("week");
-  const [floor, setFloor] = useState<number | "all">("all");
   const [query, setQuery] = useState("");
   const [shown, setShown] = useState(STEP);
 
@@ -61,35 +63,34 @@ export function LogsView() {
       (l) =>
         (event === "all" || l.event === event) &&
         (!range || (l.at >= range.start && l.at < range.end)) &&
-        (floor === "all" || l.floor === floor) &&
         matchesLog(l, query.trim()),
     );
-  }, [state.logs, days, event, dayKey, floor, query]);
+  }, [state.logs, days, event, dayKey, query]);
 
   const visible = rows.slice(0, shown);
-  const filtered = event !== "all" || dayKey !== "week" || floor !== "all" || query !== "";
+  const filtered = event !== "all" || dayKey !== "week" || query !== "";
   const reset = () => {
     setEvent("all");
     setDayKey("week");
-    setFloor("all");
     setQuery("");
     setShown(STEP);
   };
 
   function exportRows() {
-    downloadCsv(`sparc-entry-exit-log-${new Date().toISOString().slice(0, 10)}.csv`, [
-      ["Time", "Event", "Driver", "Card ID", "Slot", "Floor", "Vehicle", "Result", "Reason"],
-      ...rows.map((l) => [
-        new Date(l.at).toISOString(),
-        l.event,
-        l.userName ?? "Unregistered",
-        l.nfcId,
-        l.slot,
-        l.floor,
-        l.vehicle ? VEHICLE_LABEL[l.vehicle] : "",
-        l.result,
-        l.reason ?? "",
-      ]),
+    downloadCsv(`sparc-audit-log-${new Date().toISOString().slice(0, 10)}.csv`, [
+      ["Time", "Event", "Driver", "Student ID", "Role", "Slot", "Vehicle"],
+      ...rows.map((l) => {
+        const role = roleOf(l);
+        return [
+          new Date(l.at).toISOString(),
+          l.event,
+          l.userName ?? "Unregistered",
+          l.nfcId,
+          role ? ROLE_LABEL[role] : "",
+          l.slot,
+          l.vehicle ? VEHICLE_LABEL[l.vehicle] : "",
+        ];
+      }),
     ]);
     toast(`Exported ${rows.length} log rows.`);
   }
@@ -102,8 +103,8 @@ export function LogsView() {
   return (
     <div ref={root} className="space-y-5 lg:space-y-6">
       <PageHeader
-        title="Entry and exit log"
-        description="Every tap at the gate: who entered, which slot they took, when they left, and every card that was turned away."
+        title="Audit log"
+        description="Every scanned NFC tap at the gate: the driver's name, student ID, role, and vehicle type, logged for every entry and exit."
         actions={
           <button type="button" className="c-btn" onClick={exportRows} disabled={rows.length === 0}>
             <Download className="size-4" aria-hidden />
@@ -130,22 +131,6 @@ export function LogsView() {
               {days.map((d) => (
                 <option key={d.key} value={d.key}>
                   {d.label}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="log-floor" className="sr-only">
-              Floor
-            </label>
-            <select
-              id="log-floor"
-              className="c-input"
-              value={floor}
-              onChange={(e) => change(setFloor)(e.target.value === "all" ? "all" : Number(e.target.value))}
-            >
-              <option value="all">All floors</option>
-              {state.config.map((f) => (
-                <option key={f.floor} value={f.floor}>
-                  Floor {f.floor}
                 </option>
               ))}
             </select>
@@ -194,13 +179,14 @@ export function LogsView() {
                   <p className="font-semibold text-ink">{l.userName ?? "Unregistered card"}</p>
                   <p className="text-sm text-ink-muted">
                     <span className="font-mono">{l.nfcId}</span>
+                    {roleOf(l) && ` · ${ROLE_LABEL[roleOf(l)!]}`}
                     {l.slot && (
                       <>
                         {" · Slot "}
                         <span className="font-mono">{l.slot}</span>
                       </>
                     )}
-                    {l.reason && ` · ${l.reason}`}
+                    {l.vehicle && ` · ${VEHICLE_LABEL[l.vehicle]}`}
                   </p>
                 </li>
               ))}
@@ -209,45 +195,40 @@ export function LogsView() {
             {/* Tablet and up */}
             <div className="hidden overflow-x-auto border-t border-line md:block">
               <table className="c-table">
-                <caption className="sr-only">Entry and exit log</caption>
+                <caption className="sr-only">Audit log</caption>
                 <thead>
                   <tr>
                     <th>Time</th>
                     <th>Event</th>
                     <th>Driver</th>
-                    <th>Card ID</th>
+                    <th>Student ID</th>
+                    <th>Role</th>
                     <th>Slot</th>
                     <th>Vehicle</th>
-                    <th>Result</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((l) => (
-                    <tr key={l.id}>
-                      <td className="whitespace-nowrap">
-                        <p className="num text-ink">{formatDateTime(l.at)}</p>
-                        <p className="text-xs text-ink-muted">{timeAgo(l.at, now)}</p>
-                      </td>
-                      <td>
-                        <EventBadge l={l} />
-                      </td>
-                      <td className="font-semibold text-ink">
-                        {l.userName ?? <span className="font-normal text-ink-muted">Unregistered card</span>}
-                      </td>
-                      <td className="font-mono text-[0.8125rem]">
-                        {l.event === "denied" && !l.userId ? (
-                          <Link href={`/admin/users?nfc=${encodeURIComponent(l.nfcId)}`} className="underline underline-offset-4 transition-colors hover:text-gold" title="Register this card">
-                            {l.nfcId}
-                          </Link>
-                        ) : (
-                          l.nfcId
-                        )}
-                      </td>
-                      <td className="font-mono text-[0.8125rem]">{l.slot ?? "—"}</td>
-                      <td>{l.vehicle ? VEHICLE_LABEL[l.vehicle] : "—"}</td>
-                      <td>{l.result === "granted" ? <Badge tone="live">Granted</Badge> : <Badge tone="crimson">{l.reason ?? "Denied"}</Badge>}</td>
-                    </tr>
-                  ))}
+                  {visible.map((l) => {
+                    const role = roleOf(l);
+                    return (
+                      <tr key={l.id}>
+                        <td className="whitespace-nowrap">
+                          <p className="num text-ink">{formatDateTime(l.at)}</p>
+                          <p className="text-xs text-ink-muted">{timeAgo(l.at, now)}</p>
+                        </td>
+                        <td>
+                          <EventBadge l={l} />
+                        </td>
+                        <td className="font-semibold text-ink">
+                          {l.userName ?? <span className="font-normal text-ink-muted">Unregistered card</span>}
+                        </td>
+                        <td className="font-mono text-[0.8125rem]">{l.nfcId}</td>
+                        <td>{role ? ROLE_LABEL[role] : "—"}</td>
+                        <td className="font-mono text-[0.8125rem]">{l.slot ?? "—"}</td>
+                        <td>{l.vehicle ? VEHICLE_LABEL[l.vehicle] : "—"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

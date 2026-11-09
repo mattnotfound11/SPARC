@@ -25,7 +25,6 @@ export function ReportsView() {
   const summary = [
     { label: "Entries", value: String(report.entries) },
     { label: "Exits", value: String(report.exits) },
-    { label: "Denied taps", value: String(report.denied), note: report.unregistered ? `${report.unregistered} unregistered` : undefined },
     { label: "Peak occupancy", value: String(report.peakOccupancy), note: report.peakHour !== null ? `at ${formatClock(report.peakHour)}` : undefined },
     { label: "Average stay", value: formatDuration(report.avgStayMin) },
   ];
@@ -36,8 +35,6 @@ export function ReportsView() {
       [],
       ["Entries", report.entries],
       ["Exits", report.exits],
-      ["Denied taps", report.denied],
-      ["Unregistered cards", report.unregistered],
       ["Peak occupancy", report.peakOccupancy, report.peakHour !== null ? formatClock(report.peakHour) : ""],
       ["Average stay (min)", report.avgStayMin === null ? "" : Math.round(report.avgStayMin)],
       [],
@@ -52,12 +49,11 @@ export function ReportsView() {
 
   function exportWeek() {
     downloadCsv(`sparc-7-day-summary-${days[0].key}.csv`, [
-      ["Date", "Entries", "Exits", "Denied taps", "Peak occupancy", "Peak hour", "Average stay (min)"],
+      ["Date", "Entries", "Exits", "Peak occupancy", "Peak hour", "Average stay (min)"],
       ...reports.map((r) => [
         r.range.key,
         r.entries,
         r.exits,
-        r.denied,
         r.peakOccupancy,
         r.peakHour !== null ? formatClock(r.peakHour) : "",
         r.avgStayMin === null ? "" : Math.round(r.avgStayMin),
@@ -149,7 +145,6 @@ export function ReportsView() {
                 <tr>
                   <th>Day</th>
                   <th>Entries</th>
-                  <th>Denied</th>
                   <th>Peak</th>
                   <th>Avg stay</th>
                 </tr>
@@ -163,7 +158,6 @@ export function ReportsView() {
                       </button>
                     </td>
                     <td className="num">{r.entries}</td>
-                    <td className="num">{r.denied}</td>
                     <td className="num">
                       {r.peakOccupancy}
                       {r.peakHour !== null && <span className="text-ink-muted"> · {formatClock(r.peakHour)}</span>}

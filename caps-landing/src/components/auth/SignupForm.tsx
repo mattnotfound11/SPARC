@@ -54,8 +54,8 @@ export function SignupForm() {
         <div className="sm:grid sm:grid-cols-2 sm:gap-x-4">
           <SelectField label="Campus role" name="role" defaultValue="student">
             <option value="student">Student</option>
-            <option value="faculty">Faculty</option>
-            <option value="staff">Administrative Staff</option>
+            <option value="personnel">Personnel</option>
+            <option value="visitor">Visitor</option>
           </SelectField>
           <SelectField label="Vehicle type" name="vehicleType" defaultValue="4-wheel">
             <option value="4-wheel">4-Wheel (Car/SUV)</option>

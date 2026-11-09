@@ -1,4 +1,4 @@
-import type { FloorConfig, LogEntry, Slot, VehicleClass } from "./types";
+import type { FloorConfig, LogEntry, RegisteredUser, Slot, VehicleClass } from "./types";
 import type { SparcState } from "./store";
 import { DAYS_OF_HISTORY, startOfDay } from "./seed";
 
@@ -87,8 +87,6 @@ export type DayReport = {
   range: DayRange;
   entries: number;
   exits: number;
-  denied: number;
-  unregistered: number;
   peakOccupancy: number;
   peakHour: number | null;
   avgStayMin: number | null;
@@ -107,8 +105,6 @@ export function dayReport(state: SparcState, range: DayRange): DayReport {
   const entryAt = new Map<string, number>();
   const stays: number[] = [];
   const floors = new Map<number, number>();
-  let denied = 0;
-  let unregistered = 0;
 
   for (const l of logs) {
     const h = new Date(l.at).getHours();
@@ -121,14 +117,11 @@ export function dayReport(state: SparcState, range: DayRange): DayReport {
         peak = running;
         peakHour = h;
       }
-    } else if (l.event === "exit") {
+    } else {
       hourly[h].exits++;
       running = Math.max(0, running - 1);
       const start = l.visitId ? entryAt.get(l.visitId) : undefined;
       if (start) stays.push((l.at - start) / 60_000);
-    } else {
-      denied++;
-      if (l.reason === "Unregistered ID") unregistered++;
     }
   }
 
@@ -143,8 +136,6 @@ export function dayReport(state: SparcState, range: DayRange): DayReport {
     range,
     entries: hourly.reduce((n, p) => n + p.entries, 0),
     exits: hourly.reduce((n, p) => n + p.exits, 0),
-    denied,
-    unregistered,
     peakOccupancy: peak,
     peakHour,
     avgStayMin: stays.length ? stays.reduce((a, b) => a + b, 0) / stays.length : null,
@@ -168,6 +159,20 @@ export function formatTime(ms: number) {
 
 export function formatDateTime(ms: number) {
   return new Date(ms).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+export function formatDate(ms: number) {
+  return new Date(ms).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+}
+
+/** A monthly pass that has run past its expiry date. */
+export function isExpired(user: RegisteredUser, now: number) {
+  return user.expiresAt <= now;
+}
+
+/** Expired, or due to lapse within the given number of days. */
+export function isExpiringSoon(user: RegisteredUser, now: number, withinDays = 3) {
+  return !isExpired(user, now) && user.expiresAt - now <= withinDays * 24 * 60 * 60 * 1000;
 }
 
 export function formatDuration(minutes: number | null) {
@@ -196,7 +201,6 @@ export function matchesLog(l: LogEntry, query: string) {
   return (
     (l.userName ?? "").toLowerCase().includes(q) ||
     l.nfcId.toLowerCase().includes(q) ||
-    (l.slot ?? "").toLowerCase() === q ||
-    (l.reason ?? "").toLowerCase().includes(q)
+    (l.slot ?? "").toLowerCase() === q
   );
 }
