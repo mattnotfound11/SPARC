@@ -46,7 +46,7 @@ export function FeatureRows() {
           id="features-title"
           eyebrow="What SPARC does"
           title="Four parts of one gate-to-bay system"
-          body="Every piece runs on the card students and staff already carry, and reports into one dashboard the campus actually uses."
+          body="Every piece runs on the card students and personnel already carry, and reports into one dashboard the campus actually uses."
         />
 
         <div className="mt-20 space-y-20 sm:mt-24 sm:space-y-28">

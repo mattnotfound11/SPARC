@@ -1,7 +1,6 @@
-import { MAX_SLOTS_PER_FLOOR, createSeed, randomNfcId, slotCode } from "./seed";
+import { DEFAULT_CONFIG, MAX_SLOTS_PER_FLOOR, buildSlots, slotCode } from "./seed";
 import type {
   ActionResult,
-  Alert,
   FloorConfig,
   LogEntry,
   RegisteredUser,
@@ -22,9 +21,6 @@ export type SparcState = {
   slots: Slot[];
   users: RegisteredUser[];
   logs: LogEntry[];
-  alerts: Alert[];
-  /** Simulated gate feed on/off. */
-  live: boolean;
   nextLogSeq: number;
   nextUserSeq: number;
 };
@@ -32,23 +28,32 @@ export type SparcState = {
 export type SparcStore = {
   getState: () => SparcState;
   subscribe: (listener: () => void) => () => void;
-  tick: () => void;
-  setLive: (live: boolean) => void;
   saveConfig: (next: FloorConfig[]) => ActionResult;
   addUser: (input: UserInput) => ActionResult;
   updateUser: (id: string, input: UserInput) => ActionResult;
   removeUser: (id: string) => ActionResult;
-  acknowledgeAlert: (id: string) => void;
-  acknowledgeAllAlerts: () => void;
+  renewUser: (id: string) => ActionResult;
 };
 
-const NFC_PATTERN = /^[0-9A-F]{2}(:[0-9A-F]{2}){3}$/;
+/** Monthly passes run one calendar month from the given moment (Nov 9 → Dec 9). */
+export function addOneMonth(ms: number) {
+  const d = new Date(ms);
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + 1);
+  d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  return d.getTime();
+}
+
+const NFC_PATTERN = /^[0-9]+(-[0-9]+)*$/;
 const PLATE_PATTERN = /^[A-Z0-9][A-Z0-9 -]{3,9}$/;
 
 export function normalizeNfc(value: string) {
-  const hex = value.trim().toUpperCase().replace(/[^0-9A-F]/g, "");
-  if (hex.length === 8) return hex.match(/.{2}/g)!.join(":");
-  return value.trim().toUpperCase();
+  return value
+    .trim()
+    .replace(/[^0-9-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export function normalizePlate(value: string) {
@@ -61,134 +66,49 @@ export function validateUser(input: UserInput, users: RegisteredUser[], editingI
   const errors: UserErrors = {};
   if (input.name.trim().length < 2) errors.name = "Enter the driver's full name.";
   const nfc = normalizeNfc(input.nfcId);
-  if (!NFC_PATTERN.test(nfc)) errors.nfcId = "Use four hex bytes, like 04:A3:5F:1B.";
+  const nfcDigits = nfc.replace(/-/g, "");
+  if (!NFC_PATTERN.test(nfc) || nfcDigits.length < 4 || nfcDigits.length > 20)
+    errors.nfcId = "Use numbers only, dashes allowed, like 1234-5678-9012.";
   else if (users.some((u) => u.nfcId === nfc && u.id !== editingId))
     errors.nfcId = "This card is already registered to someone else.";
   if (!PLATE_PATTERN.test(normalizePlate(input.plate))) errors.plate = "Enter a plate such as ABC 1234.";
   return errors;
 }
 
+/** One demo record so the "expired pass" flow has something to show on a fresh console. */
+function demoExpiredUser(now: number): RegisteredUser {
+  const DAY = 24 * 60 * 60 * 1000;
+  const expiresAt = now - 3 * DAY; // lapsed 3 days ago
+  const createdAt = expiresAt - 30 * DAY; // registered about a month before it lapsed
+  return {
+    id: "U-DEMO-001",
+    nfcId: "1234-5678-9012",
+    name: "Juan Dela Cruz (demo)",
+    role: "student",
+    vehicle: "light",
+    plate: "DEMO 1234",
+    active: true,
+    createdAt,
+    expiresAt,
+  };
+}
+
 export function createSparcStore(now: number = Date.now()): SparcStore {
-  const seed = createSeed(now);
+  const config = DEFAULT_CONFIG.map((f) => ({ ...f }));
   let state: SparcState = {
     now,
-    config: seed.config,
-    slots: seed.slots,
-    users: seed.users,
-    logs: seed.logs,
-    alerts: seed.alerts,
-    live: true,
-    nextLogSeq: seed.nextLogSeq,
-    nextUserSeq: seed.users.length + 1,
+    config,
+    slots: buildSlots(config),
+    users: [demoExpiredUser(now)],
+    logs: [],
+    nextLogSeq: 1,
+    nextUserSeq: 1,
   };
   const listeners = new Set<() => void>();
 
   function set(patch: Partial<SparcState>) {
     state = { ...state, ...patch };
     listeners.forEach((l) => l());
-  }
-
-  const pick = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)];
-
-  function logEntry(seq: number, entry: Omit<LogEntry, "id">): LogEntry {
-    return { ...entry, id: `L-${String(seq).padStart(5, "0")}` };
-  }
-
-  /** One simulated gate event: an arrival, a departure or a tap from an unknown card. */
-  function tick() {
-    const at = Date.now();
-    let slots = state.slots;
-    let logs = state.logs;
-    let alerts = state.alerts;
-    let seq = state.nextLogSeq;
-
-    // A reserved slot becomes occupied once the car reaches it.
-    if (slots.some((s) => s.status === "reserved")) {
-      slots = slots.map((s) => (s.status === "reserved" ? { ...s, status: "occupied" as const } : s));
-    }
-
-    const r = Math.random();
-    const inside = new Set(slots.filter((s) => s.occupant).map((s) => s.occupant!.userId));
-
-    if (r < 0.46) {
-      // arrival
-      const candidates = state.users.filter((u) => u.active && !inside.has(u.id));
-      const user = candidates.length ? pick(candidates) : null;
-      const open = user ? slots.filter((s) => s.status === "free" && s.vehicle === user.vehicle) : [];
-      if (user && open.length) {
-        const slot = pick(open);
-        slots = slots.map((s) =>
-          s.code === slot.code
-            ? {
-                ...s,
-                status: "reserved" as const,
-                occupant: { userId: user.id, name: user.name, plate: user.plate, nfcId: user.nfcId, since: at },
-              }
-            : s,
-        );
-        logs = [
-          logEntry(seq++, {
-            visitId: `V-live-${seq}`,
-            at,
-            event: "entry",
-            nfcId: user.nfcId,
-            userId: user.id,
-            userName: user.name,
-            slot: slot.code,
-            floor: slot.floor,
-            vehicle: user.vehicle,
-            result: "granted",
-          }),
-          ...logs,
-        ];
-      }
-    } else if (r < 0.82) {
-      // departure
-      const leaving = slots.filter((s) => s.status === "occupied" && s.occupant && at - s.occupant.since > 2 * 60_000);
-      if (leaving.length) {
-        const slot = pick(leaving);
-        const occ = slot.occupant!;
-        const entry = logs.find((l) => l.event === "entry" && l.slot === slot.code && l.userId === occ.userId);
-        slots = slots.map((s) => (s.code === slot.code ? { ...s, status: "free" as const, occupant: undefined } : s));
-        logs = [
-          logEntry(seq++, {
-            visitId: entry?.visitId ?? null,
-            at,
-            event: "exit",
-            nfcId: occ.nfcId,
-            userId: occ.userId,
-            userName: occ.name,
-            slot: slot.code,
-            floor: slot.floor,
-            vehicle: slot.vehicle,
-            result: "granted",
-          }),
-          ...logs,
-        ];
-      }
-    } else {
-      // tap from a card that is not on the registry
-      const known = new Set(state.users.map((u) => u.nfcId));
-      let nfcId = randomNfcId();
-      while (known.has(nfcId)) nfcId = randomNfcId();
-      const entry = logEntry(seq++, {
-        visitId: null,
-        at,
-        event: "denied",
-        nfcId,
-        userId: null,
-        userName: null,
-        slot: null,
-        floor: null,
-        vehicle: null,
-        result: "denied",
-        reason: "Unregistered ID",
-      });
-      logs = [entry, ...logs];
-      alerts = [{ id: `A-${entry.id}`, at, nfcId, acknowledged: false }, ...alerts];
-    }
-
-    set({ now: at, slots, logs, alerts, nextLogSeq: seq });
   }
 
   function saveConfig(next: FloorConfig[]): ActionResult {
@@ -234,10 +154,9 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
       plate: normalizePlate(input.plate),
       active: input.active,
       createdAt: Date.now(),
+      expiresAt: addOneMonth(Date.now()),
     };
-    // Registering a card that was just flagged clears its alert.
-    const alerts = state.alerts.map((a) => (a.nfcId === user.nfcId ? { ...a, acknowledged: true } : a));
-    set({ users: [user, ...state.users], alerts, nextUserSeq: state.nextUserSeq + 1, now: Date.now() });
+    set({ users: [user, ...state.users], nextUserSeq: state.nextUserSeq + 1, now: Date.now() });
     return { ok: true };
   }
 
@@ -271,20 +190,28 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     return { ok: true };
   }
 
+  function renewUser(id: string): ActionResult {
+    const user = state.users.find((u) => u.id === id);
+    if (!user) return { ok: false, error: "User not found." };
+    const at = Date.now();
+    set({
+      users: state.users.map((u) => (u.id === id ? { ...u, active: true, expiresAt: addOneMonth(at) } : u)),
+      now: at,
+    });
+    return { ok: true };
+  }
+
   return {
     getState: () => state,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    tick,
-    setLive: (live) => set({ live }),
     saveConfig,
     addUser,
     updateUser,
     removeUser,
-    acknowledgeAlert: (id) => set({ alerts: state.alerts.map((a) => (a.id === id ? { ...a, acknowledged: true } : a)) }),
-    acknowledgeAllAlerts: () => set({ alerts: state.alerts.map((a) => ({ ...a, acknowledged: true })) }),
+    renewUser,
   };
 }
 

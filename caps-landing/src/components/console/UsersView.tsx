@@ -2,13 +2,13 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpDown, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowUpDown, CalendarClock, ChevronLeft, ChevronRight, Pencil, Plus, RotateCw, Search, Trash2 } from "lucide-react";
 import { useEnter } from "@/hooks/useConsoleMotion";
-import { useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
-import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
+import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
+import { VEHICLE_LABEL, formatDate, isExpired, isExpiringSoon } from "@/lib/sparc/selectors";
 import type { RegisteredUser, UserRole } from "@/lib/sparc/types";
 import { ROLE_LABEL, UserPanel, type PanelMode } from "./UserPanel";
-import { Badge, EmptyState, PageHeader, Panel, useToast } from "./ui";
+import { Badge, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
 type SortKey = "name" | "role" | "createdAt";
 const PAGE_SIZE = 10;
@@ -20,6 +20,7 @@ export function UsersView() {
   const state = useSparcState();
   const store = useSparcStore();
   const toast = useToast();
+  const now = useNow(30000);
   useEnter(root);
 
   const prefill = params.get("nfc");
@@ -32,6 +33,7 @@ export function UsersView() {
   const [confirming, setConfirming] = useState<string | null>(null);
 
   const insideIds = useMemo(() => new Set(state.slots.map((s) => s.occupant?.userId).filter(Boolean)), [state.slots]);
+  const expiredUsers = useMemo(() => state.users.filter((u) => isExpired(u, now)), [state.users, now]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -65,6 +67,10 @@ export function UsersView() {
     setConfirming(null);
     toast(result.ok ? `${user.name} removed. Their card will be denied at the gate.` : result.error, result.ok ? "ok" : "error");
   }
+  function renew(user: RegisteredUser) {
+    const result = store.renewUser(user.id);
+    toast(result.ok ? `${user.name}'s monthly pass renewed.` : result.error, result.ok ? "ok" : "error");
+  }
   function clearFilters() {
     setQuery("");
     setRole("all");
@@ -94,6 +100,12 @@ export function UsersView() {
       </div>
     ) : (
       <div className="flex items-center justify-end gap-1.5">
+        {(isExpired(u, now) || isExpiringSoon(u, now)) && (
+          <button type="button" className="c-btn c-btn-sm" onClick={() => renew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
+            <RotateCw className="size-3.5" aria-hidden />
+            Renew
+          </button>
+        )}
         <button type="button" className="c-btn c-btn-sm" onClick={() => setPanel({ type: "edit", user: u })} aria-label={`Edit ${u.name}`}>
           <Pencil className="size-3.5" aria-hidden />
           Edit
@@ -108,6 +120,12 @@ export function UsersView() {
   const statusBadge = (u: RegisteredUser) =>
     u.active ? <Badge tone="live">Active</Badge> : <Badge tone="gold">Suspended</Badge>;
 
+  const passBadge = (u: RegisteredUser) => {
+    if (isExpired(u, now)) return <Badge tone="crimson">Expired</Badge>;
+    if (isExpiringSoon(u, now)) return <Badge tone="gold">Expiring soon</Badge>;
+    return <Badge tone="live">Active</Badge>;
+  };
+
   return (
     <div ref={root} className="space-y-5 lg:space-y-6">
       <PageHeader
@@ -120,6 +138,32 @@ export function UsersView() {
           </button>
         }
       />
+
+      {expiredUsers.length > 0 && (
+        <Panel data-enter aria-labelledby="expired-title" className="border-crimson/30">
+          <PanelHeader id="expired-title" title={`${expiredUsers.length} monthly pass${expiredUsers.length === 1 ? "" : "es"} expired`} />
+          <ul className="divide-y divide-line border-t border-line">
+            {expiredUsers.slice(0, 5).map((u) => (
+              <li key={u.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-5">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <CalendarClock className="size-4 shrink-0 text-crimson" aria-hidden />
+                    {u.name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Expired {formatDate(u.expiresAt)} · <span className="font-mono">{u.nfcId}</span>
+                  </p>
+                </div>
+                <button type="button" className="c-btn c-btn-sm" onClick={() => renew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
+                  <RotateCw className="size-3.5" aria-hidden />
+                  Renew
+                </button>
+              </li>
+            ))}
+            {expiredUsers.length > 5 && <li className="px-4 py-2.5 text-xs text-ink-muted sm:px-5">+ {expiredUsers.length - 5} more</li>}
+          </ul>
+        </Panel>
+      )}
 
       <Panel data-enter aria-label="User registry">
         <div className="flex flex-wrap items-center gap-2.5 p-3 sm:p-4">
@@ -205,6 +249,9 @@ export function UsersView() {
                     {ROLE_LABEL[u.role]} · {VEHICLE_LABEL[u.vehicle]} · <span className="font-mono">{u.plate}</span>
                     {insideIds.has(u.id) && " · parked now"}
                   </p>
+                  <p className="flex items-center gap-1.5 text-xs text-ink-muted">
+                    Monthly pass until {formatDate(u.expiresAt)} {passBadge(u)}
+                  </p>
                   {actions(u)}
                 </li>
               ))}
@@ -221,6 +268,7 @@ export function UsersView() {
                     {sortHead("role", "Role")}
                     <th>Vehicle</th>
                     <th>Status</th>
+                    <th>Monthly pass</th>
                     <th>
                       <span className="sr-only">Actions</span>
                     </th>
@@ -240,6 +288,10 @@ export function UsersView() {
                         <p className="font-mono text-xs text-ink-muted">{u.plate}</p>
                       </td>
                       <td>{statusBadge(u)}</td>
+                      <td>
+                        <p className="num text-ink">{formatDate(u.expiresAt)}</p>
+                        <p className="mt-0.5">{passBadge(u)}</p>
+                      </td>
                       <td className="min-w-[13rem]">{actions(u)}</td>
                     </tr>
                   ))}

@@ -1,21 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { RotateCw, X } from "lucide-react";
 import gsap from "gsap";
-import { useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
-import { normalizeNfc, normalizePlate, validateUser, type UserErrors } from "@/lib/sparc/store";
-import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
+import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
+import { addOneMonth, normalizeNfc, normalizePlate, validateUser, type UserErrors } from "@/lib/sparc/store";
+import { VEHICLE_LABEL, formatDate, isExpired } from "@/lib/sparc/selectors";
 import type { RegisteredUser, UserInput, UserRole, VehicleClass } from "@/lib/sparc/types";
 import { Field, useToast } from "./ui";
 
 export type PanelMode = { type: "add"; nfc?: string } | { type: "edit"; user: RegisteredUser };
 
-const ROLES: UserRole[] = ["student", "faculty", "staff", "visitor"];
+const ROLES: UserRole[] = ["student", "personnel", "visitor"];
 export const ROLE_LABEL: Record<UserRole, string> = {
   student: "Student",
-  faculty: "Faculty",
-  staff: "Staff",
+  personnel: "Personnel",
   visitor: "Visitor",
 };
 
@@ -26,8 +25,10 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
   const state = useSparcState();
   const store = useSparcStore();
   const toast = useToast();
+  const now = useNow(60000);
   const sheet = useRef<HTMLDivElement>(null);
   const editing = mode.type === "edit" ? mode.user : null;
+  const liveEditing = editing ? (state.users.find((u) => u.id === editing.id) ?? editing) : null;
 
   const [form, setForm] = useState<UserInput>(() =>
     editing
@@ -101,6 +102,12 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
     onClose();
   }
 
+  function renew() {
+    if (!editing) return;
+    const result = store.renewUser(editing.id);
+    toast(result.ok ? "Monthly pass renewed for another month." : result.error, result.ok ? "ok" : "error");
+  }
+
   const invalid = (k: keyof UserInput) => (errors[k] ? true : undefined);
 
   return (
@@ -128,12 +135,14 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
               <input id="u-name" className="c-input w-full" autoComplete="off" value={form.name} onChange={(e) => update("name", e.target.value)} aria-invalid={invalid("name")} aria-describedby={errors.name ? "u-name-error" : undefined} />
             </Field>
 
-            <Field label="NFC card ID" htmlFor="u-nfc" error={errors.nfcId} hint="Four hex bytes, as printed by the reader, like 04:A3:5F:1B.">
+            <Field label="NFC card ID" htmlFor="u-nfc" error={errors.nfcId} hint="Numbers only, dashes allowed, as printed by the reader, like 1234-5678-9012.">
               <input
                 id="u-nfc"
-                className="c-input w-full font-mono uppercase"
+                className="c-input w-full font-mono"
                 autoComplete="off"
                 spellCheck={false}
+                inputMode="text"
+                pattern="[0-9-]*"
                 value={form.nfcId}
                 onChange={(e) => update("nfcId", e.target.value)}
                 onBlur={() => form.nfcId && update("nfcId", normalizeNfc(form.nfcId))}
@@ -184,6 +193,25 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
                 <span className="block text-[0.8125rem] text-ink-muted">Turn off to suspend this card without deleting the user. The gate will deny it.</span>
               </span>
             </label>
+
+            <div className="rounded-xl border border-line bg-field/60 px-3.5 py-3">
+              <p className="text-sm font-semibold text-ink">Monthly pass</p>
+              {liveEditing ? (
+                <>
+                  <p className={`mt-1 text-[0.8125rem] ${isExpired(liveEditing, now) ? "text-crimson" : "text-ink-muted"}`}>
+                    {isExpired(liveEditing, now) ? "Expired" : "Valid until"} {formatDate(liveEditing.expiresAt)}
+                  </p>
+                  <button type="button" onClick={renew} className="c-btn c-btn-sm mt-2.5">
+                    <RotateCw className="size-3.5" aria-hidden />
+                    Renew for another month
+                  </button>
+                </>
+              ) : (
+                <p className="mt-1 text-[0.8125rem] text-ink-muted">
+                  Starts today and runs one month, until {formatDate(addOneMonth(now))}.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">

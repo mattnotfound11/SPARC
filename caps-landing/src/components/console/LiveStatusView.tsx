@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeftFromLine, ArrowRightToLine, BellOff, ExternalLink, ShieldAlert, UserPlus } from "lucide-react";
+import { ArrowLeftFromLine, ArrowRightToLine, CalendarClock, RotateCw } from "lucide-react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useEnter } from "@/hooks/useConsoleMotion";
@@ -13,14 +13,15 @@ import {
   dayRanges,
   dayReport,
   floorStats,
+  formatDate,
   formatDateTime,
   formatDuration,
+  isExpired,
   timeAgo,
 } from "@/lib/sparc/selectors";
 import type { LogEntry } from "@/lib/sparc/types";
-import { FloorList } from "./FloorList";
-import { SlotMap } from "./SlotMap";
-import { Badge, Count, EmptyState, PageHeader, Panel, PanelHeader } from "./ui";
+import { ParkingExplorer } from "./ParkingExplorer";
+import { Count, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
 /** Scroll-reveal wrapper for panels below the fold, same pattern as the landing page. */
 function RevealPanel({ delay = 0, className = "", children }: { delay?: number; className?: string; children: React.ReactNode }) {
@@ -97,7 +98,6 @@ function TodayPanel() {
   const rows = [
     { label: "Entries", value: String(report.entries) },
     { label: "Exits", value: String(report.exits) },
-    { label: "Denied taps", value: String(report.denied) },
     { label: "Average stay", value: formatDuration(report.avgStayMin) },
   ];
   return (
@@ -117,118 +117,57 @@ function TodayPanel() {
   );
 }
 
-/* ── Floors + slot map ────────────────────────────────────── */
-function FloorExplorer() {
+/* ── Expired monthly passes ───────────────────────────────── */
+function ExpiredPassesPanel() {
   const state = useSparcState();
-  const stats = floorStats(state.config, state.slots);
-  const [floor, setFloor] = useState(1);
-  const [selected, setSelected] = useState<string | null>(null);
+  const store = useSparcStore();
+  const toast = useToast();
   const now = useNow(30000);
+  const expired = useMemo(() => state.users.filter((u) => isExpired(u, now)), [state.users, now]);
 
-  const slot = selected ? state.slots.find((s) => s.code === selected) : undefined;
-  const occ = slot?.occupant;
-
-  function pickFloor(f: number) {
-    setFloor(f);
-    setSelected(null);
+  function renew(name: string, id: string) {
+    const result = store.renewUser(id);
+    toast(result.ok ? `${name}'s monthly pass renewed.` : result.error, result.ok ? "ok" : "error");
   }
 
   return (
-    <Panel aria-labelledby="floors-title">
+    <Panel aria-labelledby="expired-title">
       <PanelHeader
-        id="floors-title"
-        title="Floors and slot map"
+        id="expired-title"
+        title="Expired monthly passes"
         aside={
-          <Link href="/slots" className="inline-flex items-center gap-1.5 text-[0.8125rem] font-semibold text-ink-soft transition-colors hover:text-gold">
-            Driver view <ExternalLink className="size-3.5" aria-hidden />
-          </Link>
-        }
-      />
-      <div className="grid gap-5 px-4 pb-5 sm:px-5 lg:grid-cols-[17rem_1fr] lg:gap-7">
-        <FloorList stats={stats} selected={floor} onSelect={pickFloor} />
-
-        <div className="min-w-0">
-          <SlotMap slots={state.slots} floor={floor} selectedCode={selected} onSelect={(c) => setSelected((cur) => (cur === c ? null : c))} />
-
-          <div className="mx-auto mt-5 max-w-[34rem] rounded-xl border border-line bg-field/70 px-4 py-3 text-sm" aria-live="polite">
-            {!slot ? (
-              <p className="text-ink-muted">Select a slot to see who is parked there.</p>
-            ) : slot.status === "free" ? (
-              <p className="text-ink-soft">
-                <span className="font-semibold text-ink">{slot.code}</span> is free.
-              </p>
-            ) : occ ? (
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                <p className="text-ink-soft">
-                  <span className="font-semibold text-ink">{slot.code}</span> ·{" "}
-                  {slot.status === "reserved" ? "Reserved for" : "Occupied by"} {occ.name}
-                </p>
-                <p className="num text-ink-muted">
-                  {occ.plate} · {slot.status === "reserved" ? "arriving" : formatDuration((now - occ.since) / 60000)}
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </Panel>
-  );
-}
-
-/* ── Invalid ID alerts ────────────────────────────────────── */
-function AlertsPanel() {
-  const state = useSparcState();
-  const store = useSparcStore();
-  const now = useNow(15000);
-  const open = state.alerts.filter((a) => !a.acknowledged);
-
-  return (
-    <Panel aria-labelledby="alerts-title">
-      <PanelHeader
-        id="alerts-title"
-        title="Invalid ID alerts"
-        aside={
-          open.length > 0 ? (
-            <button type="button" onClick={() => store.acknowledgeAllAlerts()} className="text-[0.8125rem] font-semibold text-ink-soft transition-colors hover:text-gold">
-              Acknowledge all
-            </button>
+          expired.length > 0 ? (
+            <Link href="/admin/users" className="text-[0.8125rem] font-semibold text-ink-soft transition-colors hover:text-gold">
+              Open users
+            </Link>
           ) : undefined
         }
       />
-      {open.length === 0 ? (
+      {expired.length === 0 ? (
         <div className="flex items-start gap-3 px-4 pb-5 sm:px-5">
-          <BellOff className="mt-0.5 size-5 shrink-0 text-ink-faint" aria-hidden />
+          <CalendarClock className="mt-0.5 size-5 shrink-0 text-ink-faint" aria-hidden />
           <p className="text-sm leading-relaxed text-ink-muted">
-            Nothing waiting. When a card that isn&apos;t registered is tapped at the gate, it shows up here.
+            Nothing waiting. When a driver&apos;s monthly pass lapses, it shows up here.
           </p>
         </div>
       ) : (
         <ul className="divide-y divide-line border-t border-line">
-          {open.slice(0, 5).map((a) => (
-            <li key={a.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-5">
+          {expired.slice(0, 5).map((u) => (
+            <li key={u.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-5">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-                  <ShieldAlert className="size-4 shrink-0 text-crimson" aria-hidden />
-                  <span className="font-mono text-[0.8125rem]">{a.nfcId}</span>
+                  <CalendarClock className="size-4 shrink-0 text-crimson" aria-hidden />
+                  {u.name}
                 </p>
-                <p className="mt-0.5 text-xs text-ink-muted">Unregistered card · {timeAgo(a.at, now)}</p>
+                <p className="mt-0.5 text-xs text-ink-muted">Expired {formatDate(u.expiresAt)} · {u.nfcId}</p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Link
-                  href={`/admin/users?nfc=${encodeURIComponent(a.nfcId)}`}
-                  className="c-btn c-btn-sm"
-                  aria-label={`Register card ${a.nfcId}`}
-                >
-                  <UserPlus className="size-3.5" aria-hidden />
-                  Register
-                </Link>
-                <button type="button" className="c-btn c-btn-sm" onClick={() => store.acknowledgeAlert(a.id)} aria-label={`Dismiss alert for ${a.nfcId}`}>
-                  Dismiss
-                </button>
-              </div>
+              <button type="button" className="c-btn c-btn-sm" onClick={() => renew(u.name, u.id)} aria-label={`Renew ${u.name}'s monthly pass`}>
+                <RotateCw className="size-3.5" aria-hidden />
+                Renew
+              </button>
             </li>
           ))}
-          {open.length > 5 && <li className="px-4 py-2.5 text-xs text-ink-muted sm:px-5">+ {open.length - 5} more</li>}
+          {expired.length > 5 && <li className="px-4 py-2.5 text-xs text-ink-muted sm:px-5">+ {expired.length - 5} more</li>}
         </ul>
       )}
     </Panel>
@@ -238,8 +177,7 @@ function AlertsPanel() {
 /* ── Recent activity ──────────────────────────────────────── */
 function describe(l: LogEntry) {
   if (l.event === "entry") return { icon: ArrowRightToLine, tone: "text-live", text: `${l.userName} entered`, where: l.slot };
-  if (l.event === "exit") return { icon: ArrowLeftFromLine, tone: "text-ink-soft", text: `${l.userName} left`, where: l.slot };
-  return { icon: ShieldAlert, tone: "text-crimson", text: l.userName ? `${l.userName} denied` : "Unknown card denied", where: l.reason ?? null };
+  return { icon: ArrowLeftFromLine, tone: "text-ink-soft", text: `${l.userName} left`, where: l.slot };
 }
 
 function ActivityFeed() {
@@ -277,7 +215,7 @@ function ActivityFeed() {
         }
       />
       {recent.length === 0 ? (
-        <EmptyState title="No gate activity yet">Entries, exits and denied taps appear here as they happen.</EmptyState>
+        <EmptyState title="No gate activity yet">Entries and exits appear here as they happen.</EmptyState>
       ) : (
         <ul ref={list} className="border-t border-line">
           {recent.map((l) => {
@@ -289,10 +227,9 @@ function ActivityFeed() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-ink">{d.text}</p>
                   <p className="truncate text-xs text-ink-muted">
-                    {l.event === "denied" ? d.where : <>Slot <span className="font-mono">{d.where}</span></>} · {timeAgo(l.at, now)}
+                    Slot <span className="font-mono">{d.where}</span> · {timeAgo(l.at, now)}
                   </p>
                 </div>
-                {l.event === "denied" && <Badge tone="crimson">Denied</Badge>}
               </li>
             );
           })}
@@ -313,7 +250,7 @@ export function LiveStatusView() {
     <div ref={root} className="space-y-5 lg:space-y-6">
       <PageHeader
         title="Live status"
-        description={`New parking building · ${state.config.length} floors · ${total} slots. Updates every few seconds from the simulated gate feed.`}
+        description={`New parking building · ${state.config.length} floors · ${total} slots.`}
       />
 
       <div data-enter className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
@@ -321,14 +258,15 @@ export function LiveStatusView() {
         <TodayPanel />
       </div>
 
-      <div data-enter className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:gap-6">
-        <FloorExplorer />
-        <div className="space-y-5 lg:space-y-6">
-          <AlertsPanel />
-          <RevealPanel delay={80}>
-            <ActivityFeed />
-          </RevealPanel>
-        </div>
+      <div data-enter>
+        <ParkingExplorer />
+      </div>
+
+      <div data-enter className="grid items-start gap-5 lg:grid-cols-2 lg:gap-6">
+        <ExpiredPassesPanel />
+        <RevealPanel delay={80}>
+          <ActivityFeed />
+        </RevealPanel>
       </div>
     </div>
   );
