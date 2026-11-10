@@ -204,3 +204,16 @@ export function matchesLog(l: LogEntry, query: string) {
     (l.slot ?? "").toLowerCase() === q
   );
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const EXPIRING_DAYS = 5;
+
+export type PassStatus = { state: "active" | "expiring" | "expired" | "suspended"; daysLeft: number };
+
+/** What the scanner shows about a driver's monthly pass. */
+export function passStatus(user: RegisteredUser, now: number): PassStatus {
+  const daysLeft = Math.max(0, Math.ceil((user.expiresAt - now) / DAY_MS));
+  if (!user.active) return { state: "suspended", daysLeft };
+  if (user.expiresAt <= now) return { state: "expired", daysLeft: 0 };
+  return { state: daysLeft <= EXPIRING_DAYS ? "expiring" : "active", daysLeft };
+}

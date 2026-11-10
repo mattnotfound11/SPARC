@@ -4,6 +4,8 @@ import type {
   FloorConfig,
   LogEntry,
   RegisteredUser,
+  ScanOutcome,
+  ScanRecord,
   Slot,
   UserInput,
 } from "./types";
@@ -21,7 +23,10 @@ export type SparcState = {
   slots: Slot[];
   users: RegisteredUser[];
   logs: LogEntry[];
+  /** Most recent scanner taps, newest first, including rejected ones. */
+  scans: ScanRecord[];
   nextLogSeq: number;
+  nextScanSeq: number;
   nextUserSeq: number;
 };
 
@@ -33,7 +38,11 @@ export type SparcStore = {
   updateUser: (id: string, input: UserInput) => ActionResult;
   removeUser: (id: string) => ActionResult;
   renewUser: (id: string) => ActionResult;
+  /** A card tap at the entry/exit scanner: enters, exits, or explains why not. */
+  scan: (nfcId: string) => ScanOutcome;
 };
+
+const MAX_SCANS = 50;
 
 /** Monthly passes run one calendar month from the given moment (Nov 9 → Dec 9). */
 export function addOneMonth(ms: number) {
@@ -46,11 +55,18 @@ export function addOneMonth(ms: number) {
 }
 
 const NFC_PATTERN = /^[0-9]+(-[0-9]+)*$/;
+/** Web NFC serial: 4 to 10 hex bytes, colon-separated, uppercase. */
+const NFC_HEX_PATTERN = /^[0-9A-F]{2}(:[0-9A-F]{2}){3,9}$/;
 const PLATE_PATTERN = /^[A-Z0-9][A-Z0-9 -]{3,9}$/;
 
 export function normalizeNfc(value: string) {
-  return value
-    .trim()
+  const trimmed = value.trim();
+  // Hex serials (from a card scan) keep their colons and are uppercased.
+  if (trimmed.includes(":"))
+    return trimmed.toUpperCase().replace(/[^0-9A-F:]/g, "").replace(/:{2,}/g, ":").replace(/^:+|:+$/g, "");
+  // Letters without colons are not a valid ID in either format; leave them so validation rejects them.
+  if (/[a-z]/i.test(trimmed)) return trimmed.toUpperCase();
+  return trimmed
     .replace(/[^0-9-]/g, "")
     .replace(/-{2,}/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -67,9 +83,10 @@ export function validateUser(input: UserInput, users: RegisteredUser[], editingI
   if (input.name.trim().length < 2) errors.name = "Enter the driver's full name.";
   const nfc = normalizeNfc(input.nfcId);
   const nfcDigits = nfc.replace(/-/g, "");
-  if (!NFC_PATTERN.test(nfc) || nfcDigits.length < 4 || nfcDigits.length > 20)
-    errors.nfcId = "Use numbers only, dashes allowed, like 1234-5678-9012.";
-  else if (users.some((u) => u.nfcId === nfc && u.id !== editingId))
+  const validDigits = NFC_PATTERN.test(nfc) && nfcDigits.length >= 4 && nfcDigits.length <= 20;
+  if (!validDigits && !NFC_HEX_PATTERN.test(nfc))
+    errors.nfcId = "Scan the card, or use numbers like 1234-5678-9012 or hex like 04:A1:B2:C3.";
+  else if (users.some((u) => u.nfcId.toUpperCase() === nfc && u.id !== editingId))
     errors.nfcId = "This card is already registered to someone else.";
   if (!PLATE_PATTERN.test(normalizePlate(input.plate))) errors.plate = "Enter a plate such as ABC 1234.";
   return errors;
@@ -101,7 +118,9 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     slots: buildSlots(config),
     users: [demoExpiredUser(now)],
     logs: [],
+    scans: [],
     nextLogSeq: 1,
+    nextScanSeq: 1,
     nextUserSeq: 1,
   };
   const listeners = new Set<() => void>();
@@ -201,6 +220,78 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     return { ok: true };
   }
 
+  function scan(rawNfc: string): ScanOutcome {
+    const at = Date.now();
+    const nfcId = normalizeNfc(rawNfc);
+    const user = state.users.find((u) => u.nfcId.toUpperCase() === nfcId);
+
+    function record(outcome: ScanOutcome, patch: Partial<SparcState> = {}): ScanOutcome {
+      const row: ScanRecord = { id: `S-${state.nextScanSeq}`, at, nfcId, outcome };
+      set({ ...patch, scans: [row, ...state.scans].slice(0, MAX_SCANS), nextScanSeq: state.nextScanSeq + 1, now: at });
+      return outcome;
+    }
+
+    if (!user) return record({ status: "unregistered", nfcId });
+
+    const parked = state.slots.find((s) => s.occupant?.userId === user.id);
+    if (parked) {
+      // Leaving is always allowed, even if the pass lapsed while parked.
+      const entry = state.logs.find((l) => l.event === "entry" && l.userId === user.id);
+      const log: LogEntry = {
+        id: `L-${String(state.nextLogSeq).padStart(4, "0")}`,
+        visitId: entry?.visitId ?? null,
+        at,
+        event: "exit",
+        nfcId: user.nfcId,
+        userId: user.id,
+        userName: user.name,
+        slot: parked.code,
+        floor: parked.floor,
+        vehicle: parked.vehicle,
+      };
+      return record(
+        { status: "exited", user, slot: parked.code, floor: parked.floor },
+        {
+          slots: state.slots.map((s) => (s.code === parked.code ? { ...s, status: "free", occupant: undefined } : s)),
+          logs: [log, ...state.logs],
+          nextLogSeq: state.nextLogSeq + 1,
+        },
+      );
+    }
+
+    if (!user.active) return record({ status: "no-pass", user });
+    if (user.expiresAt <= at) return record({ status: "expired", user });
+
+    const free = state.slots.find((s) => s.status === "free" && s.vehicle === user.vehicle);
+    if (!free) return record({ status: "full", user });
+
+    const seq = state.nextLogSeq;
+    const log: LogEntry = {
+      id: `L-${String(seq).padStart(4, "0")}`,
+      visitId: `V-${String(seq).padStart(4, "0")}`,
+      at,
+      event: "entry",
+      nfcId: user.nfcId,
+      userId: user.id,
+      userName: user.name,
+      slot: free.code,
+      floor: free.floor,
+      vehicle: free.vehicle,
+    };
+    return record(
+      { status: "entered", user, slot: free.code, floor: free.floor },
+      {
+        slots: state.slots.map((s) =>
+          s.code === free.code
+            ? { ...s, status: "occupied", occupant: { userId: user.id, name: user.name, plate: user.plate, nfcId: user.nfcId, since: at } }
+            : s,
+        ),
+        logs: [log, ...state.logs],
+        nextLogSeq: seq + 1,
+      },
+    );
+  }
+
   return {
     getState: () => state,
     subscribe: (listener) => {
@@ -212,6 +303,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     updateUser,
     removeUser,
     renewUser,
+    scan,
   };
 }
 
