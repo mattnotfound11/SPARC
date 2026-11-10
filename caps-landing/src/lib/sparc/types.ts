@@ -74,3 +74,12 @@ export type UserInput = {
   plate: string;
   active: boolean;
 };
+
+/** Result of tapping a card at the entry/exit scanner. */
+export type ScanOutcome =
+  | { status: "entered" | "exited"; user: RegisteredUser; slot: string; floor: number }
+  | { status: "expired" | "no-pass" | "full"; user: RegisteredUser }
+  | { status: "unregistered"; nfcId: string };
+
+/** One row in the scanner's recent-scans list. Rejected scans live here, not in the audit log. */
+export type ScanRecord = { id: string; at: number; nfcId: string; outcome: ScanOutcome };

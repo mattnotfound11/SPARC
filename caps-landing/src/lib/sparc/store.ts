@@ -4,6 +4,8 @@ import type {
   FloorConfig,
   LogEntry,
   RegisteredUser,
+  ScanOutcome,
+  ScanRecord,
   Slot,
   UserInput,
 } from "./types";
@@ -21,7 +23,10 @@ export type SparcState = {
   slots: Slot[];
   users: RegisteredUser[];
   logs: LogEntry[];
+  /** Most recent scanner taps, newest first, including rejected ones. */
+  scans: ScanRecord[];
   nextLogSeq: number;
+  nextScanSeq: number;
   nextUserSeq: number;
 };
 
@@ -33,7 +38,11 @@ export type SparcStore = {
   updateUser: (id: string, input: UserInput) => ActionResult;
   removeUser: (id: string) => ActionResult;
   renewUser: (id: string) => ActionResult;
+  /** A card tap at the entry/exit scanner: enters, exits, or explains why not. */
+  scan: (nfcId: string) => ScanOutcome;
 };
+
+const MAX_SCANS = 50;
 
 /** Monthly passes run one calendar month from the given moment (Nov 9 → Dec 9). */
 export function addOneMonth(ms: number) {
@@ -109,7 +118,9 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     slots: buildSlots(config),
     users: [demoExpiredUser(now)],
     logs: [],
+    scans: [],
     nextLogSeq: 1,
+    nextScanSeq: 1,
     nextUserSeq: 1,
   };
   const listeners = new Set<() => void>();
@@ -209,6 +220,78 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     return { ok: true };
   }
 
+  function scan(rawNfc: string): ScanOutcome {
+    const at = Date.now();
+    const nfcId = normalizeNfc(rawNfc);
+    const user = state.users.find((u) => u.nfcId.toUpperCase() === nfcId);
+
+    function record(outcome: ScanOutcome, patch: Partial<SparcState> = {}): ScanOutcome {
+      const row: ScanRecord = { id: `S-${state.nextScanSeq}`, at, nfcId, outcome };
+      set({ ...patch, scans: [row, ...state.scans].slice(0, MAX_SCANS), nextScanSeq: state.nextScanSeq + 1, now: at });
+      return outcome;
+    }
+
+    if (!user) return record({ status: "unregistered", nfcId });
+
+    const parked = state.slots.find((s) => s.occupant?.userId === user.id);
+    if (parked) {
+      // Leaving is always allowed, even if the pass lapsed while parked.
+      const entry = [...state.logs].reverse().find((l) => l.event === "entry" && l.userId === user.id);
+      const log: LogEntry = {
+        id: `L-${String(state.nextLogSeq).padStart(4, "0")}`,
+        visitId: entry?.visitId ?? null,
+        at,
+        event: "exit",
+        nfcId: user.nfcId,
+        userId: user.id,
+        userName: user.name,
+        slot: parked.code,
+        floor: parked.floor,
+        vehicle: parked.vehicle,
+      };
+      return record(
+        { status: "exited", user, slot: parked.code, floor: parked.floor },
+        {
+          slots: state.slots.map((s) => (s.code === parked.code ? { ...s, status: "free", occupant: undefined } : s)),
+          logs: [...state.logs, log],
+          nextLogSeq: state.nextLogSeq + 1,
+        },
+      );
+    }
+
+    if (!user.active) return record({ status: "no-pass", user });
+    if (user.expiresAt <= at) return record({ status: "expired", user });
+
+    const free = state.slots.find((s) => s.status === "free" && s.vehicle === user.vehicle);
+    if (!free) return record({ status: "full", user });
+
+    const seq = state.nextLogSeq;
+    const log: LogEntry = {
+      id: `L-${String(seq).padStart(4, "0")}`,
+      visitId: `V-${String(seq).padStart(4, "0")}`,
+      at,
+      event: "entry",
+      nfcId: user.nfcId,
+      userId: user.id,
+      userName: user.name,
+      slot: free.code,
+      floor: free.floor,
+      vehicle: free.vehicle,
+    };
+    return record(
+      { status: "entered", user, slot: free.code, floor: free.floor },
+      {
+        slots: state.slots.map((s) =>
+          s.code === free.code
+            ? { ...s, status: "occupied", occupant: { userId: user.id, name: user.name, plate: user.plate, nfcId: user.nfcId, since: at } }
+            : s,
+        ),
+        logs: [...state.logs, log],
+        nextLogSeq: seq + 1,
+      },
+    );
+  }
+
   return {
     getState: () => state,
     subscribe: (listener) => {
@@ -220,6 +303,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     updateUser,
     removeUser,
     renewUser,
+    scan,
   };
 }
 
