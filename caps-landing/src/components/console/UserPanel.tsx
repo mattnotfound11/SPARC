@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { RotateCw, X } from "lucide-react";
+import { Nfc, RotateCw, X } from "lucide-react";
 import gsap from "gsap";
+import { useNfcReader } from "@/lib/nfc/useNfcReader";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
 import { addOneMonth, normalizeNfc, normalizePlate, validateUser, type UserErrors } from "@/lib/sparc/store";
 import { VEHICLE_LABEL, formatDate, isExpired } from "@/lib/sparc/selectors";
@@ -84,6 +85,16 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
     if (submitted) setErrors(validateUser(next, state.users, editing?.id));
   }
 
+  // A card tap fills the NFC ID, then the reader switches itself off.
+  const stopScan = useRef<() => void>(() => {});
+  const reader = useNfcReader((serial) => {
+    update("nfcId", serial);
+    stopScan.current();
+  });
+  useEffect(() => {
+    stopScan.current = reader.stop;
+  }, [reader.stop]);
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
@@ -135,20 +146,30 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
               <input id="u-name" className="c-input w-full" autoComplete="off" value={form.name} onChange={(e) => update("name", e.target.value)} aria-invalid={invalid("name")} aria-describedby={errors.name ? "u-name-error" : undefined} />
             </Field>
 
-            <Field label="NFC card ID" htmlFor="u-nfc" error={errors.nfcId} hint="Numbers only, dashes allowed, as printed by the reader, like 1234-5678-9012.">
+            <Field label="NFC card ID" htmlFor="u-nfc" error={errors.nfcId} hint={reader.message ?? "Scan a card, or type digits like 1234-5678-9012 or hex like 04:A1:B2:C3."}>
+              <div className="flex gap-2">
               <input
                 id="u-nfc"
                 className="c-input w-full font-mono"
                 autoComplete="off"
                 spellCheck={false}
                 inputMode="text"
-                pattern="[0-9-]*"
                 value={form.nfcId}
                 onChange={(e) => update("nfcId", e.target.value)}
                 onBlur={() => form.nfcId && update("nfcId", normalizeNfc(form.nfcId))}
                 aria-invalid={invalid("nfcId")}
                 aria-describedby={errors.nfcId ? "u-nfc-error" : "u-nfc-hint"}
               />
+              <button
+                type="button"
+                className="c-btn shrink-0"
+                disabled={reader.status === "unsupported"}
+                onClick={reader.status === "scanning" ? reader.stop : reader.start}
+              >
+                <Nfc className="size-4" aria-hidden />
+                {reader.status === "scanning" ? "Tap a card…" : "Scan card"}
+              </button>
+              </div>
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
