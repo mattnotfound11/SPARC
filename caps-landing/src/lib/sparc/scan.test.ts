@@ -60,6 +60,15 @@ describe("store.scan", () => {
     expect(store.getState().slots.every((s) => s.status === "free")).toBe(true);
   });
 
+  it("keeps logs newest first, like the rest of the console", () => {
+    const store = createSparcStore(T0);
+    store.addUser(user(1));
+    store.scan(nfc(1));
+    vi.setSystemTime(T0 + 60_000);
+    store.scan(nfc(1));
+    expect(store.getState().logs.map((l) => l.event)).toEqual(["exit", "entry"]);
+  });
+
   it("rejects an expired pass without touching slots or logs", () => {
     const store = createSparcStore(T0);
     const out = store.scan("1234-5678-9012"); // seeded demo user, lapsed 3 days ago

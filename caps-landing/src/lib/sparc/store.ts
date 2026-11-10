@@ -236,7 +236,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     const parked = state.slots.find((s) => s.occupant?.userId === user.id);
     if (parked) {
       // Leaving is always allowed, even if the pass lapsed while parked.
-      const entry = [...state.logs].reverse().find((l) => l.event === "entry" && l.userId === user.id);
+      const entry = state.logs.find((l) => l.event === "entry" && l.userId === user.id);
       const log: LogEntry = {
         id: `L-${String(state.nextLogSeq).padStart(4, "0")}`,
         visitId: entry?.visitId ?? null,
@@ -253,7 +253,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
         { status: "exited", user, slot: parked.code, floor: parked.floor },
         {
           slots: state.slots.map((s) => (s.code === parked.code ? { ...s, status: "free", occupant: undefined } : s)),
-          logs: [...state.logs, log],
+          logs: [log, ...state.logs],
           nextLogSeq: state.nextLogSeq + 1,
         },
       );
@@ -286,7 +286,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
             ? { ...s, status: "occupied", occupant: { userId: user.id, name: user.name, plate: user.plate, nfcId: user.nfcId, since: at } }
             : s,
         ),
-        logs: [...state.logs, log],
+        logs: [log, ...state.logs],
         nextLogSeq: seq + 1,
       },
     );
