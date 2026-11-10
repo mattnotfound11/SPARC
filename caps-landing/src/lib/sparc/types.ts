@@ -77,7 +77,8 @@ export type UserInput = {
 
 /** Result of tapping a card at the entry/exit scanner. */
 export type ScanOutcome =
-  | { status: "entered" | "exited"; user: RegisteredUser; slot: string; floor: number }
+  | { status: "entered"; user: RegisteredUser; slot: string; floor: number }
+  | { status: "exited"; user: RegisteredUser; slot: string; floor: number }
   | { status: "expired" | "no-pass" | "full"; user: RegisteredUser }
   | { status: "unregistered"; nfcId: string };
 
