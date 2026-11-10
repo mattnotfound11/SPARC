@@ -46,11 +46,18 @@ export function addOneMonth(ms: number) {
 }
 
 const NFC_PATTERN = /^[0-9]+(-[0-9]+)*$/;
+/** Web NFC serial: 4 to 10 hex bytes, colon-separated, uppercase. */
+const NFC_HEX_PATTERN = /^[0-9A-F]{2}(:[0-9A-F]{2}){3,9}$/;
 const PLATE_PATTERN = /^[A-Z0-9][A-Z0-9 -]{3,9}$/;
 
 export function normalizeNfc(value: string) {
-  return value
-    .trim()
+  const trimmed = value.trim();
+  // Hex serials (from a card scan) keep their colons and are uppercased.
+  if (trimmed.includes(":"))
+    return trimmed.toUpperCase().replace(/[^0-9A-F:]/g, "").replace(/:{2,}/g, ":").replace(/^:+|:+$/g, "");
+  // Letters without colons are not a valid ID in either format; leave them so validation rejects them.
+  if (/[a-z]/i.test(trimmed)) return trimmed.toUpperCase();
+  return trimmed
     .replace(/[^0-9-]/g, "")
     .replace(/-{2,}/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -67,9 +74,10 @@ export function validateUser(input: UserInput, users: RegisteredUser[], editingI
   if (input.name.trim().length < 2) errors.name = "Enter the driver's full name.";
   const nfc = normalizeNfc(input.nfcId);
   const nfcDigits = nfc.replace(/-/g, "");
-  if (!NFC_PATTERN.test(nfc) || nfcDigits.length < 4 || nfcDigits.length > 20)
-    errors.nfcId = "Use numbers only, dashes allowed, like 1234-5678-9012.";
-  else if (users.some((u) => u.nfcId === nfc && u.id !== editingId))
+  const validDigits = NFC_PATTERN.test(nfc) && nfcDigits.length >= 4 && nfcDigits.length <= 20;
+  if (!validDigits && !NFC_HEX_PATTERN.test(nfc))
+    errors.nfcId = "Scan the card, or use numbers like 1234-5678-9012 or hex like 04:A1:B2:C3.";
+  else if (users.some((u) => u.nfcId.toUpperCase() === nfc && u.id !== editingId))
     errors.nfcId = "This card is already registered to someone else.";
   if (!PLATE_PATTERN.test(normalizePlate(input.plate))) errors.plate = "Enter a plate such as ABC 1234.";
   return errors;
