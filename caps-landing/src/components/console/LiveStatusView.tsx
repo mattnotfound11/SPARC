@@ -20,7 +20,6 @@ import {
   timeAgo,
 } from "@/lib/sparc/selectors";
 import type { LogEntry } from "@/lib/sparc/types";
-import { ParkingExplorer } from "./ParkingExplorer";
 import { Count, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
 /** Scroll-reveal wrapper for panels below the fold, same pattern as the landing page. */
@@ -58,11 +57,10 @@ function BuildingPanel() {
       <div
         className="mt-5 flex h-3 overflow-hidden rounded-full bg-white/[0.06]"
         role="img"
-        aria-label={`${totals.free} free, ${totals.reserved} reserved, ${totals.occupied} occupied of ${totals.total} slots`}
+        aria-label={`${totals.free} free, ${totals.occupied} occupied of ${totals.total} slots`}
       >
         {[
           { n: totals.occupied, cls: "bg-white/35" },
-          { n: totals.reserved, cls: "bg-gold" },
           { n: totals.free, cls: "bg-live" },
         ].map(({ n, cls }, i) => (
           <div
@@ -76,7 +74,6 @@ function BuildingPanel() {
       <dl className="mt-3.5 flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
         {[
           { label: "Occupied", n: totals.occupied, cls: "bg-white/35" },
-          { label: "Reserved", n: totals.reserved, cls: "bg-gold" },
           { label: "Free", n: totals.free, cls: "bg-live" },
         ].map(({ label, n, cls }) => (
           <div key={label} className="flex items-center gap-2">
@@ -256,10 +253,6 @@ export function LiveStatusView() {
       <div data-enter className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
         <BuildingPanel />
         <TodayPanel />
-      </div>
-
-      <div data-enter>
-        <ParkingExplorer />
       </div>
 
       <div data-enter className="grid items-start gap-5 lg:grid-cols-2 lg:gap-6">

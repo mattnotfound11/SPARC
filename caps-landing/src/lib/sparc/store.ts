@@ -57,7 +57,6 @@ export function addOneMonth(ms: number) {
 const NFC_PATTERN = /^[0-9]+(-[0-9]+)*$/;
 /** Web NFC serial: 4 to 10 hex bytes, colon-separated, uppercase. */
 const NFC_HEX_PATTERN = /^[0-9A-F]{2}(:[0-9A-F]{2}){3,9}$/;
-const PLATE_PATTERN = /^[A-Z0-9][A-Z0-9 -]{3,9}$/;
 
 export function normalizeNfc(value: string) {
   const trimmed = value.trim();
@@ -72,10 +71,6 @@ export function normalizeNfc(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function normalizePlate(value: string) {
-  return value.trim().toUpperCase().replace(/\s+/g, " ");
-}
-
 export type UserErrors = Partial<Record<keyof UserInput, string>>;
 
 export function validateUser(input: UserInput, users: RegisteredUser[], editingId?: string): UserErrors {
@@ -88,7 +83,6 @@ export function validateUser(input: UserInput, users: RegisteredUser[], editingI
     errors.nfcId = "Scan the card, or use numbers like 1234-5678-9012 or hex like 04:A1:B2:C3.";
   else if (users.some((u) => u.nfcId.toUpperCase() === nfc && u.id !== editingId))
     errors.nfcId = "This card is already registered to someone else.";
-  if (!PLATE_PATTERN.test(normalizePlate(input.plate))) errors.plate = "Enter a plate such as ABC 1234.";
   return errors;
 }
 
@@ -103,7 +97,6 @@ function demoExpiredUser(now: number): RegisteredUser {
     name: "Juan Dela Cruz (demo)",
     role: "student",
     vehicle: "light",
-    plate: "DEMO 1234",
     active: true,
     createdAt,
     expiresAt,
@@ -170,7 +163,6 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
       name: input.name.trim(),
       role: input.role,
       vehicle: input.vehicle,
-      plate: normalizePlate(input.plate),
       active: input.active,
       createdAt: Date.now(),
       expiresAt: addOneMonth(Date.now()),
@@ -192,7 +184,6 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
               nfcId: normalizeNfc(input.nfcId),
               role: input.role,
               vehicle: input.vehicle,
-              plate: normalizePlate(input.plate),
               active: input.active,
             }
           : u,
@@ -283,7 +274,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
       {
         slots: state.slots.map((s) =>
           s.code === free.code
-            ? { ...s, status: "occupied", occupant: { userId: user.id, name: user.name, plate: user.plate, nfcId: user.nfcId, since: at } }
+            ? { ...s, status: "occupied", occupant: { userId: user.id, name: user.name, nfcId: user.nfcId, since: at } }
             : s,
         ),
         logs: [log, ...state.logs],

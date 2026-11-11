@@ -33,9 +33,6 @@ export function Hero() {
               Register your vehicle
               <ArrowUpRight className="size-4" strokeWidth={2.5} aria-hidden />
             </Link>
-            <Link href="/slots" className="btn btn-ghost px-6 py-3.5 text-[0.9375rem]">
-              Check available slots
-            </Link>
           </div>
         </Reveal>
 

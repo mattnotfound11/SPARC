@@ -7,7 +7,6 @@ const input = (nfcId: string): UserInput => ({
   nfcId,
   role: "student",
   vehicle: "light",
-  plate: "ABC 1234",
   active: true,
 });
 
@@ -17,7 +16,6 @@ const existing = (nfcId: string): RegisteredUser => ({
   name: "Other",
   role: "student",
   vehicle: "light",
-  plate: "XYZ 9999",
   active: true,
   createdAt: 0,
   expiresAt: 1,

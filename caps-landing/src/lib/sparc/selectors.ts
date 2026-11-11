@@ -12,21 +12,18 @@ export type FloorStat = {
   vehicle: VehicleClass;
   total: number;
   free: number;
-  reserved: number;
   occupied: number;
 };
 
 export function floorStats(config: FloorConfig[], slots: Slot[]): FloorStat[] {
   return config.map((f) => {
     const mine = slots.filter((s) => s.floor === f.floor);
-    const reserved = mine.filter((s) => s.status === "reserved").length;
     const occupied = mine.filter((s) => s.status === "occupied").length;
     return {
       floor: f.floor,
       vehicle: f.vehicle,
       total: mine.length,
-      free: mine.length - reserved - occupied,
-      reserved,
+      free: mine.length - occupied,
       occupied,
     };
   });
@@ -37,10 +34,9 @@ export function buildingTotals(stats: FloorStat[]) {
     (t, f) => ({
       total: t.total + f.total,
       free: t.free + f.free,
-      reserved: t.reserved + f.reserved,
       occupied: t.occupied + f.occupied,
     }),
-    { total: 0, free: 0, reserved: 0, occupied: 0 },
+    { total: 0, free: 0, occupied: 0 },
   );
 }
 

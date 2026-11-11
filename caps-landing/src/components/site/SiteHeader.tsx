@@ -45,9 +45,6 @@ export function SiteHeader() {
           <Link href="/login" className="btn btn-ghost hidden px-4 py-2 text-sm md:inline-flex">
             Log in
           </Link>
-          <Link href="/signup" className="btn btn-gold px-4 py-2 text-sm sm:px-5">
-            Register vehicle
-          </Link>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}

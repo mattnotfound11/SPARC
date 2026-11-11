@@ -18,7 +18,6 @@ function user(n: number, vehicle: VehicleClass = "light", extra: Partial<UserInp
     nfcId: `04:A1:B2:${hex}`,
     role: "student",
     vehicle,
-    plate: `ABC ${1000 + n}`,
     active: true,
     ...extra,
   };

@@ -3,14 +3,13 @@
 /** "heavy" = SUVs and vans (floors 1–2 by default), "light" = lighter vehicles (floors 3–5). */
 export type VehicleClass = "heavy" | "light";
 
-export type SlotStatus = "free" | "reserved" | "occupied";
+export type SlotStatus = "free" | "occupied";
 
 export type Occupant = {
   userId: string;
   name: string;
-  plate: string;
   nfcId: string;
-  /** ms epoch the slot was reserved / the driver entered */
+  /** ms epoch the driver entered */
   since: number;
 };
 
@@ -40,7 +39,6 @@ export type RegisteredUser = {
   name: string;
   role: UserRole;
   vehicle: VehicleClass;
-  plate: string;
   active: boolean;
   createdAt: number;
   /** Monthly pass expiry: one calendar month after registration or last renewal. */
@@ -71,7 +69,6 @@ export type UserInput = {
   nfcId: string;
   role: UserRole;
   vehicle: VehicleClass;
-  plate: string;
   active: boolean;
 };
 
