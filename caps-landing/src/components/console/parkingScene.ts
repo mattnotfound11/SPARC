@@ -40,7 +40,6 @@ const PLAN_POSTS = 0.16;
 
 const STATUS_PAINT: Record<SlotStatus, { tint: string; pill: string; text: string }> = {
   free: { tint: "rgba(34,197,94,0.24)", pill: "#22c55e", text: "#06230f" },
-  reserved: { tint: "rgba(245,179,1,0.3)", pill: "#f5b301", text: "#16110a" },
   occupied: { tint: "rgba(255,255,255,0.05)", pill: "#c9ccd4", text: "#14161c" },
 };
 const CAR_COLORS = ["#d9dde3", "#aab1bb", "#565c68", "#2b2f38", "#8e1f33", "#2f5288", "#e8e4da"];
@@ -55,11 +54,8 @@ type FloorModel = {
   glow: THREE.MeshStandardMaterial[];
   tracked: Tracked[];
   carMaterial: THREE.MeshStandardMaterial;
-  ghostMaterial: THREE.MeshStandardMaterial;
   cars: THREE.InstancedMesh | null;
-  ghosts: THREE.InstancedMesh | null;
   carCodes: string[];
-  ghostCodes: string[];
   byIndex: Map<number, Slot>;
   key: string;
   ctx: CanvasRenderingContext2D;
@@ -306,7 +302,6 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
     const postMaterial = track(tracked, new THREE.MeshStandardMaterial({ color: "#8d93a0", roughness: 0.85 }));
     const coreMaterial = track(tracked, new THREE.MeshStandardMaterial({ color: "#d4d7dd", roughness: 0.75 }));
     const carMaterial = track(tracked, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.15 }));
-    const ghostMaterial = track(tracked, new THREE.MeshStandardMaterial({ color: "#f5b301", transparent: true, opacity: 0.42, roughness: 0.5, depthWrite: false }));
     const deckMaterial = track(tracked, new THREE.MeshStandardMaterial({ roughness: 0.95 }));
 
     box(length, SLAB, WIDTH, 0, -SLAB / 2, 0, concrete, group);
@@ -380,11 +375,8 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
       glow: [concrete, parapet],
       tracked,
       carMaterial,
-      ghostMaterial,
       cars: null,
-      ghosts: null,
       carCodes: [],
-      ghostCodes: [],
       byIndex: new Map(),
       key: "",
       ctx,
@@ -622,24 +614,19 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
   }
 
   function placeCars(model: FloorModel, vehicle: VehicleClass) {
-    for (const key of ["cars", "ghosts"] as const) {
-      const mesh = model[key];
-      if (mesh) {
-        model.group.remove(mesh);
-        mesh.dispose();
-        model[key] = null;
-      }
+    if (model.cars) {
+      model.group.remove(model.cars);
+      model.cars.dispose();
+      model.cars = null;
     }
     const parked = [...model.byIndex.entries()].filter(([, s]) => s.status === "occupied");
-    const incoming = [...model.byIndex.entries()].filter(([, s]) => s.status === "reserved");
     model.carCodes = parked.map(([, s]) => s.code);
-    model.ghostCodes = incoming.map(([, s]) => s.code);
 
     const up = new THREE.Vector3(0, 1, 0);
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
     const one = new THREE.Vector3(1, 1, 1);
-    const place = (list: [number, Slot][], material: THREE.Material, solid: boolean) => {
+    const place = (list: [number, Slot][], material: THREE.Material) => {
       if (!list.length) return null;
       const mesh = new THREE.InstancedMesh(carGeometries[vehicle], material, list.length);
       list.forEach(([index, slot], i) => {
@@ -647,15 +634,14 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
         rotation.setFromAxisAngle(up, side < 0 ? -Math.PI / 2 : Math.PI / 2);
         matrix.compose(new THREE.Vector3(x, 0.02, z), rotation, one);
         mesh.setMatrixAt(i, matrix);
-        if (solid) mesh.setColorAt(i, new THREE.Color(hashColor(slot.code)));
+        mesh.setColorAt(i, new THREE.Color(hashColor(slot.code)));
       });
-      mesh.castShadow = solid;
+      mesh.castShadow = true;
       mesh.computeBoundingSphere();
       model.group.add(mesh);
       return mesh;
     };
-    model.cars = place(parked, model.carMaterial, true);
-    model.ghosts = place(incoming, model.ghostMaterial, false);
+    model.cars = place(parked, model.carMaterial);
   }
 
   function applyFade(tracked: Tracked[], fade: number) {
@@ -863,12 +849,8 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
     }
     const model = models.find((m) => m.floor === view);
     if (!model) return null;
-    const meshes = [model.cars, model.ghosts].filter((m): m is THREE.InstancedMesh => m !== null);
-    const hit = raycaster.intersectObjects(meshes, false)[0];
-    if (hit && hit.instanceId !== undefined) {
-      const codes = hit.object === model.cars ? model.carCodes : model.ghostCodes;
-      return { kind: "slot", code: codes[hit.instanceId] };
-    }
+    const hit = model.cars ? raycaster.intersectObject(model.cars, false)[0] : undefined;
+    if (hit && hit.instanceId !== undefined) return { kind: "slot", code: model.carCodes[hit.instanceId] };
     groundPlane.constant = -model.base;
     if (!raycaster.ray.intersectPlane(groundPlane, groundPoint)) return null;
     const slot = bayAt(groundPoint.x, groundPoint.z, model);

@@ -56,6 +56,18 @@ export function ScanResultCard({ outcome, now }: { outcome: ScanOutcome; now: nu
         {user.name}
       </Banner>
     );
+  if (outcome.status === "already-inside")
+    return (
+      <Banner tone="gold" icon={CircleAlert} title="Already inside">
+        {user.name} is already in slot {outcome.slot} (floor {outcome.floor}). Switch to Exit scan to check them out.
+      </Banner>
+    );
+  if (outcome.status === "not-inside")
+    return (
+      <Banner tone="gold" icon={CircleAlert} title="Not inside">
+        No entry is recorded for {user.name}. Switch to Entry scan to let them in.
+      </Banner>
+    );
   if (outcome.status === "full")
     return (
       <Banner tone="gold" icon={ParkingSquareOff} title="No free slot for this vehicle class">

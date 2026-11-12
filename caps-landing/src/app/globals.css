@@ -457,11 +457,6 @@ input:-webkit-autofill:focus {
     background: rgba(34, 197, 94, 0.08);
     color: #86efac;
   }
-  .slot-cell[data-status="reserved"] {
-    border-color: rgba(245, 179, 1, 0.65);
-    background: rgba(245, 179, 1, 0.14);
-    color: #ffd666;
-  }
   .slot-cell[data-status="occupied"] {
     border-color: var(--color-line-strong);
     background: rgba(255, 255, 255, 0.06);

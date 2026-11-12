@@ -42,12 +42,6 @@ export function SiteHeader() {
             <LayoutDashboard className="size-4" aria-hidden />
             Dashboard
           </Link>
-          <Link href="/login" className="btn btn-ghost hidden px-4 py-2 text-sm md:inline-flex">
-            Log in
-          </Link>
-          <Link href="/signup" className="btn btn-gold px-4 py-2 text-sm sm:px-5">
-            Register vehicle
-          </Link>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -82,15 +76,6 @@ export function SiteHeader() {
                 className="block rounded-lg px-3 py-3 text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink"
               >
                 Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-3 text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink"
-              >
-                Log in
               </Link>
             </li>
           </ul>

@@ -34,7 +34,7 @@ describe("store.scan", () => {
     const store = createSparcStore(T0);
     store.addUser(user(1));
     const before = freeCount(store);
-    const out = store.scan(nfc(1));
+    const out = store.scan(nfc(1), "entry");
     expect(out.status).toBe("entered");
     const s = store.getState();
     expect(freeCount(store)).toBe(before - 1);
@@ -50,8 +50,8 @@ describe("store.scan", () => {
   it("exits on the second scan and pairs the visit", () => {
     const store = createSparcStore(T0);
     store.addUser(user(1));
-    store.scan(nfc(1));
-    const out = store.scan(nfc(1));
+    store.scan(nfc(1), "entry");
+    const out = store.scan(nfc(1), "exit");
     expect(out.status).toBe("exited");
     const { logs } = store.getState();
     const entry = logs.find((l) => l.event === "entry")!;
@@ -63,15 +63,15 @@ describe("store.scan", () => {
   it("keeps logs newest first, like the rest of the console", () => {
     const store = createSparcStore(T0);
     store.addUser(user(1));
-    store.scan(nfc(1));
+    store.scan(nfc(1), "entry");
     vi.setSystemTime(T0 + 60_000);
-    store.scan(nfc(1));
+    store.scan(nfc(1), "exit");
     expect(store.getState().logs.map((l) => l.event)).toEqual(["exit", "entry"]);
   });
 
   it("rejects an expired pass without touching slots or logs", () => {
     const store = createSparcStore(T0);
-    const out = store.scan("1234-5678-9012"); // seeded demo user, lapsed 3 days ago
+    const out = store.scan("1234-5678-9012", "entry"); // seeded demo user, lapsed 3 days ago
     expect(out.status).toBe("expired");
     expect(store.getState().logs).toHaveLength(0);
     expect(store.getState().scans).toHaveLength(1);
@@ -80,14 +80,14 @@ describe("store.scan", () => {
   it("rejects a suspended account as no-pass", () => {
     const store = createSparcStore(T0);
     store.addUser(user(2, "light", { active: false }));
-    expect(store.scan(nfc(2)).status).toBe("no-pass");
+    expect(store.scan(nfc(2), "entry").status).toBe("no-pass");
   });
 
   it("rejects unknown cards and matches hex case-insensitively", () => {
     const store = createSparcStore(T0);
     store.addUser(user(1));
-    expect(store.scan("04:FF:FF:FF").status).toBe("unregistered");
-    expect(store.scan(nfc(1).toLowerCase()).status).toBe("entered");
+    expect(store.scan("04:FF:FF:FF", "entry").status).toBe("unregistered");
+    expect(store.scan(nfc(1).toLowerCase(), "entry").status).toBe("entered");
   });
 
   it("reports full for a class with no free slot, while other classes still enter", () => {
@@ -95,36 +95,65 @@ describe("store.scan", () => {
     const heavy = store.getState().slots.filter((s) => s.vehicle === "heavy").length;
     for (let i = 1; i <= heavy; i++) {
       store.addUser(user(i, "heavy"));
-      expect(store.scan(nfc(i)).status).toBe("entered");
+      expect(store.scan(nfc(i), "entry").status).toBe("entered");
     }
     store.addUser(user(200, "heavy"));
     const logsBefore = store.getState().logs.length;
-    expect(store.scan(nfc(200)).status).toBe("full");
+    expect(store.scan(nfc(200), "entry").status).toBe("full");
     expect(store.getState().logs).toHaveLength(logsBefore);
     store.addUser(user(201, "light"));
-    expect(store.scan(nfc(201)).status).toBe("entered");
+    expect(store.scan(nfc(201), "entry").status).toBe("entered");
   });
 
   it("lets a parked driver exit after their pass expires", () => {
     const store = createSparcStore(T0);
     store.addUser(user(1));
-    expect(store.scan(nfc(1)).status).toBe("entered");
+    expect(store.scan(nfc(1), "entry").status).toBe("entered");
     vi.setSystemTime(T0 + 40 * DAY);
-    expect(store.scan(nfc(1)).status).toBe("exited");
+    expect(store.scan(nfc(1), "exit").status).toBe("exited");
   });
 
   it("lets a renewed driver in", () => {
     const store = createSparcStore(T0);
-    expect(store.scan("1234-5678-9012").status).toBe("expired");
+    expect(store.scan("1234-5678-9012", "entry").status).toBe("expired");
     store.renewUser("U-DEMO-001");
-    expect(store.scan("1234-5678-9012").status).toBe("entered");
+    expect(store.scan("1234-5678-9012", "entry").status).toBe("entered");
   });
 
   it("keeps only the 50 most recent scans, newest first", () => {
     const store = createSparcStore(T0);
-    for (let i = 0; i < 60; i++) store.scan(`04:00:00:${(i % 200).toString(16).padStart(2, "0")}`);
+    for (let i = 0; i < 60; i++) store.scan(`04:00:00:${(i % 200).toString(16).padStart(2, "0")}`, "entry");
     const { scans } = store.getState();
     expect(scans).toHaveLength(50);
     expect(scans[0].at).toBeGreaterThanOrEqual(scans[49].at);
+  });
+
+  it("entry mode: a driver already inside is told so, with no second entry", () => {
+    const store = createSparcStore(T0);
+    store.addUser(user(1));
+    store.scan(nfc(1), "entry");
+    const free = freeCount(store);
+    const out = store.scan(nfc(1), "entry");
+    expect(out.status).toBe("already-inside");
+    expect(freeCount(store)).toBe(free);
+    expect(store.getState().logs).toHaveLength(1);
+  });
+
+  it("exit mode: a driver who is not inside gets not-inside and nothing is logged", () => {
+    const store = createSparcStore(T0);
+    store.addUser(user(1));
+    expect(store.scan(nfc(1), "exit").status).toBe("not-inside");
+    expect(store.getState().logs).toHaveLength(0);
+    expect(freeCount(store)).toBe(store.getState().slots.length);
+  });
+
+  it("exit mode: an expired driver who is not inside is not-inside, not expired", () => {
+    const store = createSparcStore(T0);
+    expect(store.scan("1234-5678-9012", "exit").status).toBe("not-inside");
+  });
+
+  it("exit mode: unknown cards are still unregistered", () => {
+    const store = createSparcStore(T0);
+    expect(store.scan("04:FF:FF:FF", "exit").status).toBe("unregistered");
   });
 });
