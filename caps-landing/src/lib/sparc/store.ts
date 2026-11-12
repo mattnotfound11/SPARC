@@ -60,10 +60,15 @@ const NFC_HEX_PATTERN = /^[0-9A-F]{2}(:[0-9A-F]{2}){3,9}$/;
 
 export function normalizeNfc(value: string) {
   const trimmed = value.trim();
-  // Hex serials (from a card scan) keep their colons and are uppercased.
-  if (trimmed.includes(":"))
-    return trimmed.toUpperCase().replace(/[^0-9A-F:]/g, "").replace(/:{2,}/g, ":").replace(/^:+|:+$/g, "");
-  // Letters without colons are not a valid ID in either format; leave them so validation rejects them.
+  // iOS Shortcuts "Scan NFC Tag" produces space-separated hex bytes: "04 A1 B2 C3".
+  // Colon-separated comes from Web NFC (Android) or manual entry.
+  // Both collapse to uppercase colon-separated: 04:A1:B2:C3.
+  const hasHexSeparator = trimmed.includes(":") || /^[0-9A-Fa-f]{2}( [0-9A-Fa-f]{2})+$/.test(trimmed);
+  if (hasHexSeparator) {
+    const bytes = trimmed.toUpperCase().replace(/[^0-9A-F]/g, "").match(/.{2}/g) ?? [];
+    return bytes.join(":");
+  }
+  // Letters without separators are not a valid ID in either format; leave them so validation rejects them.
   if (/[a-z]/i.test(trimmed)) return trimmed.toUpperCase();
   return trimmed
     .replace(/[^0-9-]/g, "")

@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { ArrowLeftFromLine, ArrowRightToLine, Nfc } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeftFromLine, ArrowRightToLine, Check, Copy, Nfc, Smartphone } from "lucide-react";
 import { useNfcReader } from "@/lib/nfc/useNfcReader";
+import { useIsIOS } from "@/lib/nfc/platform";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
 import { buildingTotals, floorStats, timeAgo } from "@/lib/sparc/selectors";
 import type { ScanMode, ScanOutcome } from "@/lib/sparc/types";
@@ -31,9 +33,28 @@ export function ScanView() {
   const now = useNow(15000);
   const [mode, setMode] = useState<ScanMode>("entry");
   const modeLabel = mode === "entry" ? "Entry" : "Exit";
+  const [manual, setManual] = useState("");
+  const [copied, setCopied] = useState(false);
+  const onIOS = useIsIOS();
 
   const onScan = useCallback((serial: string) => void store.scan(serial, mode), [store, mode]);
   const reader = useNfcReader(onScan);
+
+  // Safari can't do Web NFC on iOS, so an iPhone/iPad Shortcut (its "Scan NFC
+  // Tag" action, built in since iOS 13) scans the card and opens this page as
+  // /admin/scan?nfc=<id> instead — the same shape as a real tap.
+  const router = useRouter();
+  const params = useSearchParams();
+  const shortcutId = params.get("nfc");
+  // Guards against StrictMode's intentional double-invoke (and any other
+  // re-run with the same id) actually logging the tap twice.
+  const dispatchedId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!shortcutId || dispatchedId.current === shortcutId) return;
+    dispatchedId.current = shortcutId;
+    store.scan(shortcutId, mode);
+    router.replace("/admin/scan"); // drop the param so a refresh doesn't rescan
+  }, [shortcutId, store, router, mode]);
 
   const stats = floorStats(state.config, state.slots);
   const totals = buildingTotals(stats);
@@ -92,6 +113,64 @@ export function ScanView() {
               </p>
             )}
           </div>
+
+          {reader.status === "unsupported" && onIOS && (
+            <div className="mt-4 rounded-xl border border-line bg-field/60 p-3.5 text-sm">
+              <p className="flex items-center gap-1.5 font-medium text-ink">
+                <Smartphone className="size-4 text-gold" aria-hidden />
+                iPhone/iPad: scan with the Shortcuts app
+              </p>
+              <p className="mt-1 text-ink-muted">
+                Safari can&apos;t read NFC. A Shortcut can: add <span className="text-ink">Scan NFC Tag</span>, then{" "}
+                <span className="text-ink">Open URLs</span> with the card&apos;s Identifier appended to —
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-lg border border-line-strong bg-canvas/60 px-2.5 py-1.5 font-mono text-xs text-ink-soft">
+                  {typeof window === "undefined" ? "" : `${window.location.origin}/admin/scan?nfc=`}
+                </code>
+                <button
+                  type="button"
+                  className="c-btn c-btn-sm"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(`${window.location.origin}/admin/scan?nfc=`).then(
+                      () => setCopied(true),
+                      () => setCopied(false),
+                    );
+                  }}
+                >
+                  {copied ? <Check className="size-4 text-live" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {reader.status === "unsupported" && (
+            <form
+              className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (manual.trim()) store.scan(manual, mode);
+                setManual("");
+              }}
+            >
+              <label htmlFor="sim-nfc" className="text-sm text-ink-muted">
+                Simulate a scan
+              </label>
+              <input
+                id="sim-nfc"
+                value={manual}
+                onChange={(e) => setManual(e.target.value)}
+                placeholder="04:A1:B2:C3"
+                className="c-input w-44 font-mono"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button type="submit" className="c-btn">
+                Scan
+              </button>
+            </form>
+          )}
 
           <div className="mt-5" aria-live="polite">
             {latest ? (
