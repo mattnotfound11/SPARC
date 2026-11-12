@@ -18,14 +18,6 @@ export default function SlotsPage() {
             <SparcSeal size={36} priority className="size-8 sm:size-9" />
             <SparcWordmark className="text-lg text-ink sm:text-xl" />
           </Link>
-          <div className="flex items-center gap-2">
-            <Link href="/login" className="btn btn-ghost px-4 py-2 text-sm">
-              Log in
-            </Link>
-            <Link href="/signup" className="btn btn-gold px-4 py-2 text-sm sm:px-5">
-              Register vehicle
-            </Link>
-          </div>
         </nav>
       </header>
       <main id="main-content" className="mx-auto w-full max-w-5xl flex-1 px-5 py-12 sm:px-8 sm:py-16">
