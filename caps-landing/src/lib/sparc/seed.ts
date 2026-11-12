@@ -2,12 +2,13 @@ import type { FloorConfig, Slot } from "./types";
 
 /* Floor layout and slot-building helpers for the console's data store. */
 
+// 11 rotary towers x 2 pallets per level = 22 slots on every floor, 110 in all.
 export const DEFAULT_CONFIG: FloorConfig[] = [
-  { floor: 1, vehicle: "heavy", slots: 20 },
-  { floor: 2, vehicle: "heavy", slots: 20 },
-  { floor: 3, vehicle: "light", slots: 24 },
-  { floor: 4, vehicle: "light", slots: 23 },
-  { floor: 5, vehicle: "light", slots: 23 },
+  { floor: 1, vehicle: "heavy", slots: 22 },
+  { floor: 2, vehicle: "heavy", slots: 22 },
+  { floor: 3, vehicle: "light", slots: 22 },
+  { floor: 4, vehicle: "light", slots: 22 },
+  { floor: 5, vehicle: "light", slots: 22 },
 ];
 
 export const MAX_SLOTS_PER_FLOOR = 60;

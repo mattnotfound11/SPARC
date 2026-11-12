@@ -11,7 +11,6 @@ const u = (daysLeft: number, active = true): RegisteredUser => ({
   name: "A",
   role: "student",
   vehicle: "light",
-  plate: "ABC 1234",
   active,
   createdAt: 0,
   expiresAt: NOW + daysLeft * DAY,

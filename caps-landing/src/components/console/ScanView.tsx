@@ -2,33 +2,42 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, Copy, Nfc, Smartphone } from "lucide-react";
+import { ArrowLeftFromLine, ArrowRightToLine, Check, Copy, Nfc, Smartphone } from "lucide-react";
 import { useNfcReader } from "@/lib/nfc/useNfcReader";
 import { useIsIOS } from "@/lib/nfc/platform";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
 import { buildingTotals, floorStats, timeAgo } from "@/lib/sparc/selectors";
-import type { ScanOutcome } from "@/lib/sparc/types";
+import type { ScanMode, ScanOutcome } from "@/lib/sparc/types";
 import { Count, EmptyState, PageHeader, Panel, PanelHeader } from "./ui";
 import { ScanResultCard } from "./ScanResultCard";
 
 const SUMMARY: Record<ScanOutcome["status"], string> = {
   entered: "Entered",
   exited: "Exited",
+  "already-inside": "Already inside",
+  "not-inside": "Not inside",
   expired: "Pass expired",
   "no-pass": "Invalid monthly pass",
   full: "No free slot",
   unregistered: "Unregistered card",
 };
 
+const MODES = [
+  { id: "entry", label: "Entry", icon: ArrowRightToLine, on: "border-live/60 bg-live/[0.14] text-[#86efac]" },
+  { id: "exit", label: "Exit", icon: ArrowLeftFromLine, on: "border-gold/60 bg-gold/[0.14] text-[#ffd666]" },
+] as const satisfies readonly { id: ScanMode; label: string; icon: unknown; on: string }[];
+
 export function ScanView() {
   const store = useSparcStore();
   const state = useSparcState();
   const now = useNow(15000);
+  const [mode, setMode] = useState<ScanMode>("entry");
+  const modeLabel = mode === "entry" ? "Entry" : "Exit";
   const [manual, setManual] = useState("");
   const [copied, setCopied] = useState(false);
   const onIOS = useIsIOS();
 
-  const onScan = useCallback((serial: string) => void store.scan(serial), [store]);
+  const onScan = useCallback((serial: string) => void store.scan(serial, mode), [store, mode]);
   const reader = useNfcReader(onScan);
 
   // Safari can't do Web NFC on iOS, so an iPhone/iPad Shortcut (its "Scan NFC
@@ -43,9 +52,9 @@ export function ScanView() {
   useEffect(() => {
     if (!shortcutId || dispatchedId.current === shortcutId) return;
     dispatchedId.current = shortcutId;
-    store.scan(shortcutId);
+    store.scan(shortcutId, mode);
     router.replace("/admin/scan"); // drop the param so a refresh doesn't rescan
-  }, [shortcutId, store, router]);
+  }, [shortcutId, store, router, mode]);
 
   const stats = floorStats(state.config, state.slots);
   const totals = buildingTotals(stats);
@@ -61,6 +70,30 @@ export function ScanView() {
             Scanner
           </h2>
 
+          <div role="radiogroup" aria-label="Scan type" className="mt-4 grid max-w-md grid-cols-2 gap-1.5 rounded-xl border border-line bg-field/60 p-1.5">
+            {MODES.map(({ id, label, icon: Icon, on }) => {
+              const active = mode === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setMode(id)}
+                  className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border text-[0.9375rem] font-semibold transition-colors ${
+                    active ? on : "border-transparent text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  <Icon className="size-5" aria-hidden />
+                  {label} scan
+                </button>
+              );
+            })}
+          </div>
+          <p className={`mt-2 text-sm font-semibold ${mode === "entry" ? "text-live" : "text-gold"}`}>
+            Scanning for {modeLabel.toUpperCase()}: {mode === "entry" ? "taps let vehicles in." : "taps check vehicles out."}
+          </p>
+
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -72,7 +105,7 @@ export function ScanView() {
               {reader.status === "scanning" ? "Scanner on · tap to stop" : "Enable NFC scanner"}
             </button>
             {reader.status === "scanning" && !reader.message && (
-              <p className="text-sm text-live">Ready. Hold a card to the back of the phone.</p>
+              <p className="text-sm text-live">Ready for {modeLabel.toLowerCase()}. Hold a card to the back of the phone.</p>
             )}
             {reader.message && (
               <p role="status" className="text-sm text-ink-muted">
@@ -117,7 +150,7 @@ export function ScanView() {
               className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (manual.trim()) store.scan(manual);
+                if (manual.trim()) store.scan(manual, mode);
                 setManual("");
               }}
             >
@@ -156,16 +189,6 @@ export function ScanView() {
             <Count value={totals.free} />
             <span className="text-lg font-normal text-ink-faint"> / {totals.total}</span>
           </p>
-          <ul className="mt-4 space-y-1.5 text-sm text-ink-muted">
-            {stats.map((f) => (
-              <li key={f.floor} className="flex justify-between">
-                <span>Floor {f.floor}</span>
-                <span className="font-mono text-ink-soft">
-                  {f.free} / {f.total}
-                </span>
-              </li>
-            ))}
-          </ul>
         </Panel>
       </div>
 

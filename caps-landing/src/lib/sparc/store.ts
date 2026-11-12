@@ -1,9 +1,10 @@
-import { DEFAULT_CONFIG, MAX_SLOTS_PER_FLOOR, buildSlots, slotCode } from "./seed";
+import { DEFAULT_CONFIG, buildSlots } from "./seed";
 import type {
   ActionResult,
   FloorConfig,
   LogEntry,
   RegisteredUser,
+  ScanMode,
   ScanOutcome,
   ScanRecord,
   Slot,
@@ -33,13 +34,12 @@ export type SparcState = {
 export type SparcStore = {
   getState: () => SparcState;
   subscribe: (listener: () => void) => () => void;
-  saveConfig: (next: FloorConfig[]) => ActionResult;
   addUser: (input: UserInput) => ActionResult;
   updateUser: (id: string, input: UserInput) => ActionResult;
   removeUser: (id: string) => ActionResult;
   renewUser: (id: string) => ActionResult;
-  /** A card tap at the entry/exit scanner: enters, exits, or explains why not. */
-  scan: (nfcId: string) => ScanOutcome;
+  /** A card tap at the entry or exit scanner: does what the mode says, or explains why not. */
+  scan: (nfcId: string, mode: ScanMode) => ScanOutcome;
 };
 
 const MAX_SCANS = 50;
@@ -57,7 +57,6 @@ export function addOneMonth(ms: number) {
 const NFC_PATTERN = /^[0-9]+(-[0-9]+)*$/;
 /** Web NFC serial: 4 to 10 hex bytes, colon-separated, uppercase. */
 const NFC_HEX_PATTERN = /^[0-9A-F]{2}(:[0-9A-F]{2}){3,9}$/;
-const PLATE_PATTERN = /^[A-Z0-9][A-Z0-9 -]{3,9}$/;
 
 export function normalizeNfc(value: string) {
   const trimmed = value.trim();
@@ -77,10 +76,6 @@ export function normalizeNfc(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function normalizePlate(value: string) {
-  return value.trim().toUpperCase().replace(/\s+/g, " ");
-}
-
 export type UserErrors = Partial<Record<keyof UserInput, string>>;
 
 export function validateUser(input: UserInput, users: RegisteredUser[], editingId?: string): UserErrors {
@@ -93,7 +88,6 @@ export function validateUser(input: UserInput, users: RegisteredUser[], editingI
     errors.nfcId = "Scan the card, or use numbers like 1234-5678-9012 or hex like 04:A1:B2:C3.";
   else if (users.some((u) => u.nfcId.toUpperCase() === nfc && u.id !== editingId))
     errors.nfcId = "This card is already registered to someone else.";
-  if (!PLATE_PATTERN.test(normalizePlate(input.plate))) errors.plate = "Enter a plate such as ABC 1234.";
   return errors;
 }
 
@@ -108,7 +102,6 @@ function demoExpiredUser(now: number): RegisteredUser {
     name: "Juan Dela Cruz (demo)",
     role: "student",
     vehicle: "light",
-    plate: "DEMO 1234",
     active: true,
     createdAt,
     expiresAt,
@@ -135,36 +128,6 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     listeners.forEach((l) => l());
   }
 
-  function saveConfig(next: FloorConfig[]): ActionResult {
-    const slots = state.slots;
-    for (const f of next) {
-      if (!Number.isInteger(f.slots) || f.slots < 1 || f.slots > MAX_SLOTS_PER_FLOOR)
-        return { ok: false, error: `Floor ${f.floor}: enter between 1 and ${MAX_SLOTS_PER_FLOOR} slots.` };
-      const current = state.config.find((c) => c.floor === f.floor);
-      const inUse = slots.filter((s) => s.floor === f.floor && s.status !== "free");
-      if (current && current.vehicle !== f.vehicle && inUse.length)
-        return { ok: false, error: `Floor ${f.floor} has ${inUse.length} vehicle(s) in it. Change its type once they leave.` };
-      const blocked = inUse.find((s) => s.index > f.slots);
-      if (blocked) return { ok: false, error: `Slot ${blocked.code} is in use, so floor ${f.floor} can't shrink below ${blocked.index}.` };
-    }
-
-    const rebuilt: Slot[] = [];
-    for (const f of next) {
-      const existing = slots.filter((s) => s.floor === f.floor && s.index <= f.slots);
-      const byIndex = new Map(existing.map((s) => [s.index, s]));
-      for (let i = 1; i <= f.slots; i++) {
-        const keep = byIndex.get(i);
-        rebuilt.push(
-          keep
-            ? { ...keep, vehicle: f.vehicle }
-            : { code: slotCode(f.floor, i), floor: f.floor, index: i, vehicle: f.vehicle, status: "free" },
-        );
-      }
-    }
-    set({ config: next.map((f) => ({ ...f })), slots: rebuilt, now: Date.now() });
-    return { ok: true };
-  }
-
   function addUser(input: UserInput): ActionResult {
     const errors = validateUser(input, state.users);
     const first = Object.values(errors)[0];
@@ -175,7 +138,6 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
       name: input.name.trim(),
       role: input.role,
       vehicle: input.vehicle,
-      plate: normalizePlate(input.plate),
       active: input.active,
       createdAt: Date.now(),
       expiresAt: addOneMonth(Date.now()),
@@ -197,7 +159,6 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
               nfcId: normalizeNfc(input.nfcId),
               role: input.role,
               vehicle: input.vehicle,
-              plate: normalizePlate(input.plate),
               active: input.active,
             }
           : u,
@@ -225,7 +186,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     return { ok: true };
   }
 
-  function scan(rawNfc: string): ScanOutcome {
+  function scan(rawNfc: string, mode: ScanMode): ScanOutcome {
     const at = Date.now();
     const nfcId = normalizeNfc(rawNfc);
     const user = state.users.find((u) => u.nfcId.toUpperCase() === nfcId);
@@ -239,6 +200,8 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     if (!user) return record({ status: "unregistered", nfcId });
 
     const parked = state.slots.find((s) => s.occupant?.userId === user.id);
+    if (parked && mode === "entry") return record({ status: "already-inside", user, slot: parked.code, floor: parked.floor });
+    if (!parked && mode === "exit") return record({ status: "not-inside", user });
     if (parked) {
       // Leaving is always allowed, even if the pass lapsed while parked.
       const entry = state.logs.find((l) => l.event === "entry" && l.userId === user.id);
@@ -288,7 +251,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
       {
         slots: state.slots.map((s) =>
           s.code === free.code
-            ? { ...s, status: "occupied", occupant: { userId: user.id, name: user.name, plate: user.plate, nfcId: user.nfcId, since: at } }
+            ? { ...s, status: "occupied", occupant: { userId: user.id, name: user.name, nfcId: user.nfcId, since: at } }
             : s,
         ),
         logs: [log, ...state.logs],
@@ -303,7 +266,6 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    saveConfig,
     addUser,
     updateUser,
     removeUser,

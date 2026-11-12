@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartColumn, ExternalLink, Layers, LayoutGrid, LogOut, ScanLine, ScrollText, Users } from "lucide-react";
+import { ChartColumn, LayoutGrid, LogOut, ScanLine, ScrollText, Users } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { SparcGate } from "@/lib/sparc/SparcProvider";
@@ -11,7 +11,6 @@ import { ToastProvider } from "./ui";
 const NAV = [
   { href: "/admin", label: "Live status", short: "Live", icon: LayoutGrid },
   { href: "/admin/scan", label: "Entry / Exit", short: "Scan", icon: ScanLine },
-  { href: "/admin/slots", label: "Slots & floors", short: "Floors", icon: Layers },
   { href: "/admin/users", label: "Users", short: "Users", icon: Users },
   { href: "/admin/logs", label: "Audit log", short: "Log", icon: ScrollText },
   { href: "/admin/reports", label: "Reports", short: "Reports", icon: ChartColumn },
@@ -81,10 +80,6 @@ export function ConsoleShell({
           </nav>
 
           <div className="mt-auto space-y-3">
-            <Link href="/slots" className="side-link">
-              <ExternalLink className="size-[1.125rem]" strokeWidth={2} aria-hidden />
-              Driver availability page
-            </Link>
             <div className="flex items-center gap-2.5 border-t border-line px-1 pt-3">
               <span
                 aria-hidden
@@ -128,7 +123,7 @@ export function ConsoleShell({
         {/* Tab bar — phone and tablet */}
         <nav
           aria-label="Console"
-          className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
         >
           {NAV.map(({ href, short, icon: Icon }) => {
             const active = isActive(pathname, href);

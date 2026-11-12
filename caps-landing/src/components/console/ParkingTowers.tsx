@@ -1,26 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Building2, ExternalLink, LoaderCircle, Maximize, Minus, Plus } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Maximize, Minus, Plus } from "lucide-react";
 import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
 import { VEHICLE_LABEL, floorStats, formatDuration } from "@/lib/sparc/selectors";
-import type { Slot, SlotStatus } from "@/lib/sparc/types";
-import { FloorList } from "./FloorList";
-import type { ParkingScene, ParkingTarget } from "./parkingScene";
-import { SlotMap } from "./SlotMap";
-import { Badge, Panel, PanelHeader, VehicleBadge } from "./ui";
+import type { Slot } from "@/lib/sparc/types";
+import type { ParkingScene, ParkingTarget } from "./towerScene";
+import { Panel, PanelHeader, VehicleBadge } from "./ui";
 
-const STATUS_LABEL: Record<SlotStatus, string> = { free: "free", reserved: "reserved", occupied: "occupied" };
-const stageButton = "grid size-10 place-items-center rounded-lg border border-line-strong bg-canvas/80 text-ink-soft backdrop-blur transition-colors hover:border-gold/50 hover:text-ink";
+const stageButton =
+  "grid size-10 place-items-center rounded-lg border border-line-strong bg-canvas/80 text-ink-soft backdrop-blur transition-colors hover:border-gold/50 hover:text-ink";
 
 function describeSlot(slot: Slot) {
   if (slot.status === "free") return `Slot ${slot.code}, free`;
-  const who = slot.occupant ? ` by ${slot.occupant.name}` : "";
-  return `Slot ${slot.code}, ${STATUS_LABEL[slot.status]}${who}`;
+  return `Slot ${slot.code}, occupied${slot.occupant ? ` by ${slot.occupant.name}` : ""}`;
 }
 
-export function ParkingExplorer() {
+/** Live status of the mechanical parking towers, in 3D. */
+export function ParkingTowers() {
   const state = useSparcState();
   const now = useNow(30000);
   const stats = useMemo(() => floorStats(state.config, state.slots), [state.config, state.slots]);
@@ -32,7 +29,6 @@ export function ParkingExplorer() {
   const [floor, setFloor] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [hover, setHover] = useState<ParkingTarget | null>(null);
-  const [fallbackFloor, setFallbackFloor] = useState(1);
 
   function openFloor(next: number | null) {
     setFloor(next);
@@ -43,7 +39,7 @@ export function ParkingExplorer() {
   useEffect(() => {
     let cancelled = false;
     let created: ParkingScene | null = null;
-    import("./parkingScene")
+    import("./towerScene")
       .then(({ createParkingScene }) => {
         if (cancelled || !host.current) return;
         created = createParkingScene(host.current, {
@@ -54,11 +50,7 @@ export function ParkingExplorer() {
             const left = Math.min(Math.max(x, 100), el.parentElement!.clientWidth - 100);
             el.style.transform = `translate(${left}px, ${Math.max(y, 64)}px) translate(-50%, calc(-100% - 14px))`;
           },
-          onSelectFloor: (next) => {
-            setFloor(next);
-            setSelected(null);
-            setHover(null);
-          },
+          onSelectFloor: (next) => openFloor(next),
           onSelectSlot: (code) => setSelected((current) => (code === null || current === code ? null : code)),
         });
         scene.current = created;
@@ -84,27 +76,23 @@ export function ParkingExplorer() {
     if (status === "ready") scene.current?.setSelected(selected);
   }, [status, selected, floor]);
 
-  const header = (
-    <PanelHeader
-      id="floors-title"
-      title="Floors and slot map"
-      aside={
-        <Link href="/slots" className="inline-flex items-center gap-1.5 text-[0.8125rem] font-semibold text-ink-soft transition-colors hover:text-gold">
-          Driver view <ExternalLink className="size-3.5" aria-hidden />
-        </Link>
-      }
-    />
-  );
+  const header = <PanelHeader id="towers-title" title="Parking towers" />;
 
   if (status === "unsupported") {
     return (
-      <Panel aria-labelledby="floors-title">
+      <Panel aria-labelledby="towers-title">
         {header}
-        <p className="px-4 pb-4 text-sm text-ink-muted sm:px-5">This browser can&apos;t show the 3D building, so here is the flat map.</p>
-        <div className="grid gap-5 px-4 pb-5 sm:px-5 lg:grid-cols-[17rem_1fr] lg:gap-7">
-          <FloorList stats={stats} selected={fallbackFloor} onSelect={setFallbackFloor} />
-          <SlotMap slots={state.slots} floor={fallbackFloor} />
-        </div>
+        <p className="px-4 pb-3 text-sm text-ink-muted sm:px-5">This browser can&apos;t show the 3D towers. Here are the floors instead.</p>
+        <ul className="grid gap-2 px-4 pb-5 sm:grid-cols-5 sm:px-5">
+          {stats.map((f) => (
+            <li key={f.floor} className="rounded-xl border border-line bg-field/60 px-3.5 py-3">
+              <p className="font-display font-semibold text-ink">Floor {f.floor}</p>
+              <p className="num text-sm text-ink-muted">
+                {f.free} free / {f.total}
+              </p>
+            </li>
+          ))}
+        </ul>
       </Panel>
     );
   }
@@ -113,18 +101,16 @@ export function ParkingExplorer() {
   const visibleSlots = floor === null ? state.slots : state.slots.filter((s) => s.floor === floor);
   const counts = {
     free: visibleSlots.filter((s) => s.status === "free").length,
-    reserved: visibleSlots.filter((s) => s.status === "reserved").length,
     occupied: visibleSlots.filter((s) => s.status === "occupied").length,
   };
   const slot = selected ? state.slots.find((s) => s.code === selected) : undefined;
   const occupant = slot?.occupant;
   const hoverSlot = hover?.kind === "slot" ? state.slots.find((s) => s.code === hover.code) : undefined;
   const hoverFloor = hover?.kind === "floor" ? stats.find((f) => f.floor === hover.floor) : undefined;
-  const floorsTopDown = [...stats].reverse();
   const floorSlots = floor === null ? [] : [...visibleSlots].sort((a, b) => a.index - b.index);
 
   return (
-    <Panel aria-labelledby="floors-title">
+    <Panel aria-labelledby="towers-title">
       {header}
 
       <div
@@ -139,7 +125,7 @@ export function ParkingExplorer() {
           <div className="absolute inset-0 grid place-items-center text-sm text-ink-muted">
             <span className="inline-flex items-center gap-2">
               <LoaderCircle className="size-4 animate-spin" aria-hidden />
-              Loading the building
+              Loading the towers
             </span>
           </div>
         )}
@@ -147,62 +133,36 @@ export function ParkingExplorer() {
         <div className="pointer-events-none absolute top-3 left-3 max-w-[calc(100%-6rem)] sm:top-4 sm:left-4">
           {currentStat ? (
             <div className="pointer-events-auto flex flex-wrap items-center gap-2.5">
-              <button type="button" onClick={() => openFloor(null)} aria-label="Back to the whole building" className={`${stageButton} !flex !w-auto items-center gap-1.5 px-3 text-[0.8125rem] font-semibold`}>
+              <button
+                type="button"
+                onClick={() => openFloor(null)}
+                aria-label="Back to all towers"
+                className={`${stageButton} !flex !w-auto items-center gap-1.5 px-3 text-[0.8125rem] font-semibold`}
+              >
                 <ArrowLeft className="size-4" aria-hidden />
-                <span className="hidden sm:inline">Whole building</span>
+                <span className="hidden sm:inline">All towers</span>
               </button>
               <h3 className="font-display text-lg font-semibold text-ink">Floor {currentStat.floor}</h3>
               <VehicleBadge vehicle={currentStat.vehicle} />
             </div>
           ) : (
-            <p className="text-sm text-ink-soft">Select a floor to go inside. Drag to turn the building.</p>
+            <p className="text-sm text-ink-soft">Click a level to see its pallets. Drag to turn the towers.</p>
           )}
         </div>
 
-        <div role="group" aria-label="Choose a floor" className="absolute top-3 right-3 flex max-h-[calc(100%-1.5rem)] flex-col gap-1.5 overflow-y-auto sm:top-4 sm:right-4">
-          <button
-            type="button"
-            aria-pressed={floor === null}
-            aria-label="Whole building"
-            onClick={() => openFloor(null)}
-            className={`flex h-11 w-14 items-center justify-center rounded-lg border backdrop-blur transition-colors sm:w-32 sm:justify-start sm:gap-2 sm:px-3 ${
-              floor === null ? "border-gold/60 bg-gold/[0.16] text-ink" : "border-line-strong bg-canvas/80 text-ink-soft hover:border-gold/50"
-            }`}
-          >
-            <Building2 className="size-4" aria-hidden />
-            <span className="hidden text-[0.8125rem] font-semibold sm:inline">Building</span>
-          </button>
-          {floorsTopDown.map((f) => {
-            const active = floor === f.floor;
-            const hovered = hover?.kind === "floor" && hover.floor === f.floor;
-            return (
-              <button
-                key={f.floor}
-                type="button"
-                aria-pressed={active}
-                aria-label={`Floor ${f.floor}, ${VEHICLE_LABEL[f.vehicle]}, ${f.free} of ${f.total} free`}
-                onClick={() => openFloor(f.floor)}
-                onPointerEnter={() => scene.current?.highlightFloor(f.floor)}
-                onPointerLeave={() => scene.current?.highlightFloor(null)}
-                className={`flex h-11 w-14 flex-col items-center justify-center rounded-lg border leading-none backdrop-blur transition-colors sm:w-32 sm:flex-row sm:justify-between sm:px-3 ${
-                  active || hovered ? "border-gold/60 bg-gold/[0.16] text-ink" : "border-line-strong bg-canvas/80 text-ink-soft hover:border-gold/50"
-                }`}
-              >
-                <span className="font-display text-[0.9375rem] font-semibold">
-                  <span className="hidden sm:inline">Floor </span>
-                  {f.floor}
-                </span>
-                {f.free === 0 ? (
-                  <span className="mt-0.5 text-[0.6875rem] font-semibold text-[#ff9aab] sm:mt-0 sm:text-xs">Full</span>
-                ) : (
-                  <span className="num mt-0.5 text-[0.6875rem] text-ink-muted sm:mt-0 sm:text-xs">
-                    {f.free}
-                    <span className="hidden sm:inline"> free</span>
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* Floors are opened by clicking a level in the 3D view; this list keeps them reachable by keyboard. */}
+        <div role="group" aria-label="Choose a floor" className="sr-only">
+          {[...stats].reverse().map((f) => (
+            <button
+              key={f.floor}
+              type="button"
+              aria-pressed={floor === f.floor}
+              aria-label={`Floor ${f.floor}, ${VEHICLE_LABEL[f.vehicle]}, ${f.free} of ${f.total} free`}
+              onClick={() => openFloor(f.floor)}
+              onFocus={() => scene.current?.highlightFloor(f.floor)}
+              onBlur={() => scene.current?.highlightFloor(null)}
+            />
+          ))}
         </div>
 
         <div className="absolute bottom-3 left-3 flex gap-1.5 sm:bottom-4 sm:left-4">
@@ -235,7 +195,7 @@ export function ParkingExplorer() {
           {hoverSlot && (
             <>
               <p className="font-semibold text-ink">
-                {hoverSlot.code}, {STATUS_LABEL[hoverSlot.status]}
+                {hoverSlot.code}, {hoverSlot.status}
               </p>
               {hoverSlot.occupant && <p className="text-ink-muted">{hoverSlot.occupant.name}</p>}
             </>
@@ -261,32 +221,29 @@ export function ParkingExplorer() {
 
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3.5 sm:px-5">
         <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-ink-muted" aria-label="Legend">
-          {(["free", "reserved", "occupied"] as const).map((s) => (
-            <li key={s} className="flex items-center gap-1.5">
-              <span aria-hidden className="slot-cell !size-4 !h-4 !flex-none !rounded-[5px]" data-status={s} style={{ transition: "none" }} />
-              <span className="num">
-                {counts[s]} {STATUS_LABEL[s]}
-              </span>
-            </li>
-          ))}
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="size-2.5 rounded-[3px] bg-live" />
+            <span className="num">{counts.free} free</span>
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="size-2.5 rounded-[3px] bg-white/35" />
+            <span className="num">{counts.occupied} occupied</span>
+          </li>
         </ul>
 
         <div className="min-h-5 text-sm" aria-live="polite">
           {floor === null ? null : !slot ? (
-            <p className="text-ink-muted">Select a slot to see who is parked there.</p>
+            <p className="text-ink-muted">Select a pallet to see who is parked there.</p>
           ) : slot.status === "free" ? (
             <p className="text-ink-soft">
               <span className="font-semibold text-ink">{slot.code}</span> is free.
             </p>
           ) : occupant ? (
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-soft">
-              <Badge tone={slot.status === "reserved" ? "gold" : "neutral"}>{slot.status === "reserved" ? "Reserved" : "Occupied"}</Badge>
               <span>
                 <span className="font-semibold text-ink">{slot.code}</span> {occupant.name}
               </span>
-              <span className="num text-ink-muted">
-                {occupant.plate}, {slot.status === "reserved" ? "arriving" : `parked ${formatDuration((now - occupant.since) / 60000)}`}
-              </span>
+              <span className="num text-ink-muted">parked {formatDuration((now - occupant.since) / 60000)}</span>
             </p>
           ) : null}
         </div>

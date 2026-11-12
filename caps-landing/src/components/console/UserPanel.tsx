@@ -5,7 +5,7 @@ import { Nfc, RotateCw, X } from "lucide-react";
 import gsap from "gsap";
 import { useNfcReader } from "@/lib/nfc/useNfcReader";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
-import { addOneMonth, normalizeNfc, normalizePlate, validateUser, type UserErrors } from "@/lib/sparc/store";
+import { addOneMonth, normalizeNfc, validateUser, type UserErrors } from "@/lib/sparc/store";
 import { VEHICLE_LABEL, formatDate, isExpired } from "@/lib/sparc/selectors";
 import type { RegisteredUser, UserInput, UserRole, VehicleClass } from "@/lib/sparc/types";
 import { Field, useToast } from "./ui";
@@ -33,8 +33,8 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
 
   const [form, setForm] = useState<UserInput>(() =>
     editing
-      ? { name: editing.name, nfcId: editing.nfcId, role: editing.role, vehicle: editing.vehicle, plate: editing.plate, active: editing.active }
-      : { name: "", nfcId: mode.type === "add" ? (mode.nfc ?? "") : "", role: "student", vehicle: "light", plate: "", active: true },
+      ? { name: editing.name, nfcId: editing.nfcId, role: editing.role, vehicle: editing.vehicle, active: editing.active }
+      : { name: "", nfcId: mode.type === "add" ? (mode.nfc ?? "") : "", role: "student", vehicle: "light", active: true },
   );
   const [errors, setErrors] = useState<UserErrors>({});
   const [submitted, setSubmitted] = useState(false);
@@ -192,20 +192,6 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
                 </select>
               </Field>
             </div>
-
-            <Field label="Plate number" htmlFor="u-plate" error={errors.plate}>
-              <input
-                id="u-plate"
-                className="c-input w-full font-mono uppercase"
-                autoComplete="off"
-                spellCheck={false}
-                value={form.plate}
-                onChange={(e) => update("plate", e.target.value)}
-                onBlur={() => form.plate && update("plate", normalizePlate(form.plate))}
-                aria-invalid={invalid("plate")}
-                aria-describedby={errors.plate ? "u-plate-error" : undefined}
-              />
-            </Field>
 
             <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-line bg-field/60 px-3.5 py-3">
               <input type="checkbox" checked={form.active} onChange={(e) => update("active", e.target.checked)} className="mt-0.5 size-5 shrink-0 cursor-pointer accent-gold" />

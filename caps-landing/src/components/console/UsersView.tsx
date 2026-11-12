@@ -41,7 +41,7 @@ export function UsersView() {
       (u) =>
         (role === "all" || u.role === role) &&
         (status === "all" || (status === "active") === u.active) &&
-        (!q || u.name.toLowerCase().includes(q) || u.nfcId.toLowerCase().includes(q) || u.plate.toLowerCase().includes(q)),
+        (!q || u.name.toLowerCase().includes(q) || u.nfcId.toLowerCase().includes(q)),
     );
     return list.sort((a, b) => {
       const av = a[sort.key];
@@ -180,7 +180,7 @@ export function UsersView() {
                 setQuery(e.target.value);
                 setPage(0);
               }}
-              placeholder="Search name, card ID or plate"
+              placeholder="Search name or card ID"
               className="c-input w-full pl-9"
             />
           </div>
@@ -216,7 +216,7 @@ export function UsersView() {
                   </button>
                 }
               >
-                Try a different name, card ID or plate, or clear the filters.
+                Try a different name or card ID, or clear the filters.
               </EmptyState>
             ) : (
               <EmptyState
@@ -246,7 +246,7 @@ export function UsersView() {
                     {statusBadge(u)}
                   </div>
                   <p className="text-sm text-ink-muted">
-                    {ROLE_LABEL[u.role]} · {VEHICLE_LABEL[u.vehicle]} · <span className="font-mono">{u.plate}</span>
+                    {ROLE_LABEL[u.role]} · {VEHICLE_LABEL[u.vehicle]}
                     {insideIds.has(u.id) && " · parked now"}
                   </p>
                   <p className="flex items-center gap-1.5 text-xs text-ink-muted">
@@ -285,7 +285,6 @@ export function UsersView() {
                       <td>{ROLE_LABEL[u.role]}</td>
                       <td>
                         <p>{VEHICLE_LABEL[u.vehicle]}</p>
-                        <p className="font-mono text-xs text-ink-muted">{u.plate}</p>
                       </td>
                       <td>{statusBadge(u)}</td>
                       <td>
