@@ -72,10 +72,15 @@ export type UserInput = {
   active: boolean;
 };
 
+/** Which gate the admin is scanning for. */
+export type ScanMode = "entry" | "exit";
+
 /** Result of tapping a card at the entry/exit scanner. */
 export type ScanOutcome =
   | { status: "entered"; user: RegisteredUser; slot: string; floor: number }
   | { status: "exited"; user: RegisteredUser; slot: string; floor: number }
+  | { status: "already-inside"; user: RegisteredUser; slot: string; floor: number }
+  | { status: "not-inside"; user: RegisteredUser }
   | { status: "expired" | "no-pass" | "full"; user: RegisteredUser }
   | { status: "unregistered"; nfcId: string };
 

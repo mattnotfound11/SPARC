@@ -612,8 +612,7 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
     }
     if (floor === null) {
       const h = topY() + 2;
-      // nudge right so the model clears the floor buttons on the stage's right edge
-      const target = new THREE.Vector3(span * 0.07, h * 0.46, 0);
+      const target = new THREE.Vector3(0, h * 0.46, 0);
       const fitH = h / 2 / tan;
       const fitW = (span + 10) / 2 / (tan * camera.aspect);
       const distance = Math.max(fitH, fitW) * 1.1;
@@ -621,7 +620,7 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
       return { position: target.clone().addScaledVector(dir, distance), target, distance };
     }
     const y = levelY(floor);
-    const target = new THREE.Vector3(span * 0.06, y + 1, PALLET_Z * 0.45);
+    const target = new THREE.Vector3(0, y + 1, PALLET_Z * 0.45);
     const fitH = 7 / 2 / tan;
     const fitW = (span + 4) / 2 / (tan * camera.aspect);
     const distance = Math.max(fitH, fitW) * 1.05;

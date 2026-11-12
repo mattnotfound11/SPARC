@@ -15,7 +15,6 @@ import {
   floorStats,
   formatDate,
   formatDateTime,
-  formatDuration,
   isExpired,
   timeAgo,
 } from "@/lib/sparc/selectors";
@@ -96,7 +95,6 @@ function TodayPanel() {
   const rows = [
     { label: "Entries", value: String(report.entries) },
     { label: "Exits", value: String(report.exits) },
-    { label: "Average stay", value: formatDuration(report.avgStayMin) },
   ];
   return (
     <Panel aria-labelledby="today-title" className="p-4 sm:p-5">

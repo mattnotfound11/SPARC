@@ -85,7 +85,6 @@ export type DayReport = {
   exits: number;
   peakOccupancy: number;
   peakHour: number | null;
-  avgStayMin: number | null;
   hourly: HourPoint[];
   perFloor: { floor: number; entries: number }[];
 };
@@ -98,8 +97,6 @@ export function dayReport(state: SparcState, range: DayRange): DayReport {
   let running = 0;
   let peak = 0;
   let peakHour: number | null = null;
-  const entryAt = new Map<string, number>();
-  const stays: number[] = [];
   const floors = new Map<number, number>();
 
   for (const l of logs) {
@@ -107,7 +104,6 @@ export function dayReport(state: SparcState, range: DayRange): DayReport {
     if (l.event === "entry") {
       hourly[h].entries++;
       running++;
-      if (l.visitId) entryAt.set(l.visitId, l.at);
       if (l.floor) floors.set(l.floor, (floors.get(l.floor) ?? 0) + 1);
       if (running > peak) {
         peak = running;
@@ -116,8 +112,6 @@ export function dayReport(state: SparcState, range: DayRange): DayReport {
     } else {
       hourly[h].exits++;
       running = Math.max(0, running - 1);
-      const start = l.visitId ? entryAt.get(l.visitId) : undefined;
-      if (start) stays.push((l.at - start) / 60_000);
     }
   }
 
@@ -134,7 +128,6 @@ export function dayReport(state: SparcState, range: DayRange): DayReport {
     exits: hourly.reduce((n, p) => n + p.exits, 0),
     peakOccupancy: peak,
     peakHour,
-    avgStayMin: stays.length ? stays.reduce((a, b) => a + b, 0) / stays.length : null,
     hourly,
     perFloor: state.config.map((f) => ({ floor: f.floor, entries: floors.get(f.floor) ?? 0 })),
   };

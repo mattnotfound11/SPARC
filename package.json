@@ -9,7 +9,9 @@
     "dev": "npm run dev -w caps-landing",
     "build": "npm run build -w caps-landing",
     "start": "npm run start -w caps-landing",
-    "lint": "npm run lint -w caps-landing"
+    "lint": "npm run lint -w caps-landing",
+    "typecheck": "npm run typecheck -w caps-landing",
+    "test": "npm run test -w caps-landing"
   },
   "dependencies": {
     "@designcodeio/threeui": "^1.2.0"

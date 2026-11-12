@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Layers, LoaderCircle, Maximize, Minus, Plus } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Maximize, Minus, Plus } from "lucide-react";
 import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
 import { VEHICLE_LABEL, floorStats, formatDuration } from "@/lib/sparc/selectors";
 import type { Slot } from "@/lib/sparc/types";
@@ -107,7 +107,6 @@ export function ParkingTowers() {
   const occupant = slot?.occupant;
   const hoverSlot = hover?.kind === "slot" ? state.slots.find((s) => s.code === hover.code) : undefined;
   const hoverFloor = hover?.kind === "floor" ? stats.find((f) => f.floor === hover.floor) : undefined;
-  const floorsTopDown = [...stats].reverse();
   const floorSlots = floor === null ? [] : [...visibleSlots].sort((a, b) => a.index - b.index);
 
   return (
@@ -147,54 +146,23 @@ export function ParkingTowers() {
               <VehicleBadge vehicle={currentStat.vehicle} />
             </div>
           ) : (
-            <p className="text-sm text-ink-soft">Select a floor to see its pallets. Drag to turn the towers.</p>
+            <p className="text-sm text-ink-soft">Click a level to see its pallets. Drag to turn the towers.</p>
           )}
         </div>
 
-        <div role="group" aria-label="Choose a floor" className="absolute top-3 right-3 flex max-h-[calc(100%-1.5rem)] flex-col gap-1.5 overflow-y-auto sm:top-4 sm:right-4">
-          <button
-            type="button"
-            aria-pressed={floor === null}
-            aria-label="All towers"
-            onClick={() => openFloor(null)}
-            className={`flex h-11 w-14 items-center justify-center rounded-lg border backdrop-blur transition-colors sm:w-32 sm:justify-start sm:gap-2 sm:px-3 ${
-              floor === null ? "border-gold/60 bg-gold/[0.16] text-ink" : "border-line-strong bg-canvas/80 text-ink-soft hover:border-gold/50"
-            }`}
-          >
-            <Layers className="size-4" aria-hidden />
-            <span className="hidden text-[0.8125rem] font-semibold sm:inline">All towers</span>
-          </button>
-          {floorsTopDown.map((f) => {
-            const active = floor === f.floor;
-            const hovered = hover?.kind === "floor" && hover.floor === f.floor;
-            return (
-              <button
-                key={f.floor}
-                type="button"
-                aria-pressed={active}
-                aria-label={`Floor ${f.floor}, ${VEHICLE_LABEL[f.vehicle]}, ${f.free} of ${f.total} free`}
-                onClick={() => openFloor(f.floor)}
-                onPointerEnter={() => scene.current?.highlightFloor(f.floor)}
-                onPointerLeave={() => scene.current?.highlightFloor(null)}
-                className={`flex h-11 w-14 flex-col items-center justify-center rounded-lg border leading-none backdrop-blur transition-colors sm:w-32 sm:flex-row sm:justify-between sm:px-3 ${
-                  active || hovered ? "border-gold/60 bg-gold/[0.16] text-ink" : "border-line-strong bg-canvas/80 text-ink-soft hover:border-gold/50"
-                }`}
-              >
-                <span className="font-display text-[0.9375rem] font-semibold">
-                  <span className="hidden sm:inline">Floor </span>
-                  {f.floor}
-                </span>
-                {f.free === 0 ? (
-                  <span className="mt-0.5 text-[0.6875rem] font-semibold text-[#ff9aab] sm:mt-0 sm:text-xs">Full</span>
-                ) : (
-                  <span className="num mt-0.5 text-[0.6875rem] text-ink-muted sm:mt-0 sm:text-xs">
-                    {f.free}
-                    <span className="hidden sm:inline"> free</span>
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* Floors are opened by clicking a level in the 3D view; this list keeps them reachable by keyboard. */}
+        <div role="group" aria-label="Choose a floor" className="sr-only">
+          {[...stats].reverse().map((f) => (
+            <button
+              key={f.floor}
+              type="button"
+              aria-pressed={floor === f.floor}
+              aria-label={`Floor ${f.floor}, ${VEHICLE_LABEL[f.vehicle]}, ${f.free} of ${f.total} free`}
+              onClick={() => openFloor(f.floor)}
+              onFocus={() => scene.current?.highlightFloor(f.floor)}
+              onBlur={() => scene.current?.highlightFloor(null)}
+            />
+          ))}
         </div>
 
         <div className="absolute bottom-3 left-3 flex gap-1.5 sm:bottom-4 sm:left-4">

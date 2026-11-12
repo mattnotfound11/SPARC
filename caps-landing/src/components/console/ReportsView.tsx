@@ -5,7 +5,7 @@ import { Download, FileDown } from "lucide-react";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { downloadCsv } from "@/lib/sparc/csv";
 import { useSparcState } from "@/lib/sparc/SparcProvider";
-import { dayRanges, dayReport, formatClock, formatDuration, totalCapacity } from "@/lib/sparc/selectors";
+import { dayRanges, dayReport, formatClock, totalCapacity } from "@/lib/sparc/selectors";
 import { FlowChart, OccupancyChart } from "./HourlyCharts";
 import { PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
@@ -26,7 +26,6 @@ export function ReportsView() {
     { label: "Entries", value: String(report.entries) },
     { label: "Exits", value: String(report.exits) },
     { label: "Peak occupancy", value: String(report.peakOccupancy), note: report.peakHour !== null ? `at ${formatClock(report.peakHour)}` : undefined },
-    { label: "Average stay", value: formatDuration(report.avgStayMin) },
   ];
 
   function exportDay() {
@@ -36,7 +35,6 @@ export function ReportsView() {
       ["Entries", report.entries],
       ["Exits", report.exits],
       ["Peak occupancy", report.peakOccupancy, report.peakHour !== null ? formatClock(report.peakHour) : ""],
-      ["Average stay (min)", report.avgStayMin === null ? "" : Math.round(report.avgStayMin)],
       [],
       ["Hour", "Entries", "Exits", "Vehicles inside at end of hour"],
       ...report.hourly.filter((p) => p.occupancy !== null).map((p) => [formatClock(p.hour), p.entries, p.exits, p.occupancy]),
@@ -49,14 +47,13 @@ export function ReportsView() {
 
   function exportWeek() {
     downloadCsv(`sparc-7-day-summary-${days[0].key}.csv`, [
-      ["Date", "Entries", "Exits", "Peak occupancy", "Peak hour", "Average stay (min)"],
+      ["Date", "Entries", "Exits", "Peak occupancy", "Peak hour"],
       ...reports.map((r) => [
         r.range.key,
         r.entries,
         r.exits,
         r.peakOccupancy,
         r.peakHour !== null ? formatClock(r.peakHour) : "",
-        r.avgStayMin === null ? "" : Math.round(r.avgStayMin),
       ]),
     ]);
     toast("Exported the 7-day summary.");
@@ -146,7 +143,6 @@ export function ReportsView() {
                   <th>Day</th>
                   <th>Entries</th>
                   <th>Peak</th>
-                  <th>Avg stay</th>
                 </tr>
               </thead>
               <tbody>
@@ -162,7 +158,6 @@ export function ReportsView() {
                       {r.peakOccupancy}
                       {r.peakHour !== null && <span className="text-ink-muted"> · {formatClock(r.peakHour)}</span>}
                     </td>
-                    <td className="num">{formatDuration(r.avgStayMin)}</td>
                   </tr>
                 ))}
               </tbody>
