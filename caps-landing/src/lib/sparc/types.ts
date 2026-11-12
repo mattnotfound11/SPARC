@@ -3,14 +3,14 @@
 /** "heavy" = SUVs and vans (floors 1–2 by default), "light" = lighter vehicles (floors 3–5). */
 export type VehicleClass = "heavy" | "light";
 
-export type SlotStatus = "free" | "reserved" | "occupied";
+export type SlotStatus = "free" | "occupied";
 
 export type Occupant = {
   userId: string;
   name: string;
   plate: string;
   nfcId: string;
-  /** ms epoch the slot was reserved / the driver entered */
+  /** ms epoch the driver entered */
   since: number;
 };
 
@@ -75,10 +75,15 @@ export type UserInput = {
   active: boolean;
 };
 
+/** Which gate the admin is scanning for. */
+export type ScanMode = "entry" | "exit";
+
 /** Result of tapping a card at the entry/exit scanner. */
 export type ScanOutcome =
   | { status: "entered"; user: RegisteredUser; slot: string; floor: number }
   | { status: "exited"; user: RegisteredUser; slot: string; floor: number }
+  | { status: "already-inside"; user: RegisteredUser; slot: string; floor: number }
+  | { status: "not-inside"; user: RegisteredUser }
   | { status: "expired" | "no-pass" | "full"; user: RegisteredUser }
   | { status: "unregistered"; nfcId: string };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Car, Clock } from "lucide-react";
+import { Car } from "lucide-react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import type { Slot, SlotStatus } from "@/lib/sparc/types";
@@ -10,7 +10,7 @@ import { VehicleBadge } from "./ui";
 
 gsap.registerPlugin(useGSAP);
 
-const STATUS_LABEL: Record<SlotStatus, string> = { free: "Free", reserved: "Reserved", occupied: "Occupied" };
+const STATUS_LABEL: Record<SlotStatus, string> = { free: "Free", occupied: "Occupied" };
 const ROW = 6; // two blocks of three, with an aisle between
 
 function chunk<T>(items: T[], size: number) {
@@ -32,7 +32,6 @@ function Cell({
     <>
       <span>{slot.code}</span>
       {slot.status === "occupied" && <Car className="size-3.5" strokeWidth={2} aria-hidden />}
-      {slot.status === "reserved" && <Clock className="size-3.5" strokeWidth={2} aria-hidden />}
     </>
   );
   const label = `Slot ${slot.code}, ${STATUS_LABEL[slot.status].toLowerCase()}`;
@@ -78,7 +77,6 @@ export function SlotMap({
   const vehicle = mine[0]?.vehicle ?? "light";
   const counts = {
     free: mine.filter((s) => s.status === "free").length,
-    reserved: mine.filter((s) => s.status === "reserved").length,
     occupied: mine.filter((s) => s.status === "occupied").length,
   };
 
@@ -110,7 +108,7 @@ export function SlotMap({
           <VehicleBadge vehicle={vehicle} />
         </div>
         <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-ink-muted" aria-label="Legend">
-          {(["free", "reserved", "occupied"] as const).map((s) => (
+          {(["free", "occupied"] as const).map((s) => (
             <li key={s} className="flex items-center gap-1.5">
               <span
                 aria-hidden
