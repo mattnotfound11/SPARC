@@ -19,7 +19,7 @@ import {
   timeAgo,
 } from "@/lib/sparc/selectors";
 import type { LogEntry } from "@/lib/sparc/types";
-import { ParkingExplorer } from "./ParkingExplorer";
+import { ParkingTowers } from "./ParkingTowers";
 import { Count, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
 /** Scroll-reveal wrapper for panels below the fold, same pattern as the landing page. */
@@ -255,7 +255,7 @@ export function LiveStatusView() {
       </div>
 
       <div data-enter>
-        <ParkingExplorer />
+        <ParkingTowers />
       </div>
 
       <div data-enter className="grid items-start gap-5 lg:grid-cols-2 lg:gap-6">

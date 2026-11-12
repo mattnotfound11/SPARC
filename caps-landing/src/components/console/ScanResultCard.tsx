@@ -90,7 +90,7 @@ export function ScanResultCard({ outcome, now }: { outcome: ScanOutcome; now: nu
           </p>
           <p className="mt-1 truncate font-display text-2xl font-semibold text-ink">{user.name}</p>
           <p className="mt-0.5 text-sm text-ink-muted">
-            {ROLE_LABEL[user.role]} · <span className="font-mono">{user.plate}</span> · {VEHICLE_LABEL[user.vehicle]}
+            {ROLE_LABEL[user.role]} · {VEHICLE_LABEL[user.vehicle]}
           </p>
         </div>
         <Badge tone={pass.state === "active" ? "live" : "gold"}>

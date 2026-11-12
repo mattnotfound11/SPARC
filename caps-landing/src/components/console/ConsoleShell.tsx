@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartColumn, ExternalLink, LayoutGrid, LogOut, ScanLine, ScrollText, Users } from "lucide-react";
+import { ChartColumn, LayoutGrid, LogOut, ScanLine, ScrollText, Users } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { SparcGate } from "@/lib/sparc/SparcProvider";
@@ -80,10 +80,6 @@ export function ConsoleShell({
           </nav>
 
           <div className="mt-auto space-y-3">
-            <Link href="/slots" className="side-link">
-              <ExternalLink className="size-[1.125rem]" strokeWidth={2} aria-hidden />
-              Driver availability page
-            </Link>
             <div className="flex items-center gap-2.5 border-t border-line px-1 pt-3">
               <span
                 aria-hidden
