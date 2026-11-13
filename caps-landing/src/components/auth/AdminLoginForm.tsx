@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
-import { DEMO_EMAIL, DEMO_PASSWORD, signIn, useAdminSession } from "@/lib/mockSession";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/mockSession";
+import { signIn, useAdminSession, usingMockLogin } from "@/lib/session";
 import { FormNotice } from "./FormNotice";
 import { PasswordField, TextField } from "./fields";
 
@@ -16,12 +17,13 @@ export function AdminLoginForm() {
   const [pending, setPending] = useState(false);
   useAuthMotion(root);
 
-  // Already signed in: go straight to the console.
+  // Already signed in: go straight to the console. Not while a sign-in is in flight: Supabase
+  // reports the session before the admin check finishes, and a failed check must stay on this page.
   useEffect(() => {
-    if (session.status === "in") router.replace("/admin");
-  }, [session.status, router]);
+    if (session.status === "in" && !pending) router.replace("/admin");
+  }, [session.status, pending, router]);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const email = String(data.get("email") ?? "");
@@ -33,14 +35,13 @@ export function AdminLoginForm() {
     }
     setError(null);
     setPending(true);
-    window.setTimeout(() => {
-      if (signIn(email, password)) {
-        router.replace("/admin");
-      } else {
-        setPending(false);
-        setError("That email and password don't match an administrator account.");
-      }
-    }, 450);
+    const failure = await signIn(email, password);
+    if (failure) {
+      setPending(false);
+      setError(failure);
+    } else {
+      router.replace("/admin");
+    }
   }
 
   return (
@@ -70,12 +71,14 @@ export function AdminLoginForm() {
           </p>
         )}
 
-        <div data-anim className="mb-4">
-          <FormNotice>
-            Prototype access: <span className="font-mono text-ink">{DEMO_EMAIL}</span> / <span className="font-mono text-ink">{DEMO_PASSWORD}</span>. The console shows
-            simulated data only.
-          </FormNotice>
-        </div>
+        {usingMockLogin && (
+          <div data-anim className="mb-4">
+            <FormNotice>
+              Development access (no database configured): <span className="font-mono text-ink">{DEMO_EMAIL}</span> /{" "}
+              <span className="font-mono text-ink">{DEMO_PASSWORD}</span>. Data is local to this browser.
+            </FormNotice>
+          </div>
+        )}
 
         <div
           data-anim

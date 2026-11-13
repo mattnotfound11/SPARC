@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChartColumn, LayoutGrid, LogOut, ScanLine, ScrollText, Users } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
-import { SparcGate } from "@/lib/sparc/SparcProvider";
+import { SparcGate, useSyncNotice } from "@/lib/sparc/SparcProvider";
+import { loginRequired, signOut } from "@/lib/session";
 import { ToastProvider } from "./ui";
 
 const NAV = [
@@ -26,7 +27,7 @@ function SignOut({ children, className }: { children: React.ReactNode; className
     <button
       type="button"
       className={className}
-      onClick={() => router.push("/")}
+      onClick={() => (loginRequired ? void signOut().then(() => router.replace("/admin/login")) : router.push("/"))}
     >
       {children}
     </button>
@@ -56,6 +57,7 @@ export function ConsoleShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const notice = useSyncNotice();
 
   return (
     <ToastProvider>
@@ -93,7 +95,7 @@ export function ConsoleShell({
               </div>
               <SignOut className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/[0.05] hover:text-ink">
                 <LogOut className="size-4" aria-hidden />
-                <span className="sr-only">Back to the SPARC website</span>
+                <span className="sr-only">{loginRequired ? "Sign out" : "Back to the SPARC website"}</span>
               </SignOut>
             </div>
           </div>
@@ -109,13 +111,18 @@ export function ConsoleShell({
           <div className="flex items-center gap-1">
             <SignOut className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:text-ink">
               <LogOut className="size-[1.125rem]" aria-hidden />
-              <span className="sr-only">Back to the SPARC website</span>
+              <span className="sr-only">{loginRequired ? "Sign out" : "Back to the SPARC website"}</span>
             </SignOut>
           </div>
         </header>
 
         <main id="main-content" className="px-4 pt-5 pb-28 sm:px-6 lg:pl-[calc(16rem+2rem)] lg:pr-8 lg:pt-8 lg:pb-12">
           <div className="mx-auto max-w-[84rem]">
+            {notice && (
+              <p role="alert" className="mb-4 rounded-xl border border-crimson/40 bg-crimson/[0.1] px-3.5 py-3 text-[0.8125rem] text-[#ffb3c0]">
+                {notice}
+              </p>
+            )}
             <SparcGate fallback={<ConsoleSkeleton />}>{children}</SparcGate>
           </div>
         </main>
