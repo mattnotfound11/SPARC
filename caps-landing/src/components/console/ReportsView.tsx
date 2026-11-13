@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Download, FileDown } from "lucide-react";
+import { CalendarDays, Download, FileDown } from "lucide-react";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { downloadCsv } from "@/lib/sparc/csv";
 import { useSparcState } from "@/lib/sparc/SparcProvider";
-import { dayRanges, dayReport, formatClock, totalCapacity } from "@/lib/sparc/selectors";
+import { combineReports, dayRangeFor, dayRanges, dayReport, formatClock, parseDateKey, totalCapacity, type DayReport } from "@/lib/sparc/selectors";
 import { FlowChart, OccupancyChart } from "./HourlyCharts";
 import { PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
@@ -13,26 +13,51 @@ export function ReportsView() {
   const root = useRef<HTMLDivElement>(null);
   const state = useSparcState();
   const toast = useToast();
-  const [dayIndex, setDayIndex] = useState(0);
+  // "today" | "yesterday" | "week" | a "YYYY-MM-DD" date picked from the calendar
+  const [view, setView] = useState("today");
   useEnter(root);
 
   const days = useMemo(() => dayRanges(state.now), [state.now]);
   const reports = useMemo(() => days.map((d) => dayReport(state, d)), [state, days]);
-  const report = reports[dayIndex];
+  const week = useMemo(() => combineReports(reports, "Last week"), [reports]);
+  const picked = view === "today" || view === "yesterday" || view === "week" ? null : view;
+  const report: DayReport = useMemo(() => {
+    if (view === "today") return reports[0];
+    if (view === "yesterday") return reports[1];
+    if (view === "week") return week;
+    const known = reports.find((r) => r.range.key === view);
+    const date = parseDateKey(view);
+    return known ?? (date ? dayReport(state, dayRangeFor(date, state.now)) : reports[0]);
+  }, [view, reports, week, state]);
+  // the days covered, oldest first (for the CSV)
+  const covered = view === "week" ? [...reports].reverse() : [report];
   const capacity = totalCapacity(state.config);
+
+  function selectDay(key: string) {
+    setView(key === days[0].key ? "today" : key === days[1].key ? "yesterday" : key);
+  }
 
   const summary = [
     { label: "Entries", value: String(report.entries) },
     { label: "Exits", value: String(report.exits) },
-    { label: "Peak occupancy", value: String(report.peakOccupancy), note: report.peakHour !== null ? `at ${formatClock(report.peakHour)}` : undefined },
+    { label: "Peak occupancy", value: String(report.peakOccupancy), note:
+        report.peakHour === null
+          ? undefined
+          : view === "week" && week.peakDay
+            ? `${week.peakDay.label} at ${formatClock(report.peakHour)}`
+            : `at ${formatClock(report.peakHour)}`,
+    },
   ];
 
   function exportDay() {
-    downloadCsv(`sparc-daily-report-${report.range.key}.csv`, [
+    const name = view === "week" ? `sparc-report-${covered[0].range.key}-to-${covered[covered.length - 1].range.key}` : `sparc-daily-report-${report.range.key}`;
+    downloadCsv(`${name}.csv`, [
       ["Date", "Hour", "Entries", "Exits", "Vehicles inside at end of hour"],
-      ...report.hourly
-        .filter((p) => p.occupancy !== null)
-        .map((p) => [report.range.key, `${String(p.hour).padStart(2, "0")}:00`, p.entries, p.exits, p.occupancy]),
+      ...covered.flatMap((r) =>
+        r.hourly
+          .filter((p) => p.occupancy !== null)
+          .map((p) => [r.range.key, `${String(p.hour).padStart(2, "0")}:00`, p.entries, p.exits, p.occupancy]),
+      ),
     ]);
     toast(`Exported the report for ${report.range.label}.`);
   }
@@ -70,14 +95,37 @@ export function ReportsView() {
         }
       />
 
-      <div data-enter className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div className="seg" role="tablist" aria-label="Report day">
-          {days.map((d, i) => (
-            <button key={d.key} type="button" role="tab" aria-selected={dayIndex === i} onClick={() => setDayIndex(i)}>
-              {d.label}
+      <div data-enter className="flex flex-wrap items-center gap-2.5">
+        <div className="seg" role="tablist" aria-label="Report period">
+          {(
+            [
+              ["today", "Today"],
+              ["yesterday", "Yesterday"],
+              ["week", "Last week"],
+            ] as const
+          ).map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}>
+              {label}
             </button>
           ))}
         </div>
+        <label
+          className={`flex h-[2.375rem] cursor-pointer items-center gap-2 rounded-xl border px-3 text-[0.8125rem] font-semibold transition-colors ${
+            picked ? "border-gold/60 bg-gold/[0.1] text-ink" : "border-line bg-field text-ink-muted hover:text-ink"
+          }`}
+        >
+          <CalendarDays className="size-4 shrink-0" aria-hidden />
+          <span className="sr-only">Pick a date</span>
+          <input
+            type="date"
+            value={picked ?? ""}
+            max={days[0].key}
+            onChange={(e) => (e.target.value ? selectDay(e.target.value) : setView("today"))}
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            className="bg-transparent text-inherit [color-scheme:dark] outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+            aria-label="Pick a date to see its report"
+          />
+        </label>
       </div>
 
       <Panel data-enter aria-label={`Summary for ${report.range.label}`} className="p-4 sm:p-5">
@@ -120,10 +168,10 @@ export function ReportsView() {
               </tr>
             </thead>
             <tbody>
-              {reports.map((r, i) => (
-                <tr key={r.range.key} className={i === dayIndex ? "bg-gold/[0.05]" : ""}>
+              {reports.map((r) => (
+                <tr key={r.range.key} className={report.range.key === r.range.key ? "bg-gold/[0.05]" : ""}>
                   <td>
-                    <button type="button" onClick={() => setDayIndex(i)} aria-current={i === dayIndex ? "true" : undefined} className="rounded-md font-semibold text-ink underline-offset-4 hover:text-gold hover:underline">
+                    <button type="button" onClick={() => selectDay(r.range.key)} aria-current={report.range.key === r.range.key ? "true" : undefined} className="rounded-md font-semibold text-ink underline-offset-4 hover:text-gold hover:underline">
                       {r.range.label}
                     </button>
                   </td>

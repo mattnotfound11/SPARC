@@ -51,23 +51,41 @@ export function availabilityTone(free: number, total: number): "crimson" | "gold
 
 export type DayRange = { key: string; start: number; end: number; label: string; short: string };
 
+function dateKey(dt: Date) {
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
+/** The calendar day containing `date`, labelled relative to `now` (Today, Yesterday, or "Tue, Nov 10"). */
+export function dayRangeFor(date: Date | number, now: number): DayRange {
+  const dt = new Date(startOfDay(typeof date === "number" ? date : date.getTime()));
+  const next = new Date(dt);
+  next.setDate(next.getDate() + 1);
+  const ago = Math.round((startOfDay(now) - dt.getTime()) / 86_400_000);
+  const weekday = dt.toLocaleDateString("en-PH", { weekday: "short" });
+  const date_ = dt.toLocaleDateString("en-PH", { month: "short", day: "numeric", ...(dt.getFullYear() !== new Date(now).getFullYear() && { year: "numeric" }) });
+  return {
+    key: dateKey(dt),
+    start: dt.getTime(),
+    end: next.getTime(),
+    label: ago === 0 ? "Today" : ago === 1 ? "Yesterday" : `${weekday}, ${date_}`,
+    short: ago === 0 ? "Today" : ago === 1 ? "Yest." : weekday,
+  };
+}
+
+/** Parses a `YYYY-MM-DD` key (from a date input) as a local calendar day. */
+export function parseDateKey(key: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) return null;
+  const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return Number.isNaN(dt.getTime()) || dateKey(dt) !== key ? null : dt;
+}
+
 export function dayRanges(now: number): DayRange[] {
   const today = startOfDay(now);
   return Array.from({ length: DAYS_OF_HISTORY }, (_, d) => {
     const dt = new Date(today);
     dt.setDate(dt.getDate() - d);
-    const start = dt.getTime();
-    const next = new Date(dt);
-    next.setDate(next.getDate() + 1);
-    const weekday = dt.toLocaleDateString("en-PH", { weekday: "short" });
-    const date = dt.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
-    return {
-      key: `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`,
-      start,
-      end: next.getTime(),
-      label: d === 0 ? "Today" : d === 1 ? "Yesterday" : `${weekday}, ${date}`,
-      short: d === 0 ? "Today" : d === 1 ? "Yest." : weekday,
-    };
+    return dayRangeFor(dt, now);
   });
 }
 
@@ -205,4 +223,33 @@ export function passStatus(user: RegisteredUser, now: number): PassStatus {
   if (!user.active) return { state: "suspended", daysLeft };
   if (user.expiresAt <= now) return { state: "expired", daysLeft: 0 };
   return { state: daysLeft <= EXPIRING_DAYS ? "expiring" : "active", daysLeft };
+}
+
+/**
+ * One report spanning several days (newest first, as from dayRanges): totals add up, hourly entries/exits
+ * are summed, and each hour's occupancy is the busiest it got at that hour on any of the days.
+ */
+export function combineReports(reports: DayReport[], label: string): DayReport & { peakDay: DayRange | null } {
+  const oldest = reports[reports.length - 1].range;
+  const newest = reports[0].range;
+  const hourly: HourPoint[] = Array.from({ length: 24 }, (_, hour) => {
+    const occ = reports.map((r) => r.hourly[hour].occupancy).filter((v): v is number => v !== null);
+    return {
+      hour,
+      entries: reports.reduce((n, r) => n + r.hourly[hour].entries, 0),
+      exits: reports.reduce((n, r) => n + r.hourly[hour].exits, 0),
+      occupancy: occ.length ? Math.max(...occ) : null,
+    };
+  });
+  const busiest = reports.reduce<DayReport | null>((b, r) => (r.peakOccupancy > (b?.peakOccupancy ?? 0) ? r : b), null);
+  return {
+    range: { key: `${oldest.key}_${newest.key}`, start: oldest.start, end: newest.end, label, short: label },
+    entries: reports.reduce((n, r) => n + r.entries, 0),
+    exits: reports.reduce((n, r) => n + r.exits, 0),
+    peakOccupancy: busiest?.peakOccupancy ?? 0,
+    peakHour: busiest?.peakHour ?? null,
+    peakDay: busiest?.range ?? null,
+    hourly,
+    perFloor: reports[0].perFloor.map((f) => ({ floor: f.floor, entries: reports.reduce((n, r) => n + (r.perFloor.find((x) => x.floor === f.floor)?.entries ?? 0), 0) })),
+  };
 }
