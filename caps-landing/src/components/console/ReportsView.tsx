@@ -20,7 +20,6 @@ export function ReportsView() {
   const reports = useMemo(() => days.map((d) => dayReport(state, d)), [state, days]);
   const report = reports[dayIndex];
   const capacity = totalCapacity(state.config);
-  const maxFloor = Math.max(1, ...report.perFloor.map((f) => f.entries));
 
   const summary = [
     { label: "Entries", value: String(report.entries) },
@@ -38,9 +37,6 @@ export function ReportsView() {
       [],
       ["Hour", "Entries", "Exits", "Vehicles inside at end of hour"],
       ...report.hourly.filter((p) => p.occupancy !== null).map((p) => [formatClock(p.hour), p.entries, p.exits, p.occupancy]),
-      [],
-      ["Floor", "Entries"],
-      ...report.perFloor.map((f) => [`Floor ${f.floor}`, f.entries]),
     ]);
     toast(`Exported the report for ${report.range.label}.`);
   }
@@ -115,56 +111,37 @@ export function ReportsView() {
         </Panel>
       </div>
 
-      <div data-enter className="grid gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-6">
-        <Panel aria-labelledby="floor-title">
-          <PanelHeader id="floor-title" title="Entries by floor" />
-          <ul className="space-y-3.5 px-4 pb-5 sm:px-5">
-            {report.perFloor.map((f) => (
-              <li key={f.floor}>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-ink-soft">Floor {f.floor}</span>
-                  <span className="num font-semibold text-ink">{f.entries}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.07]" aria-hidden>
-                  <div className="h-full rounded-full bg-gold" style={{ width: `${(f.entries / maxFloor) * 100}%`, transition: "width 0.9s cubic-bezier(0.16, 1, 0.3, 1)" }} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-
-        <Panel aria-labelledby="week-title">
-          <PanelHeader id="week-title" title="Last 7 days" />
-          <div className="overflow-x-auto border-t border-line">
-            <table className="c-table">
-              <caption className="sr-only">Daily totals for the last seven days</caption>
-              <thead>
-                <tr>
-                  <th>Day</th>
-                  <th>Entries</th>
-                  <th>Peak</th>
+      <Panel data-enter aria-labelledby="week-title">
+        <PanelHeader id="week-title" title="Last 7 days" />
+        <div className="overflow-x-auto border-t border-line">
+          <table className="c-table">
+            <caption className="sr-only">Daily totals for the last seven days</caption>
+            <thead>
+              <tr>
+                <th>Day</th>
+                <th>Entries</th>
+                <th>Peak</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reports.map((r, i) => (
+                <tr key={r.range.key} className={i === dayIndex ? "bg-gold/[0.05]" : ""}>
+                  <td>
+                    <button type="button" onClick={() => setDayIndex(i)} aria-current={i === dayIndex ? "true" : undefined} className="rounded-md font-semibold text-ink underline-offset-4 hover:text-gold hover:underline">
+                      {r.range.label}
+                    </button>
+                  </td>
+                  <td className="num">{r.entries}</td>
+                  <td className="num">
+                    {r.peakOccupancy}
+                    {r.peakHour !== null && <span className="text-ink-muted"> · {formatClock(r.peakHour)}</span>}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {reports.map((r, i) => (
-                  <tr key={r.range.key} className={i === dayIndex ? "bg-gold/[0.05]" : ""}>
-                    <td>
-                      <button type="button" onClick={() => setDayIndex(i)} aria-current={i === dayIndex ? "true" : undefined} className="rounded-md font-semibold text-ink underline-offset-4 hover:text-gold hover:underline">
-                        {r.range.label}
-                      </button>
-                    </td>
-                    <td className="num">{r.entries}</td>
-                    <td className="num">
-                      {r.peakOccupancy}
-                      {r.peakHour !== null && <span className="text-ink-muted"> · {formatClock(r.peakHour)}</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
     </div>
   );
 }
