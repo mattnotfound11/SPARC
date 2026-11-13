@@ -1,11 +1,20 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { createSparcStore, type SparcState, type SparcStore } from "./store";
+import { STORAGE_KEY, createSparcStore, type SparcState, type SparcStorage, type SparcStore } from "./store";
 
 const StoreContext = createContext<SparcStore | null>(null);
 
 const subscribeNever = () => () => {};
+
+/** localStorage can throw (blocked cookies, some private modes); then the data just stays in memory. */
+function browserStorage(): SparcStorage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Holds the console's data store. The store is created on the client after mount
@@ -13,7 +22,18 @@ const subscribeNever = () => () => {};
  */
 export function SparcProvider({ children }: { children: React.ReactNode }) {
   const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
-  const store = useMemo(() => (mounted ? createSparcStore() : null), [mounted]);
+  const store = useMemo(() => (mounted ? createSparcStore(undefined, browserStorage()) : null), [mounted]);
+
+  // Another tab (say the landing page next to the console) saved a change: show it here too.
+  useEffect(() => {
+    if (!store) return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) store.refresh();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [store]);
+
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
 

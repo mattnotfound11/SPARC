@@ -40,6 +40,8 @@ export type SparcStore = {
   renewUser: (id: string) => ActionResult;
   /** A card tap at the entry or exit scanner: does what the mode says, or explains why not. */
   scan: (nfcId: string, mode: ScanMode) => ScanOutcome;
+  /** Re-reads saved data, e.g. after another browser tab changed it. Does not write back. */
+  refresh: () => void;
 };
 
 const MAX_SCANS = 50;
@@ -108,23 +110,78 @@ function demoExpiredUser(now: number): RegisteredUser {
   };
 }
 
-export function createSparcStore(now: number = Date.now()): SparcStore {
+/** The bit of `localStorage` the store needs, so tests can pass a fake. */
+export type SparcStorage = Pick<Storage, "getItem" | "setItem">;
+
+export const STORAGE_KEY = "sparc:data:v1";
+
+type SavedState = Omit<SparcState, "now">;
+
+function isSaved(d: unknown): d is SavedState {
+  if (!d || typeof d !== "object") return false;
+  const s = d as Record<string, unknown>;
+  return (
+    ["config", "slots", "users", "logs", "scans"].every((k) => Array.isArray(s[k])) &&
+    ["nextLogSeq", "nextScanSeq", "nextUserSeq"].every((k) => typeof s[k] === "number")
+  );
+}
+
+function readSaved(storage: SparcStorage | undefined): SavedState | null {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data: unknown = JSON.parse(raw);
+    return isSaved(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `storage` (the browser's localStorage) makes the data survive a refresh. Without it the store is
+ * in-memory only, which is what the tests use.
+ */
+export function createSparcStore(now: number = Date.now(), storage?: SparcStorage): SparcStore {
   const config = DEFAULT_CONFIG.map((f) => ({ ...f }));
-  let state: SparcState = {
-    now,
-    config,
-    slots: buildSlots(config),
-    users: [demoExpiredUser(now)],
-    logs: [],
-    scans: [],
-    nextLogSeq: 1,
-    nextScanSeq: 1,
-    nextUserSeq: 1,
-  };
+  const saved = readSaved(storage);
+  let state: SparcState = saved
+    ? { ...saved, now }
+    : {
+        now,
+        config,
+        slots: buildSlots(config),
+        users: [demoExpiredUser(now)],
+        logs: [],
+        scans: [],
+        nextLogSeq: 1,
+        nextScanSeq: 1,
+        nextUserSeq: 1,
+      };
   const listeners = new Set<() => void>();
+
+  function persist() {
+    if (!storage) return;
+    const { now: _now, ...data } = state;
+    void _now;
+    try {
+      storage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // storage full or blocked (private mode): keep working in memory
+    }
+  }
+  if (!saved) persist(); // the first run saves the seed, so removing the demo user sticks
 
   function set(patch: Partial<SparcState>) {
     state = { ...state, ...patch };
+    persist();
+    listeners.forEach((l) => l());
+  }
+
+  function refresh() {
+    const latest = readSaved(storage);
+    if (!latest) return;
+    state = { ...latest, now: Date.now() };
     listeners.forEach((l) => l());
   }
 
@@ -271,6 +328,7 @@ export function createSparcStore(now: number = Date.now()): SparcStore {
     removeUser,
     renewUser,
     scan,
+    refresh,
   };
 }
 
