@@ -15,6 +15,7 @@ function user(n: number, vehicle: VehicleClass = "light", extra: Partial<UserInp
   const hex = n.toString(16).toUpperCase().padStart(2, "0");
   return {
     name: `Driver ${n}`,
+    studentId: "",
     nfcId: `04:A1:B2:${hex}`,
     role: "student",
     vehicle,

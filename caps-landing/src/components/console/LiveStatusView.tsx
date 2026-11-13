@@ -7,7 +7,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { useReveal } from "@/hooks/useReveal";
-import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
+import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
 import {
   buildingTotals,
   dayRanges,
@@ -20,7 +20,8 @@ import {
 } from "@/lib/sparc/selectors";
 import type { LogEntry } from "@/lib/sparc/types";
 import { ParkingTowers } from "./ParkingTowers";
-import { Count, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "./ui";
+import { Count, EmptyState, PageHeader, Panel, PanelHeader } from "./ui";
+import { useRenewConfirm } from "./RenewConfirm";
 
 /** Scroll-reveal wrapper for panels below the fold, same pattern as the landing page. */
 function RevealPanel({ delay = 0, className = "", children }: { delay?: number; className?: string; children: React.ReactNode }) {
@@ -116,15 +117,9 @@ function TodayPanel() {
 /* ── Expired monthly passes ───────────────────────────────── */
 function ExpiredPassesPanel() {
   const state = useSparcState();
-  const store = useSparcStore();
-  const toast = useToast();
   const now = useNow(30000);
   const expired = useMemo(() => state.users.filter((u) => isExpired(u, now)), [state.users, now]);
-
-  function renew(name: string, id: string) {
-    const result = store.renewUser(id);
-    toast(result.ok ? `${name}'s monthly pass renewed.` : result.error, result.ok ? "ok" : "error");
-  }
+  const { ask: askRenew, dialog: renewDialog } = useRenewConfirm();
 
   return (
     <Panel aria-labelledby="expired-title">
@@ -157,7 +152,7 @@ function ExpiredPassesPanel() {
                 </p>
                 <p className="mt-0.5 text-xs text-ink-muted">Expired {formatDate(u.expiresAt)} · {u.nfcId}</p>
               </div>
-              <button type="button" className="c-btn c-btn-sm" onClick={() => renew(u.name, u.id)} aria-label={`Renew ${u.name}'s monthly pass`}>
+              <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
                 <RotateCw className="size-3.5" aria-hidden />
                 Renew
               </button>
@@ -166,6 +161,7 @@ function ExpiredPassesPanel() {
           {expired.length > 5 && <li className="px-4 py-2.5 text-xs text-ink-muted sm:px-5">+ {expired.length - 5} more</li>}
         </ul>
       )}
+      {renewDialog}
     </Panel>
   );
 }

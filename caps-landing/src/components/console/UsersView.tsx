@@ -7,7 +7,8 @@ import { useEnter } from "@/hooks/useConsoleMotion";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
 import { VEHICLE_LABEL, formatDate, isExpired, isExpiringSoon } from "@/lib/sparc/selectors";
 import type { RegisteredUser, UserRole } from "@/lib/sparc/types";
-import { ROLE_LABEL, UserPanel, type PanelMode } from "./UserPanel";
+import { useRenewConfirm } from "./RenewConfirm";
+import { ID_LABEL, ROLE_LABEL, UserPanel, type PanelMode } from "./UserPanel";
 import { Badge, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
 type SortKey = "name" | "role" | "createdAt";
@@ -20,6 +21,7 @@ export function UsersView() {
   const state = useSparcState();
   const store = useSparcStore();
   const toast = useToast();
+  const { ask: askRenew, dialog: renewDialog } = useRenewConfirm();
   const now = useNow(30000);
   useEnter(root);
 
@@ -41,7 +43,7 @@ export function UsersView() {
       (u) =>
         (role === "all" || u.role === role) &&
         (status === "all" || (status === "active") === u.active) &&
-        (!q || u.name.toLowerCase().includes(q) || u.nfcId.toLowerCase().includes(q)),
+        (!q || u.name.toLowerCase().includes(q) || u.nfcId.toLowerCase().includes(q) || (u.studentId ?? "").toLowerCase().includes(q)),
     );
     return list.sort((a, b) => {
       const av = a[sort.key];
@@ -66,10 +68,6 @@ export function UsersView() {
     const result = store.removeUser(user.id);
     setConfirming(null);
     toast(result.ok ? `${user.name} removed. Their card will be denied at the gate.` : result.error, result.ok ? "ok" : "error");
-  }
-  function renew(user: RegisteredUser) {
-    const result = store.renewUser(user.id);
-    toast(result.ok ? `${user.name}'s monthly pass renewed.` : result.error, result.ok ? "ok" : "error");
   }
   function clearFilters() {
     setQuery("");
@@ -101,7 +99,7 @@ export function UsersView() {
     ) : (
       <div className="flex items-center justify-end gap-1.5">
         {(isExpired(u, now) || isExpiringSoon(u, now)) && (
-          <button type="button" className="c-btn c-btn-sm" onClick={() => renew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
+          <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
             <RotateCw className="size-3.5" aria-hidden />
             Renew
           </button>
@@ -154,7 +152,7 @@ export function UsersView() {
                     Expired {formatDate(u.expiresAt)} · <span className="font-mono">{u.nfcId}</span>
                   </p>
                 </div>
-                <button type="button" className="c-btn c-btn-sm" onClick={() => renew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
+                <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
                   <RotateCw className="size-3.5" aria-hidden />
                   Renew
                 </button>
@@ -180,7 +178,7 @@ export function UsersView() {
                 setQuery(e.target.value);
                 setPage(0);
               }}
-              placeholder="Search name or card ID"
+              placeholder="Search name, student ID or card ID"
               className="c-input w-full pl-9"
             />
           </div>
@@ -241,7 +239,12 @@ export function UsersView() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-ink">{u.name}</p>
-                      <p className="font-mono text-xs text-ink-muted">{u.nfcId}</p>
+                      {u.studentId && (
+                        <p className="text-xs text-ink-soft">
+                          {ID_LABEL[u.role]} <span className="font-mono">{u.studentId}</span>
+                        </p>
+                      )}
+                      <p className="font-mono text-xs text-ink-muted">Card {u.nfcId}</p>
                     </div>
                     {statusBadge(u)}
                   </div>
@@ -264,7 +267,8 @@ export function UsersView() {
                 <thead>
                   <tr>
                     {sortHead("name", "Name")}
-                    <th>Card ID</th>
+                    <th>Student ID</th>
+                    <th>NFC card ID</th>
                     {sortHead("role", "Role")}
                     <th>Vehicle</th>
                     <th>Status</th>
@@ -281,6 +285,7 @@ export function UsersView() {
                         <p className="font-semibold text-ink">{u.name}</p>
                         {insideIds.has(u.id) && <p className="text-xs text-live">Parked now</p>}
                       </td>
+                      <td className="font-mono text-[0.8125rem]">{u.studentId || <span className="font-sans text-ink-faint">—</span>}</td>
                       <td className="font-mono text-[0.8125rem]">{u.nfcId}</td>
                       <td>{ROLE_LABEL[u.role]}</td>
                       <td>
@@ -319,6 +324,7 @@ export function UsersView() {
       </Panel>
 
       {panel && <UserPanel key={panel.type === "edit" ? panel.user.id : "new"} mode={panel} onClose={closePanel} />}
+      {renewDialog}
     </div>
   );
 }
