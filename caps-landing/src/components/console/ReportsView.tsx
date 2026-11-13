@@ -29,14 +29,10 @@ export function ReportsView() {
 
   function exportDay() {
     downloadCsv(`sparc-daily-report-${report.range.key}.csv`, [
-      ["SPARC daily usage report", report.range.label, report.range.key],
-      [],
-      ["Entries", report.entries],
-      ["Exits", report.exits],
-      ["Peak occupancy", report.peakOccupancy, report.peakHour !== null ? formatClock(report.peakHour) : ""],
-      [],
-      ["Hour", "Entries", "Exits", "Vehicles inside at end of hour"],
-      ...report.hourly.filter((p) => p.occupancy !== null).map((p) => [formatClock(p.hour), p.entries, p.exits, p.occupancy]),
+      ["Date", "Hour", "Entries", "Exits", "Vehicles inside at end of hour"],
+      ...report.hourly
+        .filter((p) => p.occupancy !== null)
+        .map((p) => [report.range.key, `${String(p.hour).padStart(2, "0")}:00`, p.entries, p.exits, p.occupancy]),
     ]);
     toast(`Exported the report for ${report.range.label}.`);
   }
