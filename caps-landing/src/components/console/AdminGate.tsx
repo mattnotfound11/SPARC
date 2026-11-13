@@ -1,6 +1,7 @@
 "use client";
 
 import { DEMO_EMAIL } from "@/lib/mockSession";
+import { usePublishAvailability } from "@/lib/sparc/useShared";
 import { ConsoleShell } from "./ConsoleShell";
 
 /**
@@ -10,6 +11,7 @@ import { ConsoleShell } from "./ConsoleShell";
  * redirect to /admin/login when signed out.
  */
 export function AdminGate({ children }: { children: React.ReactNode }) {
+  usePublishAvailability();
   return (
     <ConsoleShell adminName="SPARC Administrator" adminEmail={DEMO_EMAIL}>
       {children}

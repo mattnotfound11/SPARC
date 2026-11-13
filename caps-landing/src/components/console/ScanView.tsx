@@ -31,11 +31,15 @@ export function ScanView() {
   const store = useSparcStore();
   const state = useSparcState();
   const now = useNow(15000);
-  const [mode, setMode] = useState<ScanMode>("entry");
+  const router = useRouter();
+  const params = useSearchParams();
+  // A Shortcut link opens a fresh page, so the gate (entry or exit) travels in the URL: ?mode=exit&nfc=<id>.
+  const [mode, setMode] = useState<ScanMode>(() => (params.get("mode") === "exit" ? "exit" : "entry"));
   const modeLabel = mode === "entry" ? "Entry" : "Exit";
   const [manual, setManual] = useState("");
   const [copied, setCopied] = useState(false);
   const onIOS = useIsIOS();
+  const shortcutUrl = typeof window === "undefined" ? "" : `${window.location.origin}/admin/scan?mode=${mode}&nfc=`;
 
   const onScan = useCallback((serial: string) => void store.scan(serial, mode), [store, mode]);
   const reader = useNfcReader(onScan);
@@ -43,8 +47,6 @@ export function ScanView() {
   // Safari can't do Web NFC on iOS, so an iPhone/iPad Shortcut (its "Scan NFC
   // Tag" action, built in since iOS 13) scans the card and opens this page as
   // /admin/scan?nfc=<id> instead — the same shape as a real tap.
-  const router = useRouter();
-  const params = useSearchParams();
   const shortcutId = params.get("nfc");
   // Guards against StrictMode's intentional double-invoke (and any other
   // re-run with the same id) actually logging the tap twice.
@@ -53,7 +55,7 @@ export function ScanView() {
     if (!shortcutId || dispatchedId.current === shortcutId) return;
     dispatchedId.current = shortcutId;
     store.scan(shortcutId, mode);
-    router.replace("/admin/scan"); // drop the param so a refresh doesn't rescan
+    router.replace(`/admin/scan?mode=${mode}`); // drop the id so a refresh doesn't rescan
   }, [shortcutId, store, router, mode]);
 
   const stats = floorStats(state.config, state.slots);
@@ -122,17 +124,17 @@ export function ScanView() {
               </p>
               <p className="mt-1 text-ink-muted">
                 Safari can&apos;t read NFC. A Shortcut can: add <span className="text-ink">Scan NFC Tag</span>, then{" "}
-                <span className="text-ink">Open URLs</span> with the card&apos;s Identifier appended to —
+                <span className="text-ink">Open URLs</span> with the card&apos;s Identifier appended to this {modeLabel.toLowerCase()} link (switch Entry/Exit above for the other gate) —
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <code className="min-w-0 flex-1 break-all rounded-lg border border-line-strong bg-canvas/60 px-2.5 py-1.5 font-mono text-xs text-ink-soft">
-                  {typeof window === "undefined" ? "" : `${window.location.origin}/admin/scan?nfc=`}
+                  {shortcutUrl}
                 </code>
                 <button
                   type="button"
                   className="c-btn c-btn-sm"
                   onClick={() => {
-                    navigator.clipboard?.writeText(`${window.location.origin}/admin/scan?nfc=`).then(
+                    navigator.clipboard?.writeText(shortcutUrl).then(
                       () => setCopied(true),
                       () => setCopied(false),
                     );
