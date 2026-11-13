@@ -18,6 +18,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
 
 const input = (n: number): UserInput => ({
   name: `Driver ${n}`,
+  studentId: "",
   nfcId: `04:A1:B2:0${n}`,
   role: "student",
   vehicle: "light",

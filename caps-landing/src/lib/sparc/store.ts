@@ -80,6 +80,21 @@ export function normalizeNfc(value: string) {
 
 export type UserErrors = Partial<Record<keyof UserInput, string>>;
 
+/**
+ * One physical card, however its ID was typed: "1234-5678-9012" = "123456789012", "04:a1:b2:c3" = "04 A1 B2 C3".
+ * Used for every "is this the same card?" check, so a card can only ever belong to one user.
+ */
+export function cardKey(value: string) {
+  return normalizeNfc(value).replace(/[-:]/g, "");
+}
+
+/** "2021 00123 " -> "2021-00123": trimmed, uppercased, spaces become dashes. */
+export function normalizeStudentId(value: string) {
+  return value.trim().toUpperCase().replace(/\s+/g, "-");
+}
+
+const STUDENT_ID_PATTERN = /^[A-Z0-9][A-Z0-9-]{2,19}$/;
+
 export function validateUser(input: UserInput, users: RegisteredUser[], editingId?: string): UserErrors {
   const errors: UserErrors = {};
   if (input.name.trim().length < 2) errors.name = "Enter the driver's full name.";
@@ -88,8 +103,14 @@ export function validateUser(input: UserInput, users: RegisteredUser[], editingI
   const validDigits = NFC_PATTERN.test(nfc) && nfcDigits.length >= 4 && nfcDigits.length <= 20;
   if (!validDigits && !NFC_HEX_PATTERN.test(nfc))
     errors.nfcId = "Scan the card, or use numbers like 1234-5678-9012 or hex like 04:A1:B2:C3.";
-  else if (users.some((u) => u.nfcId.toUpperCase() === nfc && u.id !== editingId))
-    errors.nfcId = "This card is already registered to someone else.";
+  else {
+    const owner = users.find((u) => cardKey(u.nfcId) === cardKey(nfc) && u.id !== editingId);
+    if (owner) errors.nfcId = `This card already belongs to ${owner.name}. One card can only hold one user: remove ${owner.name} first if the card has a new owner.`;
+  }
+  const sid = normalizeStudentId(input.studentId);
+  if (sid && !STUDENT_ID_PATTERN.test(sid)) errors.studentId = "Use 3 to 20 letters, numbers or dashes, like 2021-00123.";
+  else if (sid && users.some((u) => (u.studentId ?? "") === sid && u.id !== editingId))
+    errors.studentId = "This ID is already registered to someone else.";
   return errors;
 }
 
@@ -101,6 +122,7 @@ function demoExpiredUser(now: number): RegisteredUser {
   return {
     id: "U-DEMO-001",
     nfcId: "1234-5678-9012",
+    studentId: "2021-00123",
     name: "Juan Dela Cruz (demo)",
     role: "student",
     vehicle: "light",
@@ -192,6 +214,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     const user: RegisteredUser = {
       id: `U-${String(state.nextUserSeq).padStart(3, "0")}`,
       nfcId: normalizeNfc(input.nfcId),
+      studentId: normalizeStudentId(input.studentId),
       name: input.name.trim(),
       role: input.role,
       vehicle: input.vehicle,
@@ -214,6 +237,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
               ...u,
               name: input.name.trim(),
               nfcId: normalizeNfc(input.nfcId),
+              studentId: normalizeStudentId(input.studentId),
               role: input.role,
               vehicle: input.vehicle,
               active: input.active,
@@ -246,7 +270,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
   function scan(rawNfc: string, mode: ScanMode): ScanOutcome {
     const at = Date.now();
     const nfcId = normalizeNfc(rawNfc);
-    const user = state.users.find((u) => u.nfcId.toUpperCase() === nfcId);
+    const user = state.users.find((u) => cardKey(u.nfcId) === cardKey(nfcId));
 
     function record(outcome: ScanOutcome, patch: Partial<SparcState> = {}): ScanOutcome {
       const row: ScanRecord = { id: `S-${state.nextScanSeq}`, at, nfcId, outcome };

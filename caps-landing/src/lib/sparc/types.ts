@@ -36,6 +36,8 @@ export type UserRole = "student" | "personnel" | "visitor";
 export type RegisteredUser = {
   id: string;
   nfcId: string; // "1234-5678-9012"
+  /** School-issued ID (student number, or employee/visitor ID), typed by the admin. Separate from the card. Absent on records saved before it existed. */
+  studentId?: string;
   name: string;
   role: UserRole;
   vehicle: VehicleClass;
@@ -66,6 +68,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export type UserInput = {
   name: string;
+  studentId: string;
   nfcId: string;
   role: UserRole;
   vehicle: VehicleClass;

@@ -5,9 +5,10 @@ import { Nfc, RotateCw, X } from "lucide-react";
 import gsap from "gsap";
 import { useNfcReader } from "@/lib/nfc/useNfcReader";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
-import { addOneMonth, normalizeNfc, validateUser, type UserErrors } from "@/lib/sparc/store";
+import { addOneMonth, normalizeNfc, normalizeStudentId, validateUser, type UserErrors } from "@/lib/sparc/store";
 import { VEHICLE_LABEL, formatDate, isExpired } from "@/lib/sparc/selectors";
 import type { RegisteredUser, UserInput, UserRole, VehicleClass } from "@/lib/sparc/types";
+import { useRenewConfirm } from "./RenewConfirm";
 import { Field, useToast } from "./ui";
 
 export type PanelMode = { type: "add"; nfc?: string } | { type: "edit"; user: RegisteredUser };
@@ -17,6 +18,13 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   student: "Student",
   personnel: "Personnel",
   visitor: "Visitor",
+};
+
+/** What the school-issued ID is called for each role. */
+export const ID_LABEL: Record<UserRole, string> = {
+  student: "Student ID",
+  personnel: "Employee ID",
+  visitor: "ID number",
 };
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -33,8 +41,8 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
 
   const [form, setForm] = useState<UserInput>(() =>
     editing
-      ? { name: editing.name, nfcId: editing.nfcId, role: editing.role, vehicle: editing.vehicle, active: editing.active }
-      : { name: "", nfcId: mode.type === "add" ? (mode.nfc ?? "") : "", role: "student", vehicle: "light", active: true },
+      ? { name: editing.name, studentId: editing.studentId ?? "", nfcId: editing.nfcId, role: editing.role, vehicle: editing.vehicle, active: editing.active }
+      : { name: "", studentId: "", nfcId: mode.type === "add" ? (mode.nfc ?? "") : "", role: "student", vehicle: "light", active: true },
   );
   const [errors, setErrors] = useState<UserErrors>({});
   const [submitted, setSubmitted] = useState(false);
@@ -113,11 +121,7 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
     onClose();
   }
 
-  function renew() {
-    if (!editing) return;
-    const result = store.renewUser(editing.id);
-    toast(result.ok ? "Monthly pass renewed for another month." : result.error, result.ok ? "ok" : "error");
-  }
+  const { ask: askRenew, dialog: renewDialog } = useRenewConfirm();
 
   const invalid = (k: keyof UserInput) => (errors[k] ? true : undefined);
 
@@ -144,6 +148,20 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             <Field label="Full name" htmlFor="u-name" error={errors.name}>
               <input id="u-name" className="c-input w-full" autoComplete="off" value={form.name} onChange={(e) => update("name", e.target.value)} aria-invalid={invalid("name")} aria-describedby={errors.name ? "u-name-error" : undefined} />
+            </Field>
+
+            <Field label={`${ID_LABEL[form.role]} (optional)`} htmlFor="u-sid" error={errors.studentId} hint="As printed on the school ID, like 2021-00123. This is not the card's chip ID.">
+              <input
+                id="u-sid"
+                className="c-input w-full font-mono"
+                autoComplete="off"
+                spellCheck={false}
+                value={form.studentId}
+                onChange={(e) => update("studentId", e.target.value)}
+                onBlur={() => form.studentId && update("studentId", normalizeStudentId(form.studentId))}
+                aria-invalid={invalid("studentId")}
+                aria-describedby={errors.studentId ? "u-sid-error" : "u-sid-hint"}
+              />
             </Field>
 
             <Field label="NFC card ID" htmlFor="u-nfc" error={errors.nfcId} hint={reader.message ?? "Scan a card, or type digits like 1234-5678-9012 or hex like 04:A1:B2:C3."}>
@@ -208,7 +226,7 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
                   <p className={`mt-1 text-[0.8125rem] ${isExpired(liveEditing, now) ? "text-crimson" : "text-ink-muted"}`}>
                     {isExpired(liveEditing, now) ? "Expired" : "Valid until"} {formatDate(liveEditing.expiresAt)}
                   </p>
-                  <button type="button" onClick={renew} className="c-btn c-btn-sm mt-2.5">
+                  <button type="button" onClick={() => askRenew(liveEditing)} className="c-btn c-btn-sm mt-2.5">
                     <RotateCw className="size-3.5" aria-hidden />
                     Renew for another month
                   </button>
@@ -231,6 +249,7 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
           </div>
         </form>
       </div>
+      {renewDialog}
     </div>
   );
 }
