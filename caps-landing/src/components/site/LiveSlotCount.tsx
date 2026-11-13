@@ -1,6 +1,7 @@
 "use client";
 
 import { useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
+import { useSharedAvailability } from "@/lib/sparc/useShared";
 import { availabilityTone, buildingTotals, floorStats } from "@/lib/sparc/selectors";
 
 const TONE = {
@@ -32,7 +33,9 @@ function Heading({ dot }: { dot: string }) {
 
 function Live() {
   const state = useSparcState();
-  const { free, total } = buildingTotals(floorStats(state.config, state.slots));
+  const shared = useSharedAvailability();
+  const local = buildingTotals(floorStats(state.config, state.slots));
+  const { free, total } = shared ?? local;
   const full = free === 0;
   const tone = full ? { ...TONE.crimson, label: "Parking full", hint: "No slots free right now. Expect to wait." } : TONE[availabilityTone(free, total)];
 
