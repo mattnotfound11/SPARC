@@ -1,16 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Figtree, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { SmoothScrollProvider } from "@/components/SmoothScrollProvider";
 import { SparcProvider } from "@/lib/sparc/SparcProvider";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const figtree = Figtree({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-figtree",
-  display: "swap",
-});
+// Self-hosted (OFL, see fonts/LICENSE-*) so builds never download from Google; a failed download broke CI builds.
+const inter = localFont({ src: "./fonts/inter-latin-wght.woff2", weight: "100 900", variable: "--font-inter", display: "swap" });
+const figtree = localFont({ src: "./fonts/figtree-latin-wght.woff2", weight: "300 900", variable: "--font-figtree", display: "swap" });
 
 export const metadata: Metadata = {
   title: {
