@@ -64,7 +64,7 @@ export function ReportsView() {
             </button>
             <button type="button" className="c-btn c-btn-gold" onClick={exportDay}>
               <Download className="size-4" aria-hidden />
-              Export this day
+              Export CSV
             </button>
           </>
         }
