@@ -1,5 +1,6 @@
 import { GlowField } from "@/components/ui/GlowField";
 import { Reveal } from "@/components/ui/Reveal";
+import { LiveSlotCount } from "./LiveSlotCount";
 
 export function Hero() {
   return (
@@ -26,10 +27,7 @@ export function Hero() {
         </Reveal>
 
         <Reveal delay={240}>
-          <p className="mt-10 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-sm text-ink-faint">
-            <span className="dot-pulse size-1.5 rounded-full bg-live" aria-hidden />
-            350 bays monitored · 4 gates · University of San Agustin
-          </p>
+          <LiveSlotCount />
         </Reveal>
       </div>
     </section>
