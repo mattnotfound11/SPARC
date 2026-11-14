@@ -10,19 +10,26 @@ import { useSyncExternalStore } from "react";
  * the console shows real gate or user information.
  */
 
-export const DEMO_EMAIL = "admin@usa.edu.ph";
 export const DEMO_PASSWORD = "sparc-demo";
+export const DEMO_ACCOUNTS = [
+  { email: "admin@usa.edu.ph", role: "admin", name: "SPARC Administrator" },
+  { email: "facilitator@usa.edu.ph", role: "facilitator", name: "SPARC Facilitator" },
+] as const;
+export const DEMO_EMAIL = DEMO_ACCOUNTS[0].email;
+
+export type DemoRole = (typeof DEMO_ACCOUNTS)[number]["role"];
 
 const KEY = "sparc_admin_session";
 const EVENT = "sparc-session-change";
 const TTL_MS = 8 * 60 * 60 * 1000;
 
-type Stored = { email: string; exp: number };
+type Stored = { email: string; role: DemoRole; name: string; exp: number };
 
 export function signIn(email: string, password: string): boolean {
-  if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== DEMO_PASSWORD) return false;
+  const account = DEMO_ACCOUNTS.find((a) => a.email === email.trim().toLowerCase());
+  if (!account || password !== DEMO_PASSWORD) return false;
   try {
-    const value: Stored = { email: DEMO_EMAIL, exp: Date.now() + TTL_MS };
+    const value: Stored = { ...account, exp: Date.now() + TTL_MS };
     sessionStorage.setItem(KEY, JSON.stringify(value));
   } catch {
     return false; // storage blocked: can't hold a session
@@ -61,7 +68,7 @@ const snapshot = () => {
   }
 };
 
-export type AdminSession = { status: "loading" } | { status: "out" } | { status: "in"; email: string };
+export type AdminSession = { status: "loading" } | { status: "out" } | { status: "in"; email: string; role: DemoRole; name: string };
 
 export function useAdminSession(): AdminSession {
   // null on the server and during hydration → "loading", so markup always matches
@@ -69,7 +76,9 @@ export function useAdminSession(): AdminSession {
   if (raw === null) return { status: "loading" };
   if (!raw) return { status: "out" };
   try {
-    return { status: "in", email: (JSON.parse(raw) as Stored).email };
+    const { email, role, name } = JSON.parse(raw) as Stored;
+    if (!role) return { status: "out" }; // session saved by an older build
+    return { status: "in", email, role, name };
   } catch {
     return { status: "out" };
   }

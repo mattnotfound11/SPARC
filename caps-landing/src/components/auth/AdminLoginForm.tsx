@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
-import { DEMO_EMAIL, DEMO_PASSWORD, signIn, useAdminSession } from "@/lib/mockSession";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "@/lib/mockSession";
+import { authConfigured, signInStaff, useStaffSession } from "@/lib/staffAuth";
 import { FormNotice } from "./FormNotice";
 import { PasswordField, TextField } from "./fields";
 
 export function AdminLoginForm() {
   const root = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const session = useAdminSession();
+  const session = useStaffSession();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   useAuthMotion(root);
@@ -28,33 +29,33 @@ export function AdminLoginForm() {
     const password = String(data.get("password") ?? "");
 
     if (!email.trim() || !password) {
-      setError("Enter your administrator email and password.");
+      setError("Enter your staff email and password.");
       return;
     }
     setError(null);
     setPending(true);
-    window.setTimeout(() => {
-      if (signIn(email, password)) {
+    void signInStaff(email, password).then((result) => {
+      if (result.ok) {
         router.replace("/admin");
       } else {
         setPending(false);
-        setError("That email and password don't match an administrator account.");
+        setError(result.error);
       }
-    }, 450);
+    });
   }
 
   return (
     <div ref={root} className="flex flex-1 flex-col lg:flex-none">
       <h1 data-anim className="mt-[1.125rem] font-display text-[1.875rem] leading-[1.1] font-bold tracking-[-0.02em] text-ink lg:mt-0 lg:text-[2.125rem]">
-        Administrator sign in
+        Staff sign in
       </h1>
       <p data-anim className="mt-2 mb-[1.375rem] text-ink-muted">
-        Open the SPARC console to manage slots, users and the gate log.
+        For administrators and facilitators. Open the SPARC console to run the gate and manage parking.
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col lg:flex-none">
         <TextField
-          label="Administrator email"
+          label="Staff email"
           name="email"
           type="email"
           inputMode="email"
@@ -70,12 +71,20 @@ export function AdminLoginForm() {
           </p>
         )}
 
+        {!authConfigured && (
         <div data-anim className="mb-4">
           <FormNotice>
-            Prototype access: <span className="font-mono text-ink">{DEMO_EMAIL}</span> / <span className="font-mono text-ink">{DEMO_PASSWORD}</span>. The console shows
-            simulated data only.
+            Prototype access. The console shows simulated data only.
+            {DEMO_ACCOUNTS.map((a) => (
+              <span key={a.email} className="mt-2 block">
+                <span className="font-semibold text-ink capitalize">{a.role}:</span>{" "}
+                <span className="font-mono text-ink">{a.email}</span> /{" "}
+                <span className="font-mono text-ink">{DEMO_PASSWORD}</span>
+              </span>
+            ))}
           </FormNotice>
         </div>
+        )}
 
         <div
           data-anim
