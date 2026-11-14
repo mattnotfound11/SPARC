@@ -3,15 +3,14 @@
 import { useSyncExternalStore } from "react";
 
 /*
- * MOCK ADMIN SESSION. The site ships as a static export (no server), so this lives in
- * the browser. It is a stand-in for the real account service, NOT security: the demo
- * credentials are in the client bundle, and the console only shows synthetic data.
- * Replace this file with the real provider (and move any real data behind it) before
- * the console shows real gate or user information.
+ * MOCK ADMIN SESSION, for development only. lib/session.ts uses it when no Supabase project is
+ * configured, so `npm run dev` works with no setup; production builds never use it. It is NOT
+ * security: it lives in the browser's sessionStorage and guards local demo data only.
  */
 
 export const DEMO_EMAIL = "admin@usa.edu.ph";
-export const DEMO_PASSWORD = "sparc-demo";
+/** Empty in production builds, so the string never ships; the mock login only runs in development. */
+export const DEMO_PASSWORD = process.env.NODE_ENV === "production" ? "" : "sparc-demo";
 
 const KEY = "sparc_admin_session";
 const EVENT = "sparc-session-change";
@@ -20,6 +19,7 @@ const TTL_MS = 8 * 60 * 60 * 1000;
 type Stored = { email: string; exp: number };
 
 export function signIn(email: string, password: string): boolean {
+  if (!DEMO_PASSWORD) return false;
   if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== DEMO_PASSWORD) return false;
   try {
     const value: Stored = { email: DEMO_EMAIL, exp: Date.now() + TTL_MS };

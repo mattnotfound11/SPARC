@@ -4,6 +4,24 @@ import { createContext, useContext, useEffect, useMemo, useState, useSyncExterna
 import { STORAGE_KEY, createSparcStore, type SparcState, type SparcStorage, type SparcStore } from "./store";
 
 const StoreContext = createContext<SparcStore | null>(null);
+const SyncNoticeContext = createContext<string | null>(null);
+
+/**
+ * Provides a ready-made store (the console uses this to swap in the database-backed one) and an
+ * optional notice about its connection. `store` null = still loading: views show their skeleton.
+ */
+export function SparcStoreProvider({ store, notice = null, children }: { store: SparcStore | null; notice?: string | null; children: React.ReactNode }) {
+  return (
+    <SyncNoticeContext.Provider value={notice}>
+      <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
+    </SyncNoticeContext.Provider>
+  );
+}
+
+/** A problem to show the admin (database unreachable, save rejected, live updates down); null when all is well. */
+export function useSyncNotice() {
+  return useContext(SyncNoticeContext);
+}
 
 const subscribeNever = () => () => {};
 

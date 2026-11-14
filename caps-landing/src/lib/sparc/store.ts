@@ -42,7 +42,28 @@ export type SparcStore = {
   scan: (nfcId: string, mode: ScanMode) => ScanOutcome;
   /** Re-reads saved data, e.g. after another browser tab changed it. Does not write back. */
   refresh: () => void;
+  /**
+   * Replaces the synced tables with what the shared database holds. A store fed this way must be
+   * created with `newId: uniqueId`, since several devices write to the same tables.
+   */
+  hydrate: (data: HydrateData) => void;
 };
+
+export type HydrateData = Pick<SparcState, "slots" | "users" | "logs" | "scans">;
+
+export type StoreOptions = {
+  /**
+   * Makes record ids. Default: readable per-browser counters (U-001, L-0001, S-1). With a shared
+   * database every device must make ids that can't collide; pass `uniqueId`.
+   */
+  newId?: (prefix: "U" | "L" | "V" | "S") => string;
+};
+
+/** An id no other device will produce: creation time plus 8 random characters, e.g. "L-MHX3K2P17QF9Z2AB". */
+export function uniqueId(prefix: string) {
+  const random = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => (b % 36).toString(36)).join("");
+  return `${prefix}-${Date.now().toString(36)}${random}`.toUpperCase();
+}
 
 const MAX_SCANS = 50;
 
@@ -164,7 +185,7 @@ function readSaved(storage: SparcStorage | undefined): SavedState | null {
  * `storage` (the browser's localStorage) makes the data survive a refresh. Without it the store is
  * in-memory only, which is what the tests use.
  */
-export function createSparcStore(now: number = Date.now(), storage?: SparcStorage): SparcStore {
+export function createSparcStore(now: number = Date.now(), storage?: SparcStorage, { newId }: StoreOptions = {}): SparcStore {
   const config = DEFAULT_CONFIG.map((f) => ({ ...f }));
   const saved = readSaved(storage);
   let state: SparcState = saved
@@ -212,7 +233,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     const first = Object.values(errors)[0];
     if (first) return { ok: false, error: first };
     const user: RegisteredUser = {
-      id: `U-${String(state.nextUserSeq).padStart(3, "0")}`,
+      id: newId?.("U") ?? `U-${String(state.nextUserSeq).padStart(3, "0")}`,
       nfcId: normalizeNfc(input.nfcId),
       studentId: normalizeStudentId(input.studentId),
       name: input.name.trim(),
@@ -273,7 +294,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     const user = state.users.find((u) => cardKey(u.nfcId) === cardKey(nfcId));
 
     function record(outcome: ScanOutcome, patch: Partial<SparcState> = {}): ScanOutcome {
-      const row: ScanRecord = { id: `S-${state.nextScanSeq}`, at, nfcId, outcome };
+      const row: ScanRecord = { id: newId?.("S") ?? `S-${state.nextScanSeq}`, at, nfcId, outcome };
       set({ ...patch, scans: [row, ...state.scans].slice(0, MAX_SCANS), nextScanSeq: state.nextScanSeq + 1, now: at });
       return outcome;
     }
@@ -287,7 +308,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
       // Leaving is always allowed, even if the pass lapsed while parked.
       const entry = state.logs.find((l) => l.event === "entry" && l.userId === user.id);
       const log: LogEntry = {
-        id: `L-${String(state.nextLogSeq).padStart(4, "0")}`,
+        id: newId?.("L") ?? `L-${String(state.nextLogSeq).padStart(4, "0")}`,
         visitId: entry?.visitId ?? null,
         at,
         event: "exit",
@@ -316,8 +337,8 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
 
     const seq = state.nextLogSeq;
     const log: LogEntry = {
-      id: `L-${String(seq).padStart(4, "0")}`,
-      visitId: `V-${String(seq).padStart(4, "0")}`,
+      id: newId?.("L") ?? `L-${String(seq).padStart(4, "0")}`,
+      visitId: newId?.("V") ?? `V-${String(seq).padStart(4, "0")}`,
       at,
       event: "entry",
       nfcId: user.nfcId,
@@ -353,6 +374,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     renewUser,
     scan,
     refresh,
+    hydrate: (data) => set({ ...data, now: Date.now() }),
   };
 }
 
