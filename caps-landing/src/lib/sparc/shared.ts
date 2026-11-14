@@ -7,12 +7,12 @@ const ROW = "main";
 
 let clientPromise: Promise<SupabaseClient | null> | undefined;
 
-/** The shared client, or null when Supabase isn't configured (the count then stays local to each browser). */
+/**
+ * The app's one Supabase client, or null when Supabase isn't configured (the count then stays local
+ * to each browser). Loaded on demand so the public homepage only downloads the library when it needs it.
+ */
 export function sharedClient(): Promise<SupabaseClient | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return Promise.resolve(null);
-  clientPromise ??= import("@supabase/supabase-js").then(({ createClient }) => createClient(url, key));
+  clientPromise ??= import("@/lib/supabase/client").then((m) => m.getSupabase());
   return clientPromise;
 }
 

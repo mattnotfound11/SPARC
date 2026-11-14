@@ -5,7 +5,7 @@ import Link from "next/link";
 import { LayoutDashboard, Menu, X } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
-import { useStaffSession } from "@/lib/staffAuth";
+import { useAdminSession } from "@/lib/session";
 
 const links = [
   { href: "#how-it-works", label: "How it works" },
@@ -16,7 +16,8 @@ const links = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
-  const signedIn = useStaffSession().status === "in";
+  const session = useAdminSession();
+  const signedIn = session.status === "in" && !session.open;
 
   return (
     <header className="header-shell sticky top-0 z-50 h-[var(--header-h)] border-b border-line/0 bg-canvas/60 backdrop-blur-xl">

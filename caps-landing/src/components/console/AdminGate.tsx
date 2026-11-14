@@ -2,21 +2,22 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { canAccess, ROLE_LABEL, useStaffSession } from "@/lib/staffAuth";
-import { usePublishAvailability } from "@/lib/sparc/useShared";
+import { authUnavailable, canAccess, ROLE_LABEL, useAdminSession } from "@/lib/session";
+import { ConsoleData } from "./ConsoleData";
 import { ConsoleShell, ConsoleSkeleton } from "./ConsoleShell";
 
 /**
- * Staff only: signed-out visitors are sent to /admin/login. Administrators see every page; facilitators
- * get live status, entry/exit scanning and the audit log. The data store (SparcProvider) lives in the
- * root layout so the public landing page can show the same live slot count.
+ * Keeps the console behind a sign-in. This is the user-facing half: it sends signed-out visitors
+ * to the login page. The part that actually protects the data is Row Level Security in the
+ * database, since a static site's JavaScript can always be bypassed.
+ *
+ * The console frame renders at once (it is in the prerendered HTML); only its content area waits,
+ * showing a skeleton until the session is confirmed and the data has loaded.
  */
 export function AdminGate({ children }: { children: React.ReactNode }) {
-  usePublishAvailability();
-  const session = useStaffSession();
   const router = useRouter();
   const pathname = usePathname();
-
+  const session = useAdminSession();
   const allowed = session.status === "in" && canAccess(session.role, pathname);
 
   useEffect(() => {
@@ -24,17 +25,21 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     else if (session.status === "in" && !allowed) router.replace("/admin");
   }, [session.status, allowed, router]);
 
-  if (session.status !== "in" || !allowed) {
+  if (authUnavailable) {
     return (
-      <main className="min-h-svh bg-canvas px-4 pt-8 sm:px-6">
-        <ConsoleSkeleton />
+      <main className="grid min-h-svh place-items-center bg-canvas p-6 text-center text-ink-muted">
+        The admin console isn&apos;t configured for this deployment (missing Supabase settings).
       </main>
     );
   }
 
+  const signedIn = session.status === "in";
+  const role = session.status === "in" ? session.role : "admin";
   return (
-    <ConsoleShell adminName={session.name} adminEmail={session.email} role={session.role} roleLabel={ROLE_LABEL[session.role]}>
-      {children}
-    </ConsoleShell>
+    <ConsoleData signedIn={signedIn}>
+      <ConsoleShell adminName={`SPARC ${ROLE_LABEL[role]}`} adminEmail={signedIn ? session.email : ""} role={role}>
+        {allowed ? children : <ConsoleSkeleton />}
+      </ConsoleShell>
+    </ConsoleData>
   );
 }

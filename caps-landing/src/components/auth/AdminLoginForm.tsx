@@ -5,24 +5,26 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "@/lib/mockSession";
-import { authConfigured, signInStaff, useStaffSession } from "@/lib/staffAuth";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { signIn, useAdminSession } from "@/lib/session";
 import { FormNotice } from "./FormNotice";
 import { PasswordField, TextField } from "./fields";
 
 export function AdminLoginForm() {
   const root = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const session = useStaffSession();
+  const session = useAdminSession();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   useAuthMotion(root);
 
-  // Already signed in: go straight to the console.
+  // Already signed in: go straight to the console. Not while a sign-in is in flight: Supabase
+  // reports the session before the admin check finishes, and a failed check must stay on this page.
   useEffect(() => {
-    if (session.status === "in") router.replace("/admin");
-  }, [session.status, router]);
+    if (session.status === "in" && !session.open && !pending) router.replace("/admin");
+  }, [session.status, session, pending, router]);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const email = String(data.get("email") ?? "");
@@ -34,14 +36,13 @@ export function AdminLoginForm() {
     }
     setError(null);
     setPending(true);
-    void signInStaff(email, password).then((result) => {
-      if (result.ok) {
-        router.replace("/admin");
-      } else {
-        setPending(false);
-        setError(result.error);
-      }
-    });
+    const failure = await signIn(email, password);
+    if (failure) {
+      setPending(false);
+      setError(failure);
+    } else {
+      router.replace("/admin");
+    }
   }
 
   return (
@@ -71,19 +72,19 @@ export function AdminLoginForm() {
           </p>
         )}
 
-        {!authConfigured && (
-        <div data-anim className="mb-4">
-          <FormNotice>
-            Prototype access. The console shows simulated data only.
-            {DEMO_ACCOUNTS.map((a) => (
-              <span key={a.email} className="mt-2 block">
-                <span className="font-semibold text-ink capitalize">{a.role}:</span>{" "}
-                <span className="font-mono text-ink">{a.email}</span> /{" "}
-                <span className="font-mono text-ink">{DEMO_PASSWORD}</span>
-              </span>
-            ))}
-          </FormNotice>
-        </div>
+        {!isSupabaseConfigured && !!DEMO_PASSWORD && (
+          <div data-anim className="mb-4">
+            <FormNotice>
+              Development access (no database configured). Data is local to this browser.
+              {DEMO_ACCOUNTS.map((a) => (
+                <span key={a.email} className="mt-2 block">
+                  <span className="font-semibold text-ink capitalize">{a.role}:</span>{" "}
+                  <span className="font-mono text-ink">{a.email}</span> /{" "}
+                  <span className="font-mono text-ink">{DEMO_PASSWORD}</span>
+                </span>
+              ))}
+            </FormNotice>
+          </div>
         )}
 
         <div
