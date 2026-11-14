@@ -184,3 +184,40 @@ end $$;
 
 -- Nothing else to do in public mode: no accounts are needed. To protect the data later, see
 -- supabase/lock-down.sql.
+
+-- ---------------------------------------------------------------------------
+-- Facilitators: staff who run the gate (live status, scanning, audit log) but not Users or Reports.
+-- Add one in the SQL editor:  insert into public.facilitators (user_id)
+--   select id from auth.users where email = 'someone@usa.edu.ph';
+-- ---------------------------------------------------------------------------
+create table if not exists public.facilitators (
+  user_id uuid primary key references auth.users (id) on delete cascade
+);
+alter table public.facilitators enable row level security; -- no policies: nobody reads it directly
+
+create or replace function public.staff_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case
+    when exists (select 1 from public.admins where user_id = auth.uid()) then 'admin'
+    when exists (select 1 from public.facilitators where user_id = auth.uid()) then 'facilitator'
+  end;
+$$;
+revoke execute on function public.staff_role() from public;
+grant execute on function public.staff_role() to anon, authenticated;
+
+create or replace function public.is_staff()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.staff_role() is not null;
+$$;
+revoke execute on function public.is_staff() from public;
+grant execute on function public.is_staff() to anon, authenticated;

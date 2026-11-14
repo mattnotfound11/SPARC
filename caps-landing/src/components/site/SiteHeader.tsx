@@ -5,6 +5,7 @@ import Link from "next/link";
 import { LayoutDashboard, Menu, X } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
+import { useAdminSession } from "@/lib/session";
 
 const links = [
   { href: "#how-it-works", label: "How it works" },
@@ -15,6 +16,8 @@ const links = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const session = useAdminSession();
+  const signedIn = session.status === "in" && !session.open;
 
   return (
     <header className="header-shell sticky top-0 z-50 h-[var(--header-h)] border-b border-line/0 bg-canvas/60 backdrop-blur-xl">
@@ -38,10 +41,16 @@ export function SiteHeader() {
         </ul>
 
         <div className="flex items-center gap-2">
-          <Link href="/admin" className="btn btn-ghost hidden px-4 py-2 text-sm sm:inline-flex">
-            <LayoutDashboard className="size-4" aria-hidden />
-            Dashboard
-          </Link>
+          {signedIn ? (
+            <Link href="/admin" className="btn btn-ghost px-4 py-2 text-sm">
+              <LayoutDashboard className="size-4" aria-hidden />
+              Dashboard
+            </Link>
+          ) : (
+            <Link href="/admin/login" className="btn btn-gold px-4 py-2 text-sm">
+              Sign in
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -69,15 +78,6 @@ export function SiteHeader() {
                 </a>
               </li>
             ))}
-            <li>
-              <Link
-                href="/admin"
-                onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-3 text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink"
-              >
-                Dashboard
-              </Link>
-            </li>
           </ul>
         </div>
       )}

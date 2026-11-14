@@ -6,7 +6,7 @@ import { useEnter } from "@/hooks/useConsoleMotion";
 import { downloadCsv } from "@/lib/sparc/csv";
 import { useSparcState } from "@/lib/sparc/SparcProvider";
 import { combineReports, dayRangeFor, dayRanges, dayReport, formatClock, parseDateKey, totalCapacity, type DayReport } from "@/lib/sparc/selectors";
-import { FlowChart, OccupancyChart } from "./HourlyCharts";
+import { OccupancyChart } from "./HourlyCharts";
 import { PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
 export function ReportsView() {
@@ -64,13 +64,11 @@ export function ReportsView() {
 
   function exportWeek() {
     downloadCsv(`sparc-7-day-summary-${days[0].key}.csv`, [
-      ["Date", "Entries", "Exits", "Peak occupancy", "Peak hour"],
+      ["Date", "Entries", "Exits"],
       ...reports.map((r) => [
         r.range.key,
         r.entries,
         r.exits,
-        r.peakOccupancy,
-        r.peakHour !== null ? formatClock(r.peakHour) : "",
       ]),
     ]);
     toast("Exported the 7-day summary.");
@@ -140,52 +138,14 @@ export function ReportsView() {
         </dl>
       </Panel>
 
-      <div data-enter className="grid gap-5 xl:grid-cols-2 xl:gap-6">
+      <div data-enter>
         <Panel aria-labelledby="occ-title">
           <PanelHeader id="occ-title" title="Vehicles inside" />
           <div className="px-4 pb-4 sm:px-5 sm:pb-5">
             <OccupancyChart report={report} capacity={capacity} />
           </div>
         </Panel>
-        <Panel aria-labelledby="flow-title">
-          <PanelHeader id="flow-title" title="Entries and exits per hour" />
-          <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-            <FlowChart report={report} />
-          </div>
-        </Panel>
       </div>
-
-      <Panel data-enter aria-labelledby="week-title">
-        <PanelHeader id="week-title" title="Last 7 days" />
-        <div className="overflow-x-auto border-t border-line">
-          <table className="c-table">
-            <caption className="sr-only">Daily totals for the last seven days</caption>
-            <thead>
-              <tr>
-                <th>Day</th>
-                <th>Entries</th>
-                <th>Peak</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map((r) => (
-                <tr key={r.range.key} className={report.range.key === r.range.key ? "bg-gold/[0.05]" : ""}>
-                  <td>
-                    <button type="button" onClick={() => selectDay(r.range.key)} aria-current={report.range.key === r.range.key ? "true" : undefined} className="rounded-md font-semibold text-ink underline-offset-4 hover:text-gold hover:underline">
-                      {r.range.label}
-                    </button>
-                  </td>
-                  <td className="num">{r.entries}</td>
-                  <td className="num">
-                    {r.peakOccupancy}
-                    {r.peakHour !== null && <span className="text-ink-muted"> · {formatClock(r.peakHour)}</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
     </div>
   );
 }

@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
-import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/mockSession";
-import { signIn, useAdminSession, usingMockLogin } from "@/lib/session";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "@/lib/mockSession";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { signIn, useAdminSession } from "@/lib/session";
 import { FormNotice } from "./FormNotice";
 import { PasswordField, TextField } from "./fields";
 
@@ -20,8 +21,8 @@ export function AdminLoginForm() {
   // Already signed in: go straight to the console. Not while a sign-in is in flight: Supabase
   // reports the session before the admin check finishes, and a failed check must stay on this page.
   useEffect(() => {
-    if (session.status === "in" && !pending) router.replace("/admin");
-  }, [session.status, pending, router]);
+    if (session.status === "in" && !session.open && !pending) router.replace("/admin");
+  }, [session.status, session, pending, router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,7 +31,7 @@ export function AdminLoginForm() {
     const password = String(data.get("password") ?? "");
 
     if (!email.trim() || !password) {
-      setError("Enter your administrator email and password.");
+      setError("Enter your staff email and password.");
       return;
     }
     setError(null);
@@ -47,15 +48,15 @@ export function AdminLoginForm() {
   return (
     <div ref={root} className="flex flex-1 flex-col lg:flex-none">
       <h1 data-anim className="mt-[1.125rem] font-display text-[1.875rem] leading-[1.1] font-bold tracking-[-0.02em] text-ink lg:mt-0 lg:text-[2.125rem]">
-        Administrator sign in
+        Staff sign in
       </h1>
       <p data-anim className="mt-2 mb-[1.375rem] text-ink-muted">
-        Open the SPARC console to manage slots, users and the gate log.
+        For administrators and facilitators. Open the SPARC console to run the gate and manage parking.
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col lg:flex-none">
         <TextField
-          label="Administrator email"
+          label="Staff email"
           name="email"
           type="email"
           inputMode="email"
@@ -71,11 +72,17 @@ export function AdminLoginForm() {
           </p>
         )}
 
-        {usingMockLogin && (
+        {!isSupabaseConfigured && !!DEMO_PASSWORD && (
           <div data-anim className="mb-4">
             <FormNotice>
-              Development access (no database configured): <span className="font-mono text-ink">{DEMO_EMAIL}</span> /{" "}
-              <span className="font-mono text-ink">{DEMO_PASSWORD}</span>. Data is local to this browser.
+              Development access (no database configured). Data is local to this browser.
+              {DEMO_ACCOUNTS.map((a) => (
+                <span key={a.email} className="mt-2 block">
+                  <span className="font-semibold text-ink capitalize">{a.role}:</span>{" "}
+                  <span className="font-mono text-ink">{a.email}</span> /{" "}
+                  <span className="font-mono text-ink">{DEMO_PASSWORD}</span>
+                </span>
+              ))}
             </FormNotice>
           </div>
         )}

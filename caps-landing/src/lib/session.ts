@@ -10,7 +10,16 @@ import * as mock from "@/lib/mockSession";
  * development, it falls back to the mock session so `npm run dev` works with no setup.
  */
 
-export type AdminSession = { status: "loading" } | { status: "out" } | { status: "in"; email: string };
+export type StaffRole = mock.StaffRole;
+export const ROLE_LABEL: Record<StaffRole, string> = { admin: "Administrator", facilitator: "Facilitator" };
+
+/** `open` marks the anonymous administrator view of public mode (nobody actually signed in). */
+export type AdminSession = { status: "loading" } | { status: "out" } | { status: "in"; email: string; role: StaffRole; open?: boolean };
+
+/** Facilitators run the gate (live status, scanning, audit log); Users and Reports are for administrators. */
+export function canAccess(role: StaffRole, pathname: string) {
+  return role === "admin" || !(pathname.startsWith("/admin/users") || pathname.startsWith("/admin/reports"));
+}
 
 /**
  * Whether /admin asks for a sign-in. Off while the team keeps the database public; turn it on with
@@ -28,7 +37,7 @@ export const usingMockLogin = loginRequired && !isSupabaseConfigured && mockAllo
 export const authUnavailable = loginRequired && !isSupabaseConfigured && !mockAllowed;
 
 const WRONG_CREDENTIALS = "That email and password don't match an administrator account.";
-const NOT_ADMIN = "This account isn't a SPARC administrator.";
+const NOT_STAFF = "This account has no SPARC staff access. Ask an administrator to add it.";
 const OFFLINE = "Couldn't reach the sign-in service. Check your connection and try again.";
 
 /** Resolves to an error message, or null on success. */
@@ -44,11 +53,11 @@ export async function signIn(email: string, password: string): Promise<string | 
     const rejected = typeof error.status === "number" && error.status >= 400 && error.status < 500;
     return rejected ? WRONG_CREDENTIALS : OFFLINE;
   }
-  // Having an account isn't enough: it must also be listed in the `admins` table.
-  const { data: isAdmin, error: checkError } = await db.rpc("is_admin");
-  if (checkError || isAdmin !== true) {
+  // Having an account isn't enough: it must also be listed in `admins` or `facilitators`.
+  const { data: role, error: checkError } = await db.rpc("staff_role");
+  if (checkError || (role !== "admin" && role !== "facilitator")) {
     await db.auth.signOut();
-    return checkError ? OFFLINE : NOT_ADMIN;
+    return checkError ? OFFLINE : NOT_STAFF;
   }
   return null;
 }
@@ -59,7 +68,7 @@ export async function signOut() {
   else mock.signOut();
 }
 
-const OPEN_SESSION: AdminSession = { status: "in", email: mock.DEMO_EMAIL };
+const OPEN_SESSION: AdminSession = { status: "in", email: mock.DEMO_EMAIL, role: "admin", open: true };
 
 export function useAdminSession(): AdminSession {
   const mockSession = mock.useAdminSession();
@@ -67,28 +76,29 @@ export function useAdminSession(): AdminSession {
 
   useEffect(() => {
     const db = getSupabase();
-    if (!db || !loginRequired) return; // public mode never touches Supabase Auth
+    if (!db) return;
     let alive = true;
-    const apply = (email: string | undefined) => {
-      if (alive) setState(email ? { status: "in", email } : { status: "out" });
+    const apply = (email: string | undefined, role?: StaffRole) => {
+      if (alive) setState(email && role ? { status: "in", email, role } : { status: "out" });
+    };
+    const lookup = (email: string | undefined) => {
+      if (!email) return apply(undefined);
+      void db.rpc("staff_role").then(({ data, error }) => {
+        if (error) return apply(undefined);
+        if (data === "admin" || data === "facilitator") apply(email, data);
+        else {
+          apply(undefined);
+          void db.auth.signOut(); // an account with no staff role keeps no session
+        }
+      });
     };
 
-    db.auth.getSession().then(({ data }) => {
-      const email = data.session?.user.email;
-      apply(email);
-      // An account removed from `admins` still has a valid session: check in the background and
-      // sign it out (SIGNED_OUT below then redirects). The database already hides the data from it,
-      // so the console doesn't wait for this. Done here, not inside onAuthStateChange, where
-      // Supabase warns against awaiting its own calls.
-      if (email)
-        db.rpc("is_admin").then(({ data: isAdmin, error }) => {
-          if (!error && isAdmin !== true) void db.auth.signOut();
-        });
-    });
+    db.auth.getSession().then(({ data }) => lookup(data.session?.user.email));
 
     const { data } = db.auth.onAuthStateChange((event, session) => {
-      if (event === "INITIAL_SESSION") return; // handled (and verified) by getSession above
-      apply(session?.user.email);
+      if (event === "INITIAL_SESSION") return; // handled above
+      // Deferred: Supabase warns against awaiting its own calls inside this callback.
+      setTimeout(() => lookup(session?.user.email), 0);
     });
     return () => {
       alive = false;
@@ -96,7 +106,12 @@ export function useAdminSession(): AdminSession {
     };
   }, []);
 
-  if (!loginRequired) return OPEN_SESSION;
+  // Public mode keeps the console open, but a staff member who really signed in keeps their role
+  // (a facilitator stays limited to the gate pages).
+  if (!loginRequired) {
+    const real = isSupabaseConfigured ? state : mockAllowed ? mockSession : null;
+    return real?.status === "in" ? real : OPEN_SESSION;
+  }
   if (isSupabaseConfigured) return state;
   return mockAllowed ? mockSession : { status: "out" };
 }

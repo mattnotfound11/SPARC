@@ -6,7 +6,7 @@ import { ChartColumn, LayoutGrid, LogOut, ScanLine, ScrollText, Users } from "lu
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { SparcGate, useSyncNotice } from "@/lib/sparc/SparcProvider";
-import { loginRequired, signOut } from "@/lib/session";
+import { loginRequired, ROLE_LABEL, signOut, type StaffRole } from "@/lib/session";
 import { ToastProvider } from "./ui";
 
 const NAV = [
@@ -50,13 +50,16 @@ export function ConsoleSkeleton() {
 export function ConsoleShell({
   adminName,
   adminEmail,
+  role,
   children,
 }: {
   adminName: string;
   adminEmail: string;
+  role: StaffRole;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const nav = role === "admin" ? NAV : NAV.filter((n) => n.href !== "/admin/users" && n.href !== "/admin/reports");
   const notice = useSyncNotice();
 
   return (
@@ -68,12 +71,12 @@ export function ConsoleShell({
             <SparcSeal size={36} priority className="size-9" />
             <div className="leading-tight">
               <SparcWordmark className="text-xl text-ink" />
-              <p className="text-xs text-ink-muted">Admin console</p>
+              <p className="text-xs text-ink-muted">{ROLE_LABEL[role]} console</p>
             </div>
           </Link>
 
           <nav aria-label="Console" className="mt-7 flex flex-col gap-1">
-            {NAV.map(({ href, label, icon: Icon }) => (
+            {nav.map(({ href, label, icon: Icon }) => (
               <Link key={href} href={href} aria-current={isActive(pathname, href) ? "page" : undefined} className="side-link">
                 <Icon className="size-[1.125rem]" strokeWidth={2} aria-hidden />
                 {label}
@@ -106,7 +109,7 @@ export function ConsoleShell({
           <Link href="/admin" className="brand-mark flex items-center gap-2.5 rounded-lg" aria-label="SPARC admin home">
             <SparcSeal size={30} className="size-[1.875rem]" />
             <SparcWordmark className="text-lg text-ink" />
-            <span className="text-xs text-ink-muted">Admin</span>
+            <span className="text-xs text-ink-muted">{role === "admin" ? "Admin" : "Staff"}</span>
           </Link>
           <div className="flex items-center gap-1">
             <SignOut className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:text-ink">
@@ -130,9 +133,10 @@ export function ConsoleShell({
         {/* Tab bar — phone and tablet */}
         <nav
           aria-label="Console"
-          className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+          style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}
+          className="fixed inset-x-0 bottom-0 z-40 grid border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
         >
-          {NAV.map(({ href, short, icon: Icon }) => {
+          {nav.map(({ href, short, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link

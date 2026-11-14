@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { authUnavailable, useAdminSession } from "@/lib/session";
+import { usePathname, useRouter } from "next/navigation";
+import { authUnavailable, canAccess, ROLE_LABEL, useAdminSession } from "@/lib/session";
 import { ConsoleData } from "./ConsoleData";
 import { ConsoleShell, ConsoleSkeleton } from "./ConsoleShell";
 
@@ -16,11 +16,14 @@ import { ConsoleShell, ConsoleSkeleton } from "./ConsoleShell";
  */
 export function AdminGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const session = useAdminSession();
+  const allowed = session.status === "in" && canAccess(session.role, pathname);
 
   useEffect(() => {
     if (session.status === "out") router.replace("/admin/login");
-  }, [session.status, router]);
+    else if (session.status === "in" && !allowed) router.replace("/admin");
+  }, [session.status, allowed, router]);
 
   if (authUnavailable) {
     return (
@@ -31,10 +34,11 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
   }
 
   const signedIn = session.status === "in";
+  const role = session.status === "in" ? session.role : "admin";
   return (
     <ConsoleData signedIn={signedIn}>
-      <ConsoleShell adminName="SPARC Administrator" adminEmail={signedIn ? session.email : ""}>
-        {signedIn ? children : <ConsoleSkeleton />}
+      <ConsoleShell adminName={`SPARC ${ROLE_LABEL[role]}`} adminEmail={signedIn ? session.email : ""} role={role}>
+        {allowed ? children : <ConsoleSkeleton />}
       </ConsoleShell>
     </ConsoleData>
   );
