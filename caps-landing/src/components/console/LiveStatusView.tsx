@@ -19,6 +19,7 @@ import {
   timeAgo,
 } from "@/lib/sparc/selectors";
 import type { LogEntry } from "@/lib/sparc/types";
+import { ParkingExplorer } from "./ParkingExplorer";
 import { ParkingTowers } from "./ParkingTowers";
 import { Count, EmptyState, PageHeader, Panel, PanelHeader } from "./ui";
 import { useRenewConfirm } from "./RenewConfirm";
@@ -248,6 +249,10 @@ export function LiveStatusView() {
       <div data-enter className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
         <BuildingPanel />
         <TodayPanel />
+      </div>
+
+      <div data-enter>
+        <ParkingExplorer />
       </div>
 
       <div data-enter>

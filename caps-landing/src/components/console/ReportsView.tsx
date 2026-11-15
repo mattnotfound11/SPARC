@@ -5,7 +5,7 @@ import { CalendarDays, Download, FileDown } from "lucide-react";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { downloadCsv } from "@/lib/sparc/csv";
 import { useSparcState } from "@/lib/sparc/SparcProvider";
-import { combineReports, dayRangeFor, dayRanges, dayReport, formatClock, parseDateKey, totalCapacity, type DayReport } from "@/lib/sparc/selectors";
+import { combineReports, dayRangeFor, dayRanges, dayReport, parseDateKey, totalCapacity, type DayReport } from "@/lib/sparc/selectors";
 import { OccupancyChart } from "./HourlyCharts";
 import { PageHeader, Panel, PanelHeader, useToast } from "./ui";
 
@@ -40,13 +40,6 @@ export function ReportsView() {
   const summary = [
     { label: "Entries", value: String(report.entries) },
     { label: "Exits", value: String(report.exits) },
-    { label: "Peak occupancy", value: String(report.peakOccupancy), note:
-        report.peakHour === null
-          ? undefined
-          : view === "week" && week.peakDay
-            ? `${week.peakDay.label} at ${formatClock(report.peakHour)}`
-            : `at ${formatClock(report.peakHour)}`,
-    },
   ];
 
   function exportDay() {
@@ -127,12 +120,11 @@ export function ReportsView() {
       </div>
 
       <Panel data-enter aria-label={`Summary for ${report.range.label}`} className="p-4 sm:p-5">
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-y-0 lg:divide-x lg:divide-line">
-          {summary.map(({ label, value, note }, i) => (
+        <dl className="grid grid-cols-2 gap-x-6 lg:divide-x lg:divide-line">
+          {summary.map(({ label, value }, i) => (
             <div key={label} className={i > 0 ? "lg:pl-6" : ""}>
               <dt className="text-sm text-ink-muted">{label}</dt>
               <dd className="mt-1 font-display text-[1.75rem] leading-none font-semibold tracking-tight text-ink num">{value}</dd>
-              {note && <p className="mt-1 text-xs text-ink-muted">{note}</p>}
             </div>
           ))}
         </dl>
