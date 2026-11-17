@@ -105,3 +105,21 @@ describe("student ID", () => {
     expect(validateUser(withSid("2021-00999"), [legacy]).studentId).toBeUndefined();
   });
 });
+
+describe("loadSample", () => {
+  it("fills users, a week of paired traffic and consistent occupancy", () => {
+    const store = createSparcStore(new Date(2026, 10, 16, 14).getTime());
+    store.loadSample();
+    const s = store.getState();
+    expect(s.users.length).toBeGreaterThanOrEqual(30);
+    expect(s.logs.length).toBeGreaterThan(100);
+    const occupied = s.slots.filter((x) => x.status === "occupied");
+    expect(occupied.length).toBeGreaterThan(0);
+    for (const slot of occupied) {
+      const last = s.logs.find((l) => l.userId === slot.occupant?.userId);
+      expect(last?.event).toBe("entry");
+      expect(last?.slot).toBe(slot.code);
+    }
+    expect(new Set(s.logs.map((l) => l.id)).size).toBe(s.logs.length);
+  });
+});

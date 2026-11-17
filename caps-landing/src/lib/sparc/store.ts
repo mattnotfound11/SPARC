@@ -1,4 +1,5 @@
 import { DEFAULT_CONFIG, buildSlots } from "./seed";
+import { sampleData } from "./sample";
 import type {
   ActionResult,
   FloorConfig,
@@ -47,6 +48,8 @@ export type SparcStore = {
    * created with `newId: uniqueId`, since several devices write to the same tables.
    */
   hydrate: (data: HydrateData) => void;
+  /** Demo only: replaces the console's data with made-up drivers, a week of traffic and cars parked now. */
+  loadSample: () => void;
 };
 
 export type HydrateData = Pick<SparcState, "slots" | "users" | "logs" | "scans">;
@@ -375,6 +378,13 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     scan,
     refresh,
     hydrate: (data) => set({ ...data, now: Date.now() }),
+    loadSample() {
+      const at = Date.now();
+      const sample = sampleData(state.config, at);
+      // keep the built-in demo user (the expired-pass example) alongside the sample drivers
+      const kept = state.users.filter((u) => u.id === "U-DEMO-001");
+      set({ ...sample, users: [...sample.users, ...kept], scans: [], nextScanSeq: 1, now: at });
+    },
   };
 }
 

@@ -7,7 +7,9 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { useReveal } from "@/hooks/useReveal";
-import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
+import { portal } from "@/lib/portal/store";
+import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
+import { cardKey } from "@/lib/sparc/store";
 import {
   buildingTotals,
   dayRanges,
@@ -236,6 +238,7 @@ function ActivityFeed() {
 export function LiveStatusView() {
   const root = useRef<HTMLDivElement>(null);
   const state = useSparcState();
+  const store = useSparcStore();
   const total = state.slots.length;
   useEnter(root);
 
@@ -244,6 +247,16 @@ export function LiveStatusView() {
       <PageHeader
         title="Live status"
         description={`New parking building · ${state.config.length} floors · ${total} slots.`}
+        actions={
+          state.logs.length === 0 ? (
+            <button type="button" className="c-btn c-btn-gold" onClick={() => {
+                store.loadSample();
+                portal.seedDrivers(store.getState().users.map((u) => ({ card: cardKey(u.nfcId), type: u.vehicle })));
+              }}>
+              Load sample data
+            </button>
+          ) : undefined
+        }
       />
 
       <div data-enter className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">

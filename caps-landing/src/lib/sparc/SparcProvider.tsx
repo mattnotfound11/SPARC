@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { STORAGE_KEY, createSparcStore, type SparcState, type SparcStorage, type SparcStore } from "./store";
+import { portal } from "@/lib/portal/store";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { STORAGE_KEY, cardKey, createSparcStore, type SparcState, type SparcStorage, type SparcStore } from "./store";
 
 const StoreContext = createContext<SparcStore | null>(null);
 const SyncNoticeContext = createContext<string | null>(null);
@@ -41,6 +43,15 @@ function browserStorage(): SparcStorage | undefined {
 export function SparcProvider({ children }: { children: React.ReactNode }) {
   const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
   const store = useMemo(() => (mounted ? createSparcStore(undefined, browserStorage()) : null), [mounted]);
+
+  // Prototype: the app opens with sample data already in place, so every screen has something to show.
+  // Skipped when a shared database is connected, where the data is real.
+  useEffect(() => {
+    if (!store || isSupabaseConfigured) return;
+    if (store.getState().logs.length === 0) store.loadSample();
+    portal.seedDrivers(store.getState().users.map((u) => ({ card: cardKey(u.nfcId), type: u.vehicle })));
+    portal.seedDemo();
+  }, [store]);
 
   // Another tab (say the landing page next to the console) saved a change: show it here too.
   useEffect(() => {
