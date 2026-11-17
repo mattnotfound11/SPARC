@@ -17,8 +17,11 @@ export const ROLE_LABEL: Record<StaffRole, string> = { admin: "Administrator", f
 export type AdminSession = { status: "loading" } | { status: "out" } | { status: "in"; email: string; role: StaffRole; open?: boolean };
 
 /** Facilitators run the gate (live status, scanning, audit log); Users and Reports are for administrators. */
+/** Pages only administrators may open; facilitators run the gate and nothing more. */
+export const ADMIN_ONLY_PATHS = ["/admin/users", "/admin/reports", "/admin/analytics", "/admin/appeals"] as const;
+
 export function canAccess(role: StaffRole, pathname: string) {
-  return role === "admin" || !(pathname.startsWith("/admin/users") || pathname.startsWith("/admin/reports"));
+  return role === "admin" || !ADMIN_ONLY_PATHS.some((p) => pathname.startsWith(p));
 }
 
 /**

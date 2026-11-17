@@ -2,19 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartColumn, LayoutGrid, LogOut, ScanLine, ScrollText, Users } from "lucide-react";
+import { ChartColumn, Gavel, LayoutGrid, LogOut, ScanLine, ScrollText, Ticket, TrendingUp, Users } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { SparcGate, useSyncNotice } from "@/lib/sparc/SparcProvider";
-import { loginRequired, ROLE_LABEL, signOut, type StaffRole } from "@/lib/session";
+import { ADMIN_ONLY_PATHS, loginRequired, ROLE_LABEL, signOut, type StaffRole } from "@/lib/session";
 import { ToastProvider } from "./ui";
 
 const NAV = [
   { href: "/admin", label: "Live status", short: "Live", icon: LayoutGrid },
   { href: "/admin/scan", label: "Entry / Exit", short: "Scan", icon: ScanLine },
+  { href: "/admin/pass", label: "Visitor pass", short: "Pass", icon: Ticket },
   { href: "/admin/users", label: "Users", short: "Users", icon: Users },
   { href: "/admin/logs", label: "Audit log", short: "Log", icon: ScrollText },
   { href: "/admin/reports", label: "Reports", short: "Reports", icon: ChartColumn },
+  { href: "/admin/appeals", label: "Appeals", short: "Appeals", icon: Gavel },
+  { href: "/admin/analytics", label: "Analytics", short: "Trends", icon: TrendingUp },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -59,14 +62,14 @@ export function ConsoleShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const nav = role === "admin" ? NAV : NAV.filter((n) => n.href !== "/admin/users" && n.href !== "/admin/reports");
+  const nav = role === "admin" ? NAV : NAV.filter((n) => !ADMIN_ONLY_PATHS.some((p) => n.href === p));
   const notice = useSyncNotice();
 
   return (
     <ToastProvider>
       <div className="min-h-svh bg-canvas">
         {/* Sidebar — desktop */}
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-canvas px-3 py-4 lg:flex">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 print:!hidden flex-col border-r border-line bg-canvas px-3 py-4 lg:flex">
           <Link href="/admin" className="brand-mark flex items-center gap-2.5 rounded-lg px-2 py-1.5" aria-label="SPARC admin home">
             <SparcSeal size={36} priority className="size-9" />
             <div className="leading-tight">
@@ -105,7 +108,7 @@ export function ConsoleShell({
         </aside>
 
         {/* Top bar — phone and tablet */}
-        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-canvas/90 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
+        <header className="sticky top-0 z-40 flex h-14 print:hidden items-center justify-between border-b border-line bg-canvas/90 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
           <Link href="/admin" className="brand-mark flex items-center gap-2.5 rounded-lg" aria-label="SPARC admin home">
             <SparcSeal size={30} className="size-[1.875rem]" />
             <SparcWordmark className="text-lg text-ink" />
@@ -119,7 +122,7 @@ export function ConsoleShell({
           </div>
         </header>
 
-        <main id="main-content" className="px-4 pt-5 pb-28 sm:px-6 lg:pl-[calc(16rem+2rem)] lg:pr-8 lg:pt-8 lg:pb-12">
+        <main id="main-content" className="px-4 pt-5 pb-28 sm:px-6 lg:pl-[calc(16rem+2rem)] lg:pr-8 lg:pt-8 lg:pb-12 print:!p-0">
           <div className="mx-auto max-w-[84rem]">
             {notice && (
               <p role="alert" className="mb-4 rounded-xl border border-crimson/40 bg-crimson/[0.1] px-3.5 py-3 text-[0.8125rem] text-[#ffb3c0]">
@@ -134,7 +137,7 @@ export function ConsoleShell({
         <nav
           aria-label="Console"
           style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}
-          className="fixed inset-x-0 bottom-0 z-40 grid border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 grid print:hidden border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
         >
           {nav.map(({ href, short, icon: Icon }) => {
             const active = isActive(pathname, href);

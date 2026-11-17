@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalState } from "@/lib/portal/usePortal";
 import { useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
 import { useSharedAvailability } from "@/lib/sparc/useShared";
 import { availabilityTone, buildingTotals, floorStats } from "@/lib/sparc/selectors";
@@ -33,6 +34,7 @@ function Heading({ dot }: { dot: string }) {
 
 function Live() {
   const state = useSparcState();
+  usePortalState(); // event holds change the free count
   const shared = useSharedAvailability();
   const local = buildingTotals(floorStats(state.config, state.slots));
   const { free, total } = shared ?? local;

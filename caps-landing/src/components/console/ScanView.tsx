@@ -5,7 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeftFromLine, ArrowRightToLine, Check, Copy, Nfc, Smartphone } from "lucide-react";
 import { useNfcReader } from "@/lib/nfc/useNfcReader";
 import { useIsIOS } from "@/lib/nfc/platform";
+import { portal } from "@/lib/portal/store";
+import { usePortalState } from "@/lib/portal/usePortal";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
+import { GATES } from "@/lib/sparc/seed";
+import { cardKey } from "@/lib/sparc/store";
 import { buildingTotals, floorStats, timeAgo } from "@/lib/sparc/selectors";
 import type { ScanMode, ScanOutcome } from "@/lib/sparc/types";
 import { Count, EmptyState, PageHeader, Panel, PanelHeader } from "./ui";
@@ -37,11 +41,22 @@ export function ScanView() {
   const [mode, setMode] = useState<ScanMode>(() => (params.get("mode") === "exit" ? "exit" : "entry"));
   const modeLabel = mode === "entry" ? "Entry" : "Exit";
   const [manual, setManual] = useState("");
+  // Which gate this device is stationed at, so each tap is logged against it
+  const [gate, setGate] = useState<string>(GATES[0]);
   const [copied, setCopied] = useState(false);
   const onIOS = useIsIOS();
   const shortcutUrl = typeof window === "undefined" ? "" : `${window.location.origin}/admin/scan?mode=${mode}&nfc=`;
 
-  const onScan = useCallback((serial: string) => void store.scan(serial, mode), [store, mode]);
+  // A car that came in on a temporary vehicle is queued for an admin to check
+  const tap = useCallback(
+    (serial: string) => {
+      const out = store.scan(serial, mode, gate);
+      if (mode === "entry" && out.status === "entered") portal.flagTemporaryEntry(cardKey(out.user.nfcId));
+      return out;
+    },
+    [store, mode, gate],
+  );
+  const onScan = useCallback((serial: string) => void tap(serial), [tap]);
   const reader = useNfcReader(onScan);
 
   // Safari can't do Web NFC on iOS, so an iPhone/iPad Shortcut (its "Scan NFC
@@ -54,10 +69,11 @@ export function ScanView() {
   useEffect(() => {
     if (!shortcutId || dispatchedId.current === shortcutId) return;
     dispatchedId.current = shortcutId;
-    store.scan(shortcutId, mode);
+    tap(shortcutId);
     router.replace(`/admin/scan?mode=${mode}`); // drop the id so a refresh doesn't rescan
-  }, [shortcutId, store, router, mode]);
+  }, [shortcutId, tap, router, mode]);
 
+  usePortalState(); // event holds change the free count
   const stats = floorStats(state.config, state.slots);
   const totals = buildingTotals(stats);
   const latest = state.scans[0];
@@ -92,6 +108,19 @@ export function ScanView() {
               );
             })}
           </div>
+          <div className="mt-4 flex max-w-md flex-wrap items-center gap-3">
+            <label htmlFor="scan-gate" className="text-sm font-semibold text-ink">
+              This device is at
+            </label>
+            <select id="scan-gate" className="c-input" value={gate} onChange={(e) => setGate(e.target.value)}>
+              {GATES.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <p className={`mt-2 text-sm font-semibold ${mode === "entry" ? "text-live" : "text-gold"}`}>
             Scanning for {modeLabel.toUpperCase()}: {mode === "entry" ? "taps let vehicles in." : "taps check vehicles out."}
           </p>
@@ -152,7 +181,7 @@ export function ScanView() {
               className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (manual.trim()) store.scan(manual, mode);
+                if (manual.trim()) tap(manual);
                 setManual("");
               }}
             >

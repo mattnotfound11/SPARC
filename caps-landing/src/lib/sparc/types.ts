@@ -62,6 +62,8 @@ export type LogEntry = {
   slot: string | null;
   floor: number | null;
   vehicle: VehicleClass | null;
+  /** Which gate the tap came through. Absent on records made before gates were recorded. */
+  gate?: string;
 };
 
 export type ActionResult = { ok: true } | { ok: false; error: string };

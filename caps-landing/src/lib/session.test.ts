@@ -24,3 +24,18 @@ describe("loginRequired", { timeout: 30000 }, () => {
     expect(await loginRequiredWith("false")).toBe(false);
   });
 });
+
+describe("canAccess", () => {
+  it("lets administrators open every page", async () => {
+    vi.resetModules();
+    const { canAccess } = await import("./session");
+    for (const p of ["/admin", "/admin/users", "/admin/reports", "/admin/analytics", "/admin/pass"]) expect(canAccess("admin", p)).toBe(true);
+  });
+
+  it("keeps facilitators on the gate pages, off users, reports and analytics", async () => {
+    vi.resetModules();
+    const { canAccess } = await import("./session");
+    for (const p of ["/admin", "/admin/scan", "/admin/pass", "/admin/logs"]) expect(canAccess("facilitator", p)).toBe(true);
+    for (const p of ["/admin/users", "/admin/reports", "/admin/analytics", "/admin/appeals"]) expect(canAccess("facilitator", p)).toBe(false);
+  });
+});

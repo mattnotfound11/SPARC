@@ -1,0 +1,129 @@
+import type { FloorConfig, LogEntry, RegisteredUser, Slot, UserRole, VehicleClass } from "./types";
+import { GATES, slotCode } from "./seed";
+
+/*
+ * Made-up console data for demos: 30 drivers, a week of gate traffic, and cars parked right now.
+ * Deterministic, so every demo looks the same. Replaced by real data once the backend feeds the store.
+ */
+
+const DAY = 24 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+
+const NAMES: [string, UserRole, VehicleClass][] = [
+  ["Maria Clara Reyes", "student", "light"],
+  ["Jose Miguel Santos", "student", "light"],
+  ["Angelica Dizon", "student", "light"],
+  ["Paolo Villanueva", "student", "light"],
+  ["Katrina Mae Lopez", "student", "light"],
+  ["Rafael Gutierrez", "student", "light"],
+  ["Bianca Montecillo", "student", "light"],
+  ["Carlo Jericho Tan", "student", "light"],
+  ["Nicole Anne Ramos", "student", "light"],
+  ["Jared Patrick Uy", "student", "light"],
+  ["Francesca Lim", "student", "light"],
+  ["Miguel Angelo Ferrer", "student", "light"],
+  ["Hannah Joy Bautista", "student", "light"],
+  ["Gabriel Antonio Sy", "student", "light"],
+  ["Sofia Isabel Navarro", "student", "light"],
+  ["Dr. Elena Maquiling", "personnel", "light"],
+  ["Prof. Ricardo Alcantara", "personnel", "light"],
+  ["Engr. Teresita Magbanua", "personnel", "light"],
+  ["Mr. Domingo Pelayo", "personnel", "light"],
+  ["Ms. Lourdes Fernandez", "personnel", "light"],
+  ["Mrs. Corazon Jalandoni", "personnel", "light"],
+  ["Atty. Benedicto Salcedo", "personnel", "light"],
+  ["Dr. Arnold Villaruz", "personnel", "light"],
+  ["Mr. Leandro Gonzaga", "personnel", "heavy"],
+  ["Mr. Efren Dumalagan", "personnel", "heavy"],
+  ["Engr. Roberto Ledesma", "personnel", "heavy"],
+  ["Ms. Gloria Consolacion", "personnel", "heavy"],
+  ["Mr. Teodoro Hechanova", "personnel", "heavy"],
+  ["Fr. Alfonso Treñas", "personnel", "heavy"],
+  ["Mr. Ernesto Villanueva", "visitor", "light"],
+];
+
+export type SampleData = {
+  users: RegisteredUser[];
+  slots: Slot[];
+  logs: LogEntry[];
+  nextLogSeq: number;
+  nextUserSeq: number;
+};
+
+export function sampleData(config: FloorConfig[], now: number): SampleData {
+  let seed = 11;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+
+  const users: RegisteredUser[] = NAMES.map(([name, role, vehicle], i) => {
+    const n = i + 1;
+    // most passes are current; a few lapsed or are switched off, so the Users page shows every state
+    const expiresAt = i === 5 || i === 17 ? now - 2 * DAY : now + (27 - (i % 20)) * DAY;
+    return {
+      id: `U-${String(n).padStart(3, "0")}`,
+      nfcId: `4000-0000-${String(1000 + n)}`,
+      studentId: role === "student" ? `2024-${String(10000 + n * 37).slice(-5)}` : role === "personnel" ? `EMP-${String(200 + n)}` : `VIS-${String(n)}`,
+      name,
+      role,
+      vehicle,
+      active: i !== 11,
+      createdAt: expiresAt - 30 * DAY,
+      expiresAt,
+    };
+  });
+
+  // Each driver always parks in the same bay, so two cars never claim one slot.
+  const bayFor = new Map<string, { floor: number; code: string; vehicle: VehicleClass }>();
+  const used: Record<VehicleClass, number> = { heavy: 0, light: 0 };
+  for (const u of users) {
+    const floors = config.filter((f) => f.vehicle === u.vehicle);
+    const k = used[u.vehicle]++;
+    const floor = floors[Math.floor(k / floors[0].slots) % floors.length];
+    bayFor.set(u.id, { floor: floor.floor, code: slotCode(floor.floor, (k % floor.slots) + 1), vehicle: u.vehicle });
+  }
+
+  type Visit = { user: RegisteredUser; arrive: number; leave: number };
+  const visits: Visit[] = [];
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  for (let d = 7; d >= 0; d--) {
+    const day = today.getTime() - d * DAY;
+    if ([0, 6].includes(new Date(day).getDay())) continue;
+    for (const u of users) {
+      if (!u.active || rand() > 0.82) continue;
+      const arrive = day + (7 + rand() * 2.5 + (rand() < 0.12 ? 4 : 0)) * HOUR;
+      let leave = arrive + (3.5 + rand() * 6) * HOUR;
+      // a few cars are still inside today, so the live view has occupants whatever time it is opened
+      if (d === 0 && arrive <= now && leave <= now && Number(u.id.slice(2)) % 3 === 0 && now < day + 21 * HOUR) leave = now + (1 + rand() * 2) * HOUR;
+      visits.push({ user: u, arrive, leave });
+    }
+  }
+
+  const events: Omit<LogEntry, "id">[] = [];
+  const occupied = new Map<string, Slot["occupant"]>();
+  visits.forEach((v, i) => {
+    const bay = bayFor.get(v.user.id)!;
+    // the main gate takes most of the traffic
+    const gate = rand() < 0.62 ? GATES[0] : GATES[1];
+    const base = { gate, visitId: `V-${String(i + 1).padStart(4, "0")}`, nfcId: v.user.nfcId, userId: v.user.id, userName: v.user.name, slot: bay.code, floor: bay.floor, vehicle: bay.vehicle };
+    if (v.arrive > now) return;
+    events.push({ ...base, at: v.arrive, event: "entry" });
+    if (v.leave <= now) events.push({ ...base, at: v.leave, event: "exit" });
+    else occupied.set(bay.code, { userId: v.user.id, name: v.user.name, nfcId: v.user.nfcId, since: v.arrive });
+  });
+
+  events.sort((a, b) => a.at - b.at);
+  const logs: LogEntry[] = events.map((e, i) => ({ ...e, id: `L-${String(i + 1).padStart(4, "0")}` })).reverse();
+
+  const slots: Slot[] = config.flatMap(({ floor, vehicle, slots: count }) =>
+    Array.from({ length: count }, (_, i) => {
+      const code = slotCode(floor, i + 1);
+      const occupant = occupied.get(code);
+      return { code, floor, index: i + 1, vehicle, status: occupant ? ("occupied" as const) : ("free" as const), ...(occupant ? { occupant } : {}) };
+    }),
+  );
+
+  return { users, slots, logs, nextLogSeq: events.length + 1, nextUserSeq: users.length + 1 };
+}

@@ -105,3 +105,49 @@ describe("student ID", () => {
     expect(validateUser(withSid("2021-00999"), [legacy]).studentId).toBeUndefined();
   });
 });
+
+describe("loadSample", () => {
+  it("fills users, a week of paired traffic and consistent occupancy", () => {
+    const store = createSparcStore(new Date(2026, 10, 16, 14).getTime());
+    store.loadSample();
+    const s = store.getState();
+    expect(s.users.length).toBeGreaterThanOrEqual(30);
+    expect(s.logs.length).toBeGreaterThan(100);
+    const occupied = s.slots.filter((x) => x.status === "occupied");
+    expect(occupied.length).toBeGreaterThan(0);
+    for (const slot of occupied) {
+      const last = s.logs.find((l) => l.userId === slot.occupant?.userId);
+      expect(last?.event).toBe("entry");
+      expect(last?.slot).toBe(slot.code);
+    }
+    expect(new Set(s.logs.map((l) => l.id)).size).toBe(s.logs.length);
+  });
+});
+
+describe("event holds", () => {
+  const day = new Date(2026, 10, 17).getTime();
+  const noon = new Date(2026, 10, 17, 12).getTime();
+
+  it("closed floors and held bays change the live count and the bay the gate picks", async () => {
+    const { portal } = await import("@/lib/portal/store");
+    const { floorStats, pickFreeSlot } = await import("./selectors");
+    const store = createSparcStore(noon);
+    const { config, slots } = store.getState();
+    const before = floorStats(config, slots, noon);
+    expect(before.every((f) => f.held === 0)).toBe(true);
+
+    portal.setEvent({ name: "Graduation", date: day, closedFloors: [3], reservedPerFloor: 4 }, noon);
+    try {
+      const stats = floorStats(config, slots, noon);
+      expect(stats.find((f) => f.floor === 3)).toMatchObject({ free: 0, held: 22 });
+      expect(stats.find((f) => f.floor === 4)).toMatchObject({ free: 18, held: 4 });
+      // light vehicles skip the closed floor 3 and go to floor 4
+      expect(pickFreeSlot(config, slots, "light", noon)?.floor).toBe(4);
+      // another day: nothing is held
+      const other = new Date(2026, 10, 19, 12).getTime();
+      expect(floorStats(config, slots, other).every((f) => f.held === 0)).toBe(true);
+    } finally {
+      portal.setEvent(null);
+    }
+  });
+});

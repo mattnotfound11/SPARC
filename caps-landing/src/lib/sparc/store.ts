@@ -1,4 +1,6 @@
-import { DEFAULT_CONFIG, buildSlots } from "./seed";
+import { DEFAULT_CONFIG, GATES, buildSlots } from "./seed";
+import { sampleData } from "./sample";
+import { pickFreeSlot } from "./selectors";
 import type {
   ActionResult,
   FloorConfig,
@@ -39,7 +41,7 @@ export type SparcStore = {
   removeUser: (id: string) => ActionResult;
   renewUser: (id: string) => ActionResult;
   /** A card tap at the entry or exit scanner: does what the mode says, or explains why not. */
-  scan: (nfcId: string, mode: ScanMode) => ScanOutcome;
+  scan: (nfcId: string, mode: ScanMode, gate?: string) => ScanOutcome;
   /** Re-reads saved data, e.g. after another browser tab changed it. Does not write back. */
   refresh: () => void;
   /**
@@ -47,6 +49,10 @@ export type SparcStore = {
    * created with `newId: uniqueId`, since several devices write to the same tables.
    */
   hydrate: (data: HydrateData) => void;
+  /** A visitor's pass was accepted: log the entry against the host's card. The guest goes to visitor parking, so no bay is taken. */
+  logVisitorEntry: (hostNfcId: string, guestName: string, plate: string, gate?: string) => void;
+  /** Demo only: replaces the console's data with made-up drivers, a week of traffic and cars parked now. */
+  loadSample: () => void;
 };
 
 export type HydrateData = Pick<SparcState, "slots" | "users" | "logs" | "scans">;
@@ -288,7 +294,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     return { ok: true };
   }
 
-  function scan(rawNfc: string, mode: ScanMode): ScanOutcome {
+  function scan(rawNfc: string, mode: ScanMode, gate: string = GATES[0]): ScanOutcome {
     const at = Date.now();
     const nfcId = normalizeNfc(rawNfc);
     const user = state.users.find((u) => cardKey(u.nfcId) === cardKey(nfcId));
@@ -318,6 +324,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
         slot: parked.code,
         floor: parked.floor,
         vehicle: parked.vehicle,
+        gate,
       };
       return record(
         { status: "exited", user, slot: parked.code, floor: parked.floor },
@@ -332,7 +339,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     if (!user.active) return record({ status: "no-pass", user });
     if (user.expiresAt <= at) return record({ status: "expired", user });
 
-    const free = state.slots.find((s) => s.status === "free" && s.vehicle === user.vehicle);
+    const free = pickFreeSlot(state.config, state.slots, user.vehicle, at);
     if (!free) return record({ status: "full", user });
 
     const seq = state.nextLogSeq;
@@ -347,6 +354,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
       slot: free.code,
       floor: free.floor,
       vehicle: free.vehicle,
+      gate,
     };
     return record(
       { status: "entered", user, slot: free.code, floor: free.floor },
@@ -375,6 +383,44 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     scan,
     refresh,
     hydrate: (data) => set({ ...data, now: Date.now() }),
+    logVisitorEntry(hostNfcId, guestName, plate, gate = GATES[0]) {
+      const at = Date.now();
+      const host = state.users.find((u) => cardKey(u.nfcId) === cardKey(hostNfcId));
+      const seq = state.nextLogSeq;
+      const log: LogEntry = {
+        id: newId?.("L") ?? `L-${String(seq).padStart(4, "0")}`,
+        visitId: newId?.("V") ?? `V-${String(seq).padStart(4, "0")}`,
+        at,
+        event: "entry",
+        nfcId: host?.nfcId ?? normalizeNfc(hostNfcId),
+        userId: host?.id ?? null,
+        userName: `Visitor ${guestName} (${plate}), host ${host?.name ?? "unknown"}`,
+        slot: null,
+        floor: null,
+        vehicle: null,
+        gate,
+      };
+      set({ logs: [log, ...state.logs], nextLogSeq: seq + 1, now: at });
+    },
+    loadSample() {
+      const at = Date.now();
+      const sample = sampleData(state.config, at);
+      // keep the built-in demo user (the expired-pass example) alongside the sample drivers
+      const kept = state.users.filter((u) => u.id === "U-DEMO-001");
+      let { slots, logs, nextLogSeq } = sample;
+      // The demo driver is parked right now, so the driver portal's "My parking" page has something to show
+      const demo = kept[0];
+      const bay = slots.find((s) => s.code === "E1" && s.status === "free");
+      if (demo && bay) {
+        const since = at - 2.5 * 60 * 60 * 1000;
+        const n = String(nextLogSeq).padStart(4, "0");
+        slots = slots.map((s) => (s.code === bay.code ? { ...s, status: "occupied" as const, occupant: { userId: demo.id, name: demo.name, nfcId: demo.nfcId, since } } : s));
+        const entry: LogEntry = { id: `L-${n}`, visitId: `V-${n}`, at: since, event: "entry", nfcId: demo.nfcId, userId: demo.id, userName: demo.name, slot: bay.code, floor: bay.floor, vehicle: bay.vehicle, gate: GATES[0] };
+        logs = [entry, ...logs].sort((a, b) => b.at - a.at);
+        nextLogSeq++;
+      }
+      set({ ...sample, slots, logs, nextLogSeq, users: [...sample.users, ...kept], scans: [], nextScanSeq: 1, now: at });
+    },
   };
 }
 
