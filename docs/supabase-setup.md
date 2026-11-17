@@ -63,9 +63,9 @@ Budget about 15 minutes.
    NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxx
    ```
-   Leave `NEXT_PUBLIC_REQUIRE_ADMIN_LOGIN=false`.
+   Leave `NEXT_PUBLIC_REQUIRE_ADMIN_LOGIN=true` (the console asks for a staff sign-in). Set it to `false` only for an open demo.
 3. Stop the dev server (Ctrl + C) and run `npm run dev` again. The values are read only at start-up.
-4. Open http://localhost:3000/admin. No login is needed. **Live status** should show **110 / 110**.
+4. Open http://localhost:3000/admin and sign in with a staff account. **Live status** should show **110 / 110**.
 
 **On the live site (Vercel)**
 
