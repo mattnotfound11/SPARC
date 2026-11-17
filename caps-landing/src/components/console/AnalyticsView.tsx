@@ -11,6 +11,7 @@ import {
   deckStats,
   formatStay,
   hourLabel,
+  gateStats,
   hourlyEntries,
   logsIn,
   monthlyRows,
@@ -60,6 +61,7 @@ export function AnalyticsView() {
   const heat = useMemo(() => weekdayHour(logs, month, now), [logs, month, now]);
   const decks = useMemo(() => deckStats(logs, state.config, month, now), [logs, state.config, month, now]);
   const hourly = useMemo(() => hourlyEntries(logs, month, now), [logs, month, now]);
+  const gate = useMemo(() => gateStats(logs, month, now), [logs, month, now]);
   // A dismissed violation was cancelled, so it doesn't count toward the trend
   const standing = useMemo(() => portal.violations.filter((v) => v.status !== "dismissed"), [portal.violations]);
   const weeks = useMemo(() => violationWeeks(standing, now, 8), [standing, now]);
@@ -88,7 +90,7 @@ export function AnalyticsView() {
   );
 
   function exportCsv() {
-    downloadCsv(`sparc-monthly-report-${month.key}.csv`, monthlyRows({ month, heat, decks, hourly, violations: weeks, entries }));
+    downloadCsv(`sparc-monthly-report-${month.key}.csv`, monthlyRows({ month, heat, decks, hourly, violations: weeks, entries, gates: gate.gates }));
     toast(`Exported the report for ${month.label}.`);
   }
 
@@ -290,10 +292,41 @@ export function AnalyticsView() {
                     </span>
                   ))}
                 </div>
-                <p className="mt-3 text-xs leading-relaxed text-ink-faint">
-                  All gates combined. A per-gate split needs each log entry to record which gate it came through, which the log doesn&apos;t yet.
-                </p>
+                <p className="mt-3 text-xs leading-relaxed text-ink-faint">All gates combined. The split by gate is below.</p>
               </div>
+            </Panel>
+
+            <Panel aria-labelledby="gates-title" className="min-w-0 xl:col-span-2">
+              <PanelHeader id="gates-title" title="Throughput by gate" />
+              {gate.gates.length === 0 ? (
+                <p className="border-t border-line px-4 py-4 text-sm text-ink-muted sm:px-5">No gate was recorded for the taps this month.</p>
+              ) : (
+                <ul className="border-t border-line">
+                  {gate.gates.map((g) => {
+                    const total = gate.gates.reduce((a, x) => a + x.entries + x.exits, 0);
+                    const share = total ? Math.round(((g.entries + g.exits) / total) * 100) : 0;
+                    return (
+                      <li key={g.gate} className="border-b border-line px-4 py-3.5 last:border-b-0 sm:px-5">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                          <p className="font-semibold text-ink">{g.gate}</p>
+                          <p className="num text-sm text-ink-muted">
+                            {g.entries} in · {g.exits} out · {share}% of taps
+                          </p>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-line" aria-hidden>
+                          <div className="h-full rounded-full bg-gold" style={{ width: `${share}%` }} />
+                        </div>
+                        <p className="mt-2 text-xs text-ink-faint">
+                          {g.peakHour === null ? "No entries yet." : `Busiest at ${hourLabel(g.peakHour)}, ${g.peakAverage.toFixed(1)} entries on average.`}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {gate.unassigned > 0 && (
+                <p className="border-t border-line px-4 py-3 text-xs text-ink-faint sm:px-5">{gate.unassigned} older taps have no gate recorded and are not counted here.</p>
+              )}
             </Panel>
           </div>
         </>

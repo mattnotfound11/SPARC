@@ -1,4 +1,4 @@
-import { MAX_VEHICLES, type Appeal, type PortalState, type Vehicle, type VisitorPass, type Violation } from "./types";
+import { MAX_VEHICLES, type Appeal, type EventMode, type PortalState, type Vehicle, type VisitorPass, type Violation, type WaitEntry } from "./types";
 import type { ActionResult, VehicleClass } from "@/lib/sparc/types";
 
 /*
@@ -80,6 +80,11 @@ export type PortalStore = {
   /** Demo only: adds sample violations for a card until the backend produces real ones. */
   seedSample: (ownerCard: string, now?: number) => void;
   /** Demo only: fills the demo account with vehicles, violations, an appeal and visitor passes. Safe to call twice. */
+  /** The driver asks to be told when a bay of this class is free. One request per card. */
+  joinWaitlist: (ownerCard: string, vehicle: VehicleClass, now?: number) => ActionResult;
+  leaveWaitlist: (ownerCard: string) => void;
+  /** The marshal turns event mode on (until the end of today) or off with null. */
+  setEvent: (name: string | null, now?: number) => ActionResult;
   seedDemo: (now?: number) => void;
   /** Demo only: gives the admin sample drivers a vehicle each, violations, appeals, strikes and a few visitor passes. Safe to call twice. */
   seedDrivers: (drivers: { card: string; type: VehicleClass }[], now?: number) => void;
@@ -293,6 +298,27 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
         appeals: hasViolations ? state.appeals : [...state.appeals, ...appeals],
         passes: [...state.passes, ...newPasses],
       });
+    },
+    joinWaitlist(ownerCard, vehicle, now = Date.now()) {
+      const list = state.waitlist ?? [];
+      if (list.some((w) => w.ownerCard === ownerCard)) return { ok: false, error: "You are already on the waitlist." };
+      const entry: WaitEntry = { id: idFor("wait"), ownerCard, vehicle, createdAt: now };
+      set({ ...state, waitlist: [...list, entry] });
+      return { ok: true };
+    },
+    leaveWaitlist(ownerCard) {
+      set({ ...state, waitlist: (state.waitlist ?? []).filter((w) => w.ownerCard !== ownerCard) });
+    },
+    setEvent(name, now = Date.now()) {
+      if (name === null) {
+        set({ ...state, event: null });
+        return { ok: true };
+      }
+      const trimmed = name.trim();
+      if (trimmed.length < 3) return { ok: false, error: "Name the event, for example Graduation." };
+      const event: EventMode = { name: trimmed, startedAt: now, until: endOfToday(now) };
+      set({ ...state, event });
+      return { ok: true };
     },
     seedDemo(now = Date.now()) {
       const ownerCard = DEMO_CARD;

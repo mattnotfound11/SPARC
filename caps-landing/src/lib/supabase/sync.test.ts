@@ -29,6 +29,13 @@ function seeded() {
   return store;
 }
 
+// The shared database has no gate column yet, so a log read back from it carries no gate.
+const noGate = <T extends { gate?: string }>(l: T): T => {
+  const { gate, ...rest } = l;
+  void gate;
+  return rest as T;
+};
+
 describe("row mapping", () => {
   it("round-trips users, slots and logs", () => {
     const store = seeded();
@@ -38,7 +45,7 @@ describe("row mapping", () => {
     const taken = s.slots.find((x) => x.status === "occupied")!;
     expect(slotFromRow(slotToRow(taken))).toEqual(taken);
     expect(slotFromRow(slotToRow(s.slots[0]))).toEqual(s.slots[0]);
-    expect(logFromRow(logToRow(s.logs[0]))).toEqual(s.logs[0]);
+    expect(logFromRow(logToRow(s.logs[0]))).toEqual(noGate(s.logs[0]));
   });
 
   it("stores a blank student ID as null and reads it back as absent", () => {
@@ -126,7 +133,7 @@ describe("applyChange", () => {
     ];
     for (const c of changes) data = applyChange(data, c);
     expect(data.slots).toEqual(s.slots);
-    expect(data.logs).toEqual(s.logs);
+    expect(data.logs).toEqual(s.logs.map(noGate));
     expect(data.scans[0].id).toBe(s.scans[0].id);
   });
 

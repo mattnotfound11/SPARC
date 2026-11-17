@@ -3,6 +3,7 @@
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { useNow } from "@/lib/sparc/SparcProvider";
+import { EventBanner } from "./EventBanner";
 import { ForecastCard } from "./ForecastCard";
 
 /** Full-screen outlook for the lobby and gate displays. Refreshes itself; nothing to click. */
@@ -19,6 +20,7 @@ export function ScreenBoard() {
           {new Date(now).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}
         </p>
       </header>
+      <EventBanner screen />
       <ForecastCard screen />
     </div>
   );

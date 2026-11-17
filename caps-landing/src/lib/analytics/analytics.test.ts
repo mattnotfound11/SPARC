@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deckStats, formatStay, hourlyEntries, logsIn, monthlyRows, months, violationWeeks, weekdayHour } from "./analytics";
+import { deckStats, formatStay, gateStats, hourlyEntries, logsIn, monthlyRows, months, violationWeeks, weekdayHour } from "./analytics";
 import type { FloorConfig, LogEntry } from "@/lib/sparc/types";
 import type { Violation } from "@/lib/portal/types";
 
@@ -150,5 +150,24 @@ describe("formatStay and monthlyRows", () => {
     expect(flat.some((r) => r.startsWith("Level 1|1|120"))).toBe(true);
     expect(flat.filter((r) => r.startsWith("8 AM|"))).toHaveLength(1);
     expect(flat.some((r) => r.startsWith("Monday|"))).toBe(true);
+  });
+});
+
+describe("gateStats", () => {
+  const tap = (id: string, when: number, event: "entry" | "exit", gate?: string): LogEntry => ({ ...log(id, when, event, 1), gate });
+
+  it("splits entries and exits by gate, finds each gate's busiest hour, and counts untagged taps apart", () => {
+    const logs = [
+      tap("a", at(10, 3, 8), "entry", "Main gate"),
+      tap("b", at(10, 4, 8), "entry", "Main gate"),
+      tap("c", at(10, 4, 17), "exit", "Main gate"),
+      tap("d", at(10, 3, 9), "entry", "Side gate"),
+      tap("e", at(10, 3, 10), "entry"),
+    ];
+    const r = gateStats(logs, nov, NOW);
+    expect(r.unassigned).toBe(1);
+    expect(r.gates.map((g) => g.gate)).toEqual(["Main gate", "Side gate"]);
+    expect(r.gates[0]).toMatchObject({ entries: 2, exits: 1, peakHour: 8 });
+    expect(r.gates[1]).toMatchObject({ entries: 1, exits: 0, peakHour: 9 });
   });
 });

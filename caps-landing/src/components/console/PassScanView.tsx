@@ -9,6 +9,7 @@ import { useSparcStore } from "@/lib/sparc/SparcProvider";
 import { cardKey } from "@/lib/sparc/store";
 import { qrCameraSupported, useQrCamera } from "@/lib/useQrCamera";
 import { formatTime } from "@/lib/sparc/selectors";
+import { TemporaryVehiclePanel } from "./TemporaryVehiclePanel";
 import { PageHeader, Panel, PanelHeader } from "./ui";
 
 type Scan = { id: number; at: number; code: string; outcome: RedeemOutcome };
@@ -193,6 +194,8 @@ export function PassScanView() {
       </div>
 
       <div data-enter aria-live="polite">{latest && <Result scan={latest} />}</div>
+
+      <TemporaryVehiclePanel />
 
       {scans.length > 1 && (
         <Panel data-enter aria-labelledby="recent-title">

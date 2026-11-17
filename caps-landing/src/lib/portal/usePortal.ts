@@ -12,6 +12,18 @@ export function usePortalState(): PortalState {
   return useSyncExternalStore(portal.subscribe, portal.get, () => EMPTY);
 }
 
+/** The current time, to the minute. A snapshot read, so components can ask "is it still on?" without calling Date.now in render. */
+export function useMinute(): number {
+  return useSyncExternalStore(
+    (fn) => {
+      const t = window.setInterval(fn, 30000);
+      return () => window.clearInterval(t);
+    },
+    () => Math.floor(Date.now() / 60000) * 60000,
+    () => 0,
+  );
+}
+
 /* The driver's card, remembered in this browser. A prototype sign-in until the backend has driver accounts. */
 const CARD_KEY = "sparc_portal_card";
 const CARD_EVENT = "sparc-portal-card";

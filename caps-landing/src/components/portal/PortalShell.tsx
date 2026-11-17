@@ -9,14 +9,30 @@ import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { ToastProvider } from "@/components/console/ui";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { DEMO_CARD, DEMO_CARD_LABEL, portal } from "@/lib/portal/store";
+import { useAlerts } from "@/lib/portal/useAlerts";
 import { setDriverCard, useDriverCard } from "@/lib/portal/usePortal";
+import { EventBanner } from "./EventBanner";
 import { cardKey, normalizeNfc } from "@/lib/sparc/store";
 
 const NAV = [
   { href: "/portal", label: "Vehicles" },
   { href: "/portal/violations", label: "Violations" },
   { href: "/portal/visitors", label: "Visitors" },
+  { href: "/portal/parking", label: "Parking" },
+  { href: "/portal/alerts", label: "Alerts" },
 ] as const;
+
+/** The unread count next to "Alerts". */
+function UnreadDot({ card }: { card: string }) {
+  const { unread } = useAlerts(card);
+  if (!unread) return null;
+  return (
+    <span className="num ml-1.5 inline-grid min-w-5 place-items-center rounded-full bg-gold px-1 text-[0.6875rem] font-bold leading-5 text-canvas">
+      {unread}
+      <span className="sr-only"> unread</span>
+    </span>
+  );
+}
 
 const isActive = (pathname: string, href: string) => (href === "/portal" ? pathname === "/portal" : pathname.startsWith(href));
 
@@ -107,8 +123,8 @@ export function PortalShell({ children }: { children: (card: string) => React.Re
             <SparcWordmark className="hidden text-lg text-ink min-[480px]:inline" />
           </Link>
           {card && (
-            <div className="flex items-center gap-1">
-              <ul className="flex items-center gap-1">
+            <div className="flex min-w-0 items-center gap-1">
+              <ul className="flex min-w-0 items-center gap-1 overflow-x-auto">
                 {NAV.map(({ href, label }) => (
                   <li key={href}>
                     <Link
@@ -117,6 +133,7 @@ export function PortalShell({ children }: { children: (card: string) => React.Re
                       className="side-link !min-h-9 !px-3 !text-sm"
                     >
                       {label}
+                      {href === "/portal/alerts" && <UnreadDot card={card} />}
                     </Link>
                   </li>
                 ))}
@@ -134,6 +151,7 @@ export function PortalShell({ children }: { children: (card: string) => React.Re
         </nav>
       </header>
       <main id="main-content" className="mx-auto w-full max-w-4xl flex-1 px-5 py-8 sm:px-8 sm:py-12">
+        {card ? <div className="mb-5"><EventBanner /></div> : null}
         {card === null ? null : card === "" ? <CardEntry /> : children(card)}
       </main>
     </ToastProvider>

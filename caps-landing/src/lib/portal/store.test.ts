@@ -259,3 +259,27 @@ describe("seedDrivers", () => {
     expect(s.get().violations).toHaveLength(n);
   });
 });
+
+describe("waitlist and event mode", () => {
+  const now = new Date(2026, 10, 16, 10).getTime();
+
+  it("allows one waitlist request per card, and leaving clears it", () => {
+    const s = make();
+    expect(s.joinWaitlist(CARD, "light", now).ok).toBe(true);
+    expect(s.joinWaitlist(CARD, "heavy", now).ok).toBe(false);
+    s.leaveWaitlist(CARD);
+    expect(s.get().waitlist).toEqual([]);
+    expect(s.joinWaitlist(CARD, "heavy", now).ok).toBe(true);
+  });
+
+  it("turns event mode on until the end of the day, and off again", () => {
+    const s = make();
+    expect(s.setEvent("  ", now).ok).toBe(false);
+    expect(s.setEvent("Graduation", now).ok).toBe(true);
+    const e = s.get().event!;
+    expect(e.name).toBe("Graduation");
+    expect(new Date(e.until).getDate()).toBe(16);
+    s.setEvent(null);
+    expect(s.get().event).toBeNull();
+  });
+});

@@ -59,6 +59,12 @@ export type VisitorPass = {
   sample?: boolean;
 };
 
+/** A driver asking to be told when a bay of their vehicle class is free. */
+export type WaitEntry = { id: string; ownerCard: string; vehicle: VehicleClass; createdAt: number };
+
+/** A special day (graduation, a game) the marshal flags, so drivers and the lobby screen are warned. */
+export type EventMode = { name: string; startedAt: number; until: number };
+
 export type PortalState = {
   vehicles: Vehicle[];
   /** The vehicle the driver is using today, per owner card. */
@@ -68,4 +74,7 @@ export type PortalState = {
   passes: VisitorPass[];
   /** Set when the demo account was loaded, so the forecast and analytics default to sample history. */
   demo?: boolean;
+  waitlist?: WaitEntry[];
+  /** Set while event mode is on. */
+  event?: EventMode | null;
 };

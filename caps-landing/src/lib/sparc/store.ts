@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG, buildSlots } from "./seed";
+import { DEFAULT_CONFIG, GATES, buildSlots } from "./seed";
 import { sampleData } from "./sample";
 import type {
   ActionResult,
@@ -40,7 +40,7 @@ export type SparcStore = {
   removeUser: (id: string) => ActionResult;
   renewUser: (id: string) => ActionResult;
   /** A card tap at the entry or exit scanner: does what the mode says, or explains why not. */
-  scan: (nfcId: string, mode: ScanMode) => ScanOutcome;
+  scan: (nfcId: string, mode: ScanMode, gate?: string) => ScanOutcome;
   /** Re-reads saved data, e.g. after another browser tab changed it. Does not write back. */
   refresh: () => void;
   /**
@@ -291,7 +291,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     return { ok: true };
   }
 
-  function scan(rawNfc: string, mode: ScanMode): ScanOutcome {
+  function scan(rawNfc: string, mode: ScanMode, gate: string = GATES[0]): ScanOutcome {
     const at = Date.now();
     const nfcId = normalizeNfc(rawNfc);
     const user = state.users.find((u) => cardKey(u.nfcId) === cardKey(nfcId));
@@ -321,6 +321,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
         slot: parked.code,
         floor: parked.floor,
         vehicle: parked.vehicle,
+        gate,
       };
       return record(
         { status: "exited", user, slot: parked.code, floor: parked.floor },
@@ -350,6 +351,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
       slot: free.code,
       floor: free.floor,
       vehicle: free.vehicle,
+      gate,
     };
     return record(
       { status: "entered", user, slot: free.code, floor: free.floor },
@@ -383,7 +385,19 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
       const sample = sampleData(state.config, at);
       // keep the built-in demo user (the expired-pass example) alongside the sample drivers
       const kept = state.users.filter((u) => u.id === "U-DEMO-001");
-      set({ ...sample, users: [...sample.users, ...kept], scans: [], nextScanSeq: 1, now: at });
+      let { slots, logs, nextLogSeq } = sample;
+      // The demo driver is parked right now, so the driver portal's "My parking" page has something to show
+      const demo = kept[0];
+      const bay = slots.find((s) => s.code === "E1" && s.status === "free");
+      if (demo && bay) {
+        const since = at - 2.5 * 60 * 60 * 1000;
+        const n = String(nextLogSeq).padStart(4, "0");
+        slots = slots.map((s) => (s.code === bay.code ? { ...s, status: "occupied" as const, occupant: { userId: demo.id, name: demo.name, nfcId: demo.nfcId, since } } : s));
+        const entry: LogEntry = { id: `L-${n}`, visitId: `V-${n}`, at: since, event: "entry", nfcId: demo.nfcId, userId: demo.id, userName: demo.name, slot: bay.code, floor: bay.floor, vehicle: bay.vehicle, gate: GATES[0] };
+        logs = [entry, ...logs].sort((a, b) => b.at - a.at);
+        nextLogSeq++;
+      }
+      set({ ...sample, slots, logs, nextLogSeq, users: [...sample.users, ...kept], scans: [], nextScanSeq: 1, now: at });
     },
   };
 }
