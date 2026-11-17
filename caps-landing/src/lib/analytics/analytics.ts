@@ -124,7 +124,7 @@ export function violationWeeks(violations: Violation[], now: number, weeks = 8):
     return {
       start,
       label: new Date(start).toLocaleDateString("en-PH", { month: "short", day: "numeric" }),
-      counts: { overstay: 0, overnight: 0, "anti-passback": 0 },
+      counts: { overstay: 0, overnight: 0, "anti-passback": 0, temporary: 0 },
       total: 0,
     };
   });
@@ -205,8 +205,8 @@ export function monthlyRows(args: { month: Month; heat: Heatmap; decks: DeckStat
     ["Weekday", ...Array.from({ length: 24 }, (_, h) => hourLabel(h))],
     ...WEEK_ORDER.map((w) => [WEEKDAYS[w], ...heat.grid[w].map((v) => Number(v.toFixed(2)))]),
     [],
-    ["Week starting", "Overstay", "Overnight", "Second entry without exit", "Total"],
-    ...violations.map((b) => [b.label, b.counts.overstay, b.counts.overnight, b.counts["anti-passback"], b.total]),
+    ["Week starting", "Overstay", "Overnight", "Second entry without exit", "Temporary vehicle entry", "Total"],
+    ...violations.map((b) => [b.label, b.counts.overstay, b.counts.overnight, b.counts["anti-passback"], b.counts.temporary, b.total]),
   ];
   return rows;
 }

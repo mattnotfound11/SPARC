@@ -119,7 +119,7 @@ describe("violationWeeks", () => {
     );
     expect(weeks).toHaveLength(3);
     expect(weeks[2].start).toBe(new Date(2026, 10, 16).getTime());
-    expect(weeks[2].counts).toEqual({ overstay: 1, overnight: 1, "anti-passback": 0 });
+    expect(weeks[2].counts).toEqual({ overstay: 1, overnight: 1, "anti-passback": 0, temporary: 0 });
     expect(weeks[1].counts.overstay).toBe(1); // Sunday the 15th belongs to the week of the 9th
     expect(weeks[1].counts["anti-passback"]).toBe(1);
     expect(weeks[2].total).toBe(2);

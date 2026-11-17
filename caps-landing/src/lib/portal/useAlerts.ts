@@ -2,9 +2,10 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
+import { floorStats } from "@/lib/sparc/selectors";
 import { cardKey, type SparcState } from "@/lib/sparc/store";
 import type { VehicleClass } from "@/lib/sparc/types";
-import { noticesFor } from "./notifications";
+import { noticesFor, type GateContext } from "./notifications";
 import { usePortalState } from "./usePortal";
 
 const none = () => () => {};
@@ -65,8 +66,17 @@ export function useAlerts(card: string) {
   const state = usePortalState();
   const sparc = useSparcStateOrNull();
   const seen = useSyncExternalStore(subscribeSeen, () => readSeen(card), () => 0);
-  const slots = sparc?.slots;
-  const free = useMemo(() => freeBays(slots), [slots]);
-  const notices = useMemo(() => noticesFor(state, card, free), [state, card, free]);
+  const gate = useMemo<GateContext>(() => {
+    if (!sparc) return { free: { light: 0, heavy: 0 } };
+    const user = sparc.users.find((u) => cardKey(u.nfcId) === card);
+    const slot = user ? sparc.slots.find((s) => s.occupant?.userId === user.id) : undefined;
+    return {
+      free: freeBays(sparc.slots),
+      expiresAt: user?.expiresAt,
+      parkedSince: slot?.occupant?.since,
+      fullFloors: floorStats(sparc.config, sparc.slots).filter((f) => f.free === 0).map((f) => f.floor),
+    };
+  }, [sparc, card]);
+  const notices = useMemo(() => noticesFor(state, card, gate), [state, card, gate]);
   return { notices, unread: notices.filter((n) => n.at > seen).length, seen };
 }

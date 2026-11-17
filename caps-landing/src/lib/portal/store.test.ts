@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_PASS_CODE, createPortalStore, normalizePlate } from "./store";
-import type { PortalState } from "./types";
+import { standingFor } from "./strikes";
+import type { PortalState, Violation } from "./types";
 
 const empty = (): PortalState => ({ vehicles: [], activeVehicle: {}, violations: [], appeals: [], passes: [] });
 const make = (initial: PortalState = empty()) => createPortalStore(() => initial, () => {});
@@ -272,14 +273,45 @@ describe("waitlist and event mode", () => {
     expect(s.joinWaitlist(CARD, "heavy", now).ok).toBe(true);
   });
 
-  it("turns event mode on until the end of the day, and off again", () => {
+  it("plans an event for a day with closed floors and held bays, and cancels it", () => {
     const s = make();
-    expect(s.setEvent("  ", now).ok).toBe(false);
-    expect(s.setEvent("Graduation", now).ok).toBe(true);
-    const e = s.get().event!;
-    expect(e.name).toBe("Graduation");
-    expect(new Date(e.until).getDate()).toBe(16);
+    const day = new Date(2026, 10, 18).getTime();
+    expect(s.setEvent({ name: "  ", date: day, closedFloors: [], reservedPerFloor: 0 }, now).ok).toBe(false);
+    expect(s.setEvent({ name: "Graduation", date: new Date(2026, 10, 1).getTime(), closedFloors: [], reservedPerFloor: 0 }, now).ok).toBe(false);
+    expect(s.setEvent({ name: "Graduation", date: day, closedFloors: [2, 1, 2], reservedPerFloor: 4 }, now).ok).toBe(true);
+    expect(s.get().event).toMatchObject({ name: "Graduation", date: day, closedFloors: [1, 2], reservedPerFloor: 4 });
     s.setEvent(null);
     expect(s.get().event).toBeNull();
+  });
+});
+
+describe("clearing a suspension", () => {
+  const now = new Date(2026, 10, 16, 10).getTime();
+  const strike = (id: string, daysAgo: number): Violation => ({ id, ownerCard: CARD, type: "overstay", at: now - daysAgo * 86400000, status: "confirmed", reviewedAt: now - daysAgo * 86400000 });
+  const withStrikes = (): PortalState => ({ ...empty(), violations: [strike("a", 9), strike("b", 6), strike("c", 3)] });
+
+  it("restarts the count and refuses when there is nothing to clear", () => {
+    const s = make(withStrikes());
+    expect(standingFor(s.get().violations, CARD).suspended).toBe(true);
+    expect(s.clearSuspension(CARD, now).ok).toBe(true);
+    expect(standingFor(s.get().violations, CARD, s.get().reinstated?.[CARD]).suspended).toBe(false);
+    expect(make().clearSuspension(CARD, now).ok).toBe(false);
+  });
+});
+
+describe("temporary vehicle entries", () => {
+  const now = new Date(2026, 10, 16, 10).getTime();
+
+  it("queues one review per vehicle per day, and only for a temporary vehicle", () => {
+    const s = make();
+    s.addVehicle(CARD, { plate: "ABC 1234", type: "light" });
+    s.flagTemporaryEntry(CARD, now);
+    expect(s.get().violations).toHaveLength(0);
+    s.addTemporary(CARD, { plate: "RNT 7788", type: "light" }, now);
+    s.flagTemporaryEntry(CARD, now);
+    s.flagTemporaryEntry(CARD, now + 1000);
+    const flags = s.get().violations;
+    expect(flags).toHaveLength(1);
+    expect(flags[0]).toMatchObject({ type: "temporary", status: "open", plate: "RNT 7788" });
   });
 });

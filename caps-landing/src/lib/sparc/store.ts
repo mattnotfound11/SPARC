@@ -1,5 +1,6 @@
 import { DEFAULT_CONFIG, GATES, buildSlots } from "./seed";
 import { sampleData } from "./sample";
+import { pickFreeSlot } from "./selectors";
 import type {
   ActionResult,
   FloorConfig,
@@ -48,6 +49,8 @@ export type SparcStore = {
    * created with `newId: uniqueId`, since several devices write to the same tables.
    */
   hydrate: (data: HydrateData) => void;
+  /** A visitor's pass was accepted: log the entry against the host's card. The guest goes to visitor parking, so no bay is taken. */
+  logVisitorEntry: (hostNfcId: string, guestName: string, plate: string, gate?: string) => void;
   /** Demo only: replaces the console's data with made-up drivers, a week of traffic and cars parked now. */
   loadSample: () => void;
 };
@@ -336,7 +339,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     if (!user.active) return record({ status: "no-pass", user });
     if (user.expiresAt <= at) return record({ status: "expired", user });
 
-    const free = state.slots.find((s) => s.status === "free" && s.vehicle === user.vehicle);
+    const free = pickFreeSlot(state.config, state.slots, user.vehicle, at);
     if (!free) return record({ status: "full", user });
 
     const seq = state.nextLogSeq;
@@ -380,6 +383,25 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     scan,
     refresh,
     hydrate: (data) => set({ ...data, now: Date.now() }),
+    logVisitorEntry(hostNfcId, guestName, plate, gate = GATES[0]) {
+      const at = Date.now();
+      const host = state.users.find((u) => cardKey(u.nfcId) === cardKey(hostNfcId));
+      const seq = state.nextLogSeq;
+      const log: LogEntry = {
+        id: newId?.("L") ?? `L-${String(seq).padStart(4, "0")}`,
+        visitId: newId?.("V") ?? `V-${String(seq).padStart(4, "0")}`,
+        at,
+        event: "entry",
+        nfcId: host?.nfcId ?? normalizeNfc(hostNfcId),
+        userId: host?.id ?? null,
+        userName: `Visitor ${guestName} (${plate}), host ${host?.name ?? "unknown"}`,
+        slot: null,
+        floor: null,
+        vehicle: null,
+        gate,
+      };
+      set({ logs: [log, ...state.logs], nextLogSeq: seq + 1, now: at });
+    },
     loadSample() {
       const at = Date.now();
       const sample = sampleData(state.config, at);

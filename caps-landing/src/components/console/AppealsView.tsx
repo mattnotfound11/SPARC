@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Check, Gavel, X } from "lucide-react";
+import { Check, Gavel, ShieldOff, X } from "lucide-react";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { STATUS_LABEL, TYPE_LABEL } from "@/lib/portal/labels";
 import { portal } from "@/lib/portal/store";
+import { standingFor } from "@/lib/portal/strikes";
 import { usePortalState } from "@/lib/portal/usePortal";
 import type { Appeal, Violation } from "@/lib/portal/types";
 import { useSparcStore } from "@/lib/sparc/SparcProvider";
@@ -61,6 +62,14 @@ export function AppealsView() {
     () => state.violations.filter((v) => v.status === "confirmed" || v.status === "dismissed").sort((a, b) => (b.reviewedAt ?? 0) - (a.reviewedAt ?? 0)),
     [state.violations],
   );
+  // Cards at the strike limit stay suspended until an admin clears them
+  const suspended = useMemo(() => {
+    const cards = [...new Set(state.violations.filter((v) => v.status === "confirmed").map((v) => v.ownerCard))];
+    return cards
+      .map((card) => ({ card, standing: standingFor(state.violations, card, state.reinstated?.[card]) }))
+      .filter((c) => c.standing.suspended);
+  }, [state.violations, state.reinstated]);
+  const nameFor = (card: string) => sparc.getState().users.find((u) => cardKey(u.nfcId) === card)?.name;
   const appealCount = pending.filter((v) => v.status === "appealed").length;
   const list = tab === "pending" ? pending : decided;
 
@@ -68,6 +77,11 @@ export function AppealsView() {
   function loadSample() {
     if (sparc.getState().logs.length === 0) sparc.loadSample();
     portal.seedDrivers(sparc.getState().users.map((u) => ({ card: cardKey(u.nfcId), type: u.vehicle })));
+  }
+
+  function clear(card: string) {
+    const r = portal.clearSuspension(card);
+    toast(r.ok ? `Suspension cleared for card ending ${card.slice(-4)}. Their strikes start again from zero.` : r.error, r.ok ? "ok" : "error");
   }
 
   function decide(v: Violation, decision: "confirm" | "dismiss") {
@@ -82,6 +96,28 @@ export function AppealsView() {
         title="Appeals"
         description="Review what the gate flagged and what drivers dispute. Confirming a violation keeps the strike; dismissing it cancels the strike."
       />
+
+      {suspended.length > 0 && (
+        <Panel data-enter aria-labelledby="suspended-title">
+          <PanelHeader id="suspended-title" title="Suspended cards" aside={<Badge tone="crimson">{suspended.length}</Badge>} />
+          <ul className="border-t border-line">
+            {suspended.map(({ card, standing }) => (
+              <li key={card} className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3.5 last:border-b-0 sm:px-5">
+                <div className="min-w-0">
+                  <p className="font-semibold text-ink">{nameFor(card) ?? `Card ending ${card.slice(-4)}`}</p>
+                  <p className="num text-xs text-ink-faint">
+                    {lastFour(card)} · {standing.strikes} strikes · can&apos;t open the gate
+                  </p>
+                </div>
+                <button type="button" className="c-btn c-btn-sm" onClick={() => clear(card)}>
+                  <ShieldOff className="size-3.5" aria-hidden />
+                  Clear suspension
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       <div data-enter className="seg" role="tablist" aria-label="Show">
         <button type="button" role="tab" aria-selected={tab === "pending"} onClick={() => setTab("pending")}>

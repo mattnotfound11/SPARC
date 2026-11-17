@@ -15,19 +15,25 @@ const v = (status: Violation["status"], daysAgo: number, card = "A"): Violation 
 
 describe("standingFor", () => {
   it("counts only confirmed violations", () => {
-    const s = standingFor([v("confirmed", 5), v("open", 3), v("dismissed", 2), v("appealed", 1)], "A", now);
+    const s = standingFor([v("confirmed", 5), v("open", 3), v("dismissed", 2), v("appealed", 1)], "A");
     expect(s.strikes).toBe(1);
     expect(s.suspended).toBe(false);
   });
 
-  it("ignores other cards and strikes older than 90 days", () => {
-    const s = standingFor([v("confirmed", 5, "B"), v("confirmed", 91), v("confirmed", 10)], "A", now);
-    expect(s.strikes).toBe(1);
+  it("ignores other cards, and strikes never expire on their own", () => {
+    const s = standingFor([v("confirmed", 5, "B"), v("confirmed", 400), v("confirmed", 10)], "A");
+    expect(s.strikes).toBe(2);
   });
 
-  it("suspends at three strikes and reports when the oldest expires", () => {
-    const s = standingFor([v("confirmed", 60), v("confirmed", 30), v("confirmed", 2)], "A", now);
-    expect(s.suspended).toBe(true);
-    expect(s.nextExpiry).toBe(now - 60 * DAY + 90 * DAY);
+  it("suspends at three strikes", () => {
+    expect(standingFor([v("confirmed", 60), v("confirmed", 30), v("confirmed", 2)], "A").suspended).toBe(true);
+  });
+
+  it("starts counting again after an admin clears the suspension", () => {
+    const list = [v("confirmed", 60), v("confirmed", 30), v("confirmed", 2), v("confirmed", 0)];
+    const cleared = now - 1 * DAY;
+    const s = standingFor(list, "A", cleared);
+    expect(s.strikes).toBe(1);
+    expect(s.suspended).toBe(false);
   });
 });

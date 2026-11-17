@@ -58,7 +58,7 @@ function PassCard({ pass }: { pass: VisitorPass }) {
         <p className="mt-3 font-mono text-[0.9375rem] font-semibold tracking-wide text-ink">{pass.code}</p>
         <p className="mt-1 text-[0.8125rem] text-ink-faint">The marshal scans the code or types it in. It works once and expires at the end of the day.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
-          <a className="c-btn c-btn-sm" href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}>
+          <a className="c-btn c-btn-sm" href={`mailto:${pass.guestEmail ?? ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}>
             <Mail className="size-3.5" aria-hidden />
             Email to guest
           </a>
@@ -78,7 +78,7 @@ export function VisitorsView({ card }: { card: string }) {
   const state = usePortalState();
   const [now] = useState(() => Date.now());
   const today = startOfDay(now);
-  const [form, setForm] = useState({ guestName: "", plate: "", date: dateInput(today), purpose: "" });
+  const [form, setForm] = useState({ guestName: "", guestEmail: "", plate: "", date: dateInput(today), purpose: "" });
   const [error, setError] = useState<string | null>(null);
   const [shownId, setShownId] = useState<string | null>(null);
   useEnter(root);
@@ -93,13 +93,13 @@ export function VisitorsView({ card }: { card: string }) {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const r = portal.createPass(card, { guestName: form.guestName, plate: form.plate, date: fromInput(form.date), purpose: form.purpose });
+    const r = portal.createPass(card, { guestName: form.guestName, plate: form.plate, date: fromInput(form.date), purpose: form.purpose, guestEmail: form.guestEmail });
     if (!r.ok) {
       setError(r.error);
       return;
     }
     setShownId(r.pass.id);
-    setForm({ guestName: "", plate: "", date: dateInput(today), purpose: "" });
+    setForm({ guestName: "", guestEmail: "", plate: "", date: dateInput(today), purpose: "" });
     toast(`Pass ready for ${r.pass.guestName}.`);
   }
 
@@ -116,6 +116,9 @@ export function VisitorsView({ card }: { card: string }) {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Guest's full name" htmlFor="g-name">
               <input id="g-name" className="c-input w-full" autoComplete="off" value={form.guestName} onChange={(e) => set("guestName", e.target.value)} />
+            </Field>
+            <Field label="Guest's email (optional)" htmlFor="g-email" hint="The Email button then opens a message to them.">
+              <input id="g-email" type="email" className="c-input w-full" autoComplete="off" value={form.guestEmail} onChange={(e) => set("guestEmail", e.target.value)} />
             </Field>
             <Field label="Plate number" htmlFor="g-plate">
               <input id="g-plate" className="c-input w-full font-mono uppercase" autoComplete="off" spellCheck={false} value={form.plate} onChange={(e) => set("plate", e.target.value)} />

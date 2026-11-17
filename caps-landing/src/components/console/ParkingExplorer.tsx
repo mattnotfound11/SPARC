@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, LoaderCircle, Maximize, Minus, Plus } from "lucide-react";
+import { usePortalState } from "@/lib/portal/usePortal";
 import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
 import { VEHICLE_LABEL, floorStats, formatDuration } from "@/lib/sparc/selectors";
 import type { Slot, SlotStatus } from "@/lib/sparc/types";
@@ -22,7 +23,8 @@ function describeSlot(slot: Slot) {
 export function ParkingExplorer() {
   const state = useSparcState();
   const now = useNow(30000);
-  const stats = useMemo(() => floorStats(state.config, state.slots), [state.config, state.slots]);
+  usePortalState(); // event holds change the free count, so re-render when one is planned
+  const stats = floorStats(state.config, state.slots);
 
   const host = useRef<HTMLDivElement>(null);
   const tip = useRef<HTMLDivElement>(null);
@@ -101,7 +103,8 @@ export function ParkingExplorer() {
   const currentStat = stats.find((f) => f.floor === floor) ?? null;
   const visibleSlots = floor === null ? state.slots : state.slots.filter((s) => s.floor === floor);
   const counts = {
-    free: visibleSlots.filter((s) => s.status === "free").length,
+    // free after any event holds, to agree with the counts elsewhere
+    free: stats.filter((f) => floor === null || f.floor === floor).reduce((n, f) => n + f.free, 0),
     occupied: visibleSlots.filter((s) => s.status === "occupied").length,
   };
   const slot = selected ? state.slots.find((s) => s.code === selected) : undefined;

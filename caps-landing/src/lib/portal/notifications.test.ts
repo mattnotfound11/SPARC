@@ -18,27 +18,27 @@ const v = (id: string, status: Violation["status"], daysAgo: number, decided?: n
 
 describe("noticesFor", () => {
   it("is empty when nothing has happened", () => {
-    expect(noticesFor(empty(), CARD, free, now)).toEqual([]);
+    expect(noticesFor(empty(), CARD, { free }, now)).toEqual([]);
   });
 
   it("announces a flag, then the decision, newest first", () => {
     const s = { ...empty(), violations: [v("a", "dismissed", 5, 3)], appeals: [{ id: "x", violationId: "a", note: "ok ok ok ok ok", createdAt: now - 4 * DAY }] };
-    const titles = noticesFor(s, CARD, free, now).map((n) => n.title);
+    const titles = noticesFor(s, CARD, { free }, now).map((n) => n.title);
     expect(titles).toEqual(["Appeal upheld", "Overstay flagged"]);
   });
 
   it("warns at two strikes and suspends at three", () => {
     const two = { ...empty(), violations: [v("a", "confirmed", 20, 19), v("b", "confirmed", 10, 9)] };
-    expect(noticesFor(two, CARD, free, now).some((n) => n.title === "One strike from suspension")).toBe(true);
+    expect(noticesFor(two, CARD, { free }, now).some((n) => n.title === "One strike from suspension")).toBe(true);
     const three = { ...two, violations: [...two.violations, v("c", "confirmed", 3, 2)] };
-    const t = noticesFor(three, CARD, free, now);
+    const t = noticesFor(three, CARD, { free }, now);
     expect(t.some((n) => n.title === "Card suspended")).toBe(true);
     expect(t.some((n) => n.title === "One strike from suspension")).toBe(false);
   });
 
   it("only alerts the card it is asked about", () => {
     const s = { ...empty(), violations: [{ ...v("a", "open", 1), ownerCard: "999999999999" }] };
-    expect(noticesFor(s, CARD, free, now)).toEqual([]);
+    expect(noticesFor(s, CARD, { free }, now)).toEqual([]);
   });
 
   it("tells the host when a guest arrives, and when a waitlisted bay opens", () => {
@@ -47,7 +47,18 @@ describe("noticesFor", () => {
       passes: [{ id: "p", code: "C", hostCard: CARD, guestName: "Maria", plate: "ABC 1234", date: now, purpose: "x", createdAt: now - DAY, usedAt: now - 1000 }],
       waitlist: [{ id: "w", ownerCard: CARD, vehicle: "light", createdAt: now - 2000 }],
     };
-    expect(noticesFor(s, CARD, { light: 0, heavy: 3 }, now).map((n) => n.title)).toEqual(["Maria arrived"]);
-    expect(noticesFor(s, CARD, { light: 2, heavy: 0 }, now).map((n) => n.title)).toContain("A bay is free");
+    expect(noticesFor(s, CARD, { free: { light: 0, heavy: 3 } }, now).map((n) => n.title)).toEqual(["Maria arrived"]);
+    expect(noticesFor(s, CARD, { free: { light: 2, heavy: 0 } }, now).map((n) => n.title)).toContain("A bay is free");
+  });
+
+  it("warns about a pass ending soon, a long stay and full levels", () => {
+    const HOUR = 60 * 60 * 1000;
+    const gate = { free, expiresAt: now + 3 * DAY, parkedSince: now - 11 * HOUR, fullFloors: [1, 2] };
+    const titles = noticesFor(empty(), CARD, gate, now).map((n) => n.title);
+    expect(titles).toContain("Your pass expires in 3 days");
+    expect(titles).toContain("You've been parked 11 hours");
+    expect(titles).toContain("Level 1, Level 2 are full");
+    expect(noticesFor(empty(), CARD, { free, expiresAt: now - DAY }, now)[0].title).toBe("Your monthly pass has expired");
+    expect(noticesFor(empty(), CARD, { free, expiresAt: now + 20 * DAY, parkedSince: now - 2 * HOUR }, now)).toEqual([]);
   });
 });

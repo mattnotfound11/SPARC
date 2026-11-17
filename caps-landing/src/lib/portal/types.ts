@@ -18,7 +18,7 @@ export type Vehicle = {
   createdAt: number;
 };
 
-export type ViolationType = "overstay" | "overnight" | "anti-passback";
+export type ViolationType = "overstay" | "overnight" | "anti-passback" | "temporary";
 /** open: flagged, awaiting review. appealed: the driver disputes it. confirmed: an admin upheld it, the strike stands. dismissed: an admin cancelled it, no strike. */
 export type ViolationStatus = "open" | "appealed" | "confirmed" | "dismissed";
 
@@ -55,6 +55,8 @@ export type VisitorPass = {
   createdAt: number;
   /** Set when the gate accepts the pass; a pass works once. */
   usedAt?: number;
+  /** Where the host will email the pass. Optional. */
+  guestEmail?: string;
   /** Made-up pass from the demo data, so the marshal scanner can list it. */
   sample?: boolean;
 };
@@ -63,7 +65,15 @@ export type VisitorPass = {
 export type WaitEntry = { id: string; ownerCard: string; vehicle: VehicleClass; createdAt: number };
 
 /** A special day (graduation, a game) the marshal flags, so drivers and the lobby screen are warned. */
-export type EventMode = { name: string; startedAt: number; until: number };
+export type EventMode = {
+  name: string;
+  /** Start of the event day (ms epoch). Holds apply on that day only. */
+  date: number;
+  /** Floors closed for the event. */
+  closedFloors: number[];
+  /** Bays held back on every open floor for the event. */
+  reservedPerFloor: number;
+};
 
 export type PortalState = {
   vehicles: Vehicle[];
@@ -77,4 +87,6 @@ export type PortalState = {
   waitlist?: WaitEntry[];
   /** Set while event mode is on. */
   event?: EventMode | null;
+  /** When an admin last cleared a card's suspension, per card. Strikes before it no longer count. */
+  reinstated?: Record<string, number>;
 };

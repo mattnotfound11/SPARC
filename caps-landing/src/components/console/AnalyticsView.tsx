@@ -36,6 +36,7 @@ const VIOLATION: Record<ViolationType, { label: string; swatch: string }> = {
   overstay: { label: "Overstay", swatch: "bg-gold" },
   overnight: { label: "Overnight", swatch: "bg-crimson" },
   "anti-passback": { label: "Second entry without exit", swatch: "bg-ink-soft/70" },
+  temporary: { label: "Temporary vehicle", swatch: "bg-live" },
 };
 
 export function AnalyticsView() {

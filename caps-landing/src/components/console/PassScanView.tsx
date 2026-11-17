@@ -84,8 +84,10 @@ export function PassScanView() {
   const redeem = useCallback((raw: string) => {
     if (!raw.trim()) return;
     const outcome = portal.redeemPass(raw);
+    // an admitted guest is logged against the host's card, and parks in visitor parking
+    if (outcome.status === "ok") sparc.logVisitorEntry(outcome.pass.hostCard, outcome.pass.guestName, outcome.pass.plate);
     setScans((s) => [{ id: ++seq.current, at: Date.now(), code: raw.trim(), outcome }, ...s].slice(0, 8));
-  }, []);
+  }, [sparc]);
 
   const { videoRef, running, error, start, stop } = useQrCamera(redeem);
   const supported = qrCameraSupported();

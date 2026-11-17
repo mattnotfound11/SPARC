@@ -7,7 +7,7 @@ import { useEnter } from "@/hooks/useConsoleMotion";
 import { portal } from "@/lib/portal/store";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { STATUS_LABEL, TYPE_LABEL } from "@/lib/portal/labels";
-import { STRIKE_WINDOW_DAYS, standingFor } from "@/lib/portal/strikes";
+import { standingFor } from "@/lib/portal/strikes";
 import type { Violation } from "@/lib/portal/types";
 import { formatDateTime } from "@/lib/sparc/selectors";
 
@@ -73,7 +73,7 @@ export function ViolationsView({ card }: { card: string }) {
 
   const mine = state.violations.filter((v) => v.ownerCard === card).sort((a, b) => b.at - a.at);
   const open = mine.filter((v) => v.status === "open").length;
-  const standing = standingFor(state.violations, card);
+  const standing = standingFor(state.violations, card, state.reinstated?.[card]);
 
   return (
     <div ref={root} className="space-y-5">
@@ -96,8 +96,8 @@ export function ViolationsView({ card }: { card: string }) {
           </div>
           <p className="mt-3 text-sm leading-relaxed text-ink-muted">
             {standing.suspended
-              ? `Your card can't open the gate. ${standing.nextExpiry ? `The oldest strike expires on ${formatDateTime(standing.nextExpiry)}, then you can park again.` : ""} Contact the parking office if you think this is wrong.`
-              : `A confirmed violation is one strike for ${STRIKE_WINDOW_DAYS} days. At ${standing.limit} strikes your card is suspended.`}
+              ? "Your card can't open the gate. It stays suspended until an admin clears it, so contact the parking office."
+              : `A confirmed violation is one strike. At ${standing.limit} strikes your card is suspended until an admin clears it.`}
           </p>
         </div>
       </Panel>

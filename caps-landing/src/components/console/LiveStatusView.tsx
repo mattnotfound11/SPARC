@@ -8,6 +8,7 @@ import gsap from "gsap";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { useReveal } from "@/hooks/useReveal";
 import { portal } from "@/lib/portal/store";
+import { usePortalState } from "@/lib/portal/usePortal";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
 import { cardKey } from "@/lib/sparc/store";
 import {
@@ -44,6 +45,7 @@ function RevealPanel({ delay = 0, className = "", children }: { delay?: number; 
 /* ── Building occupancy ───────────────────────────────────── */
 function BuildingPanel() {
   const state = useSparcState();
+  usePortalState(); // event holds change the free count
   const totals = buildingTotals(floorStats(state.config, state.slots));
   const pct = (n: number) => (totals.total ? (n / totals.total) * 100 : 0);
 

@@ -44,7 +44,8 @@ export const DEMO_CARD_LABEL = "1234-5678-9012";
 /** A pass for today, so the marshal scanner has something that works. */
 export const DEMO_PASS_CODE = "SPARC-V-DEMOGUEST";
 
-export type PassInput = { guestName: string; plate: string; date: number; purpose: string };
+export type EventInput = { name: string; date: number; closedFloors: number[]; reservedPerFloor: number };
+export type PassInput = { guestName: string; plate: string; date: number; purpose: string; guestEmail?: string };
 export type PassResult = { ok: true; pass: VisitorPass } | { ok: false; error: string };
 export type RedeemOutcome =
   | { status: "ok"; pass: VisitorPass }
@@ -83,8 +84,12 @@ export type PortalStore = {
   /** The driver asks to be told when a bay of this class is free. One request per card. */
   joinWaitlist: (ownerCard: string, vehicle: VehicleClass, now?: number) => ActionResult;
   leaveWaitlist: (ownerCard: string) => void;
-  /** The marshal turns event mode on (until the end of today) or off with null. */
-  setEvent: (name: string | null, now?: number) => ActionResult;
+  /** The marshal plans an event: a day, floors to close and bays to hold. Null turns it off. */
+  setEvent: (input: EventInput | null, now?: number) => ActionResult;
+  /** An admin lifts a suspension. The card's strike count starts again from zero. */
+  clearSuspension: (ownerCard: string, now?: number) => ActionResult;
+  /** The gate let a card in with a temporary vehicle: queue it for an admin to check. Once per vehicle per day. */
+  flagTemporaryEntry: (ownerCard: string, now?: number) => void;
   seedDemo: (now?: number) => void;
   /** Demo only: gives the admin sample drivers a vehicle each, violations, appeals, strikes and a few visitor passes. Safe to call twice. */
   seedDrivers: (drivers: { card: string; type: VehicleClass }[], now?: number) => void;
@@ -185,6 +190,8 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
       const plateError = validatePlate(input.plate);
       if (plateError) return { ok: false, error: plateError };
       if (purpose.length < 3) return { ok: false, error: "Say briefly why they are visiting." };
+      const email = (input.guestEmail ?? "").trim();
+      if (email && !/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) return { ok: false, error: "That email address doesn't look right." };
       const today = startOfDay(now);
       const date = startOfDay(input.date);
       if (date < today) return { ok: false, error: "That date has already passed." };
@@ -193,7 +200,7 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
       do {
         code = "SPARC-V-" + Array.from({ length: 8 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join("");
       } while (state.passes.some((p) => p.code === code));
-      const pass: VisitorPass = { id: idFor("pass"), code, hostCard, guestName, plate: normalizePlate(input.plate), date, purpose, createdAt: now };
+      const pass: VisitorPass = { id: idFor("pass"), code, hostCard, guestName, plate: normalizePlate(input.plate), date, purpose, createdAt: now, ...(email ? { guestEmail: email } : {}) };
       set({ ...state, passes: [...state.passes, pass] });
       return { ok: true, pass };
     },
@@ -240,6 +247,8 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
         [11, "overnight", 25, "confirmed", "I forgot the car was inside.", 23],
         [12, "overstay", 52, "confirmed", undefined, 50],
         [13, "overstay", 70, "dismissed", undefined, 68],
+        // a borrowed car the marshal let in, waiting for a check
+        [14, "temporary", 0, "open"],
       ];
       const violations: Violation[] = [];
       const appeals: Appeal[] = [];
@@ -309,16 +318,34 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
     leaveWaitlist(ownerCard) {
       set({ ...state, waitlist: (state.waitlist ?? []).filter((w) => w.ownerCard !== ownerCard) });
     },
-    setEvent(name, now = Date.now()) {
-      if (name === null) {
+    setEvent(input, now = Date.now()) {
+      if (input === null) {
         set({ ...state, event: null });
         return { ok: true };
       }
-      const trimmed = name.trim();
-      if (trimmed.length < 3) return { ok: false, error: "Name the event, for example Graduation." };
-      const event: EventMode = { name: trimmed, startedAt: now, until: endOfToday(now) };
+      const name = input.name.trim();
+      if (name.length < 3) return { ok: false, error: "Name the event, for example Graduation." };
+      const date = startOfDay(input.date);
+      if (date < startOfDay(now)) return { ok: false, error: "That date has already passed." };
+      if (date > startOfDay(now) + PASS_HORIZON_DAYS * 24 * 60 * 60 * 1000) return { ok: false, error: `Events can be planned up to ${PASS_HORIZON_DAYS} days ahead.` };
+      const reserved = Math.max(0, Math.floor(input.reservedPerFloor || 0));
+      const event: EventMode = { name, date, closedFloors: [...new Set(input.closedFloors)].sort((a, b) => a - b), reservedPerFloor: reserved };
       set({ ...state, event });
       return { ok: true };
+    },
+    clearSuspension(ownerCard, now = Date.now()) {
+      if (!state.violations.some((v) => v.ownerCard === ownerCard && v.status === "confirmed")) return { ok: false, error: "That card has no strikes to clear." };
+      set({ ...state, reinstated: { ...(state.reinstated ?? {}), [ownerCard]: now } });
+      return { ok: true };
+    },
+    flagTemporaryEntry(ownerCard, now = Date.now()) {
+      const activeId = state.activeVehicle[ownerCard];
+      const vehicle = state.vehicles.find((v) => v.id === activeId && v.kind === "temporary" && v.validUntil! >= now);
+      if (!vehicle) return;
+      const today = startOfDay(now);
+      if (state.violations.some((v) => v.type === "temporary" && v.ownerCard === ownerCard && v.plate === vehicle.plate && v.at >= today)) return;
+      const flag: Violation = { id: idFor("vio"), ownerCard, type: "temporary", at: now, plate: vehicle.plate, status: "open" };
+      set({ ...state, violations: [...state.violations, flag] });
     },
     seedDemo(now = Date.now()) {
       const ownerCard = DEMO_CARD;

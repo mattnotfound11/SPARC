@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { portal } from "@/lib/portal/store";
 import { createPublisher, watchAvailability, type Availability } from "./shared";
 import { useSparcStoreOrNull } from "./SparcProvider";
 import { buildingTotals, floorStats } from "./selectors";
@@ -18,7 +19,13 @@ export function usePublishAvailability() {
       void publish({ free, total });
     };
     send();
-    return store.subscribe(send);
+    // an event's closed floors and held bays change the count too
+    const stopStore = store.subscribe(send);
+    const stopPortal = portal.subscribe(send);
+    return () => {
+      stopStore();
+      stopPortal();
+    };
   }, [store]);
 }
 
