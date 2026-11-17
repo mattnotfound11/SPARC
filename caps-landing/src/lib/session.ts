@@ -22,10 +22,11 @@ export function canAccess(role: StaffRole, pathname: string) {
 }
 
 /**
- * Whether /admin asks for a sign-in. Off while the team keeps the database public; turn it on with
- * NEXT_PUBLIC_REQUIRE_ADMIN_LOGIN=true after running supabase/lock-down.sql.
+ * Whether /admin asks for a sign-in. On unless you set NEXT_PUBLIC_REQUIRE_ADMIN_LOGIN=false on purpose
+ * (an open demo), so signing out always means signing in again. This is the UI gate; what actually
+ * protects the data is supabase/lock-down.sql.
  */
-export const loginRequired = process.env.NEXT_PUBLIC_REQUIRE_ADMIN_LOGIN === "true";
+export const loginRequired = process.env.NEXT_PUBLIC_REQUIRE_ADMIN_LOGIN !== "false";
 
 /** The mock login is a development convenience, not security, so production builds never use it. */
 export const mockAllowed = process.env.NODE_ENV !== "production";
