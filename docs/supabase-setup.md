@@ -109,7 +109,9 @@ Budget about 15 minutes.
    where email in ('you@usa.edu.ph', 'matthew@usa.edu.ph', 'alex@usa.edu.ph')
    on conflict do nothing;
    ```
-3. **Authentication → Sign In / Providers** → turn **off** "Allow new users to sign up" and **Save**.
+3. **Authentication → Sign In / Providers**: if you want members to register themselves (see "Member logins"
+   below), leave "Allow new users to sign up" **on** and "Confirm email" **on**. Otherwise turn sign-ups **off** and **Save**.
+   Sign-ups only create a login; no account gets staff access without a row in `admins`/`facilitators`.
 4. In Vercel set `NEXT_PUBLIC_REQUIRE_ADMIN_LOGIN=true` and **Redeploy**. Wait until the new
    deployment is live. (The same line goes in `.env.local` for local testing.)
 5. **Only then**, run `supabase/lock-down.sql` in the SQL Editor.
@@ -134,3 +136,16 @@ and a suggestions box (one-way: administrators read them at **Admin → Suggesti
    `select public.link_member('student@usa.edu.ph', '<users.id>');`.) Visitors cannot be linked.
 4. **Privacy:** members only see their own rows once `supabase/lock-down.sql` has been run. Until
    then the database is in public mode and anyone holding the site key can read everything, members included.
+
+### Member self sign-up (optional)
+
+Students and personnel can register at `/signup` with their `@usa.edu.ph` email, name and student/employee ID.
+
+1. Run `supabase/schema.sql` again (adds the `claim_member_pass` trigger).
+2. **Authentication → Sign In / Providers → Email**: keep **Confirm email** ON and sign-ups allowed.
+3. **Authentication → URL Configuration**: set **Site URL** to your deployed site and add `<site>/login` under **Redirect URLs**, so the confirmation link lands on the sign-in page.
+4. After the person clicks the link in their email, their login is linked automatically **only if** a registered, active student/personnel record has the same ID *and* name (ignoring case and extra spaces) and isn't linked yet. Otherwise they can sign in but see "not linked"; an administrator can link them from **Users**.
+
+Limits worth knowing: the match is ID plus name, not a secret, so anyone who knows another registered person's ID and exact name
+could claim their pass first. An administrator can fix that from **Users** (re-linking the right account replaces the wrong one).
+For stronger proof, use the admin-linking flow above instead and turn sign-ups off.

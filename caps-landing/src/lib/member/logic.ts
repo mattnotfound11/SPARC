@@ -66,3 +66,21 @@ export function validateSuggestion(category: string, message: string): string | 
 export type AccountType = "admin" | "facilitator" | "member";
 
 export const homeFor = (type: AccountType) => (type === "member" ? "/member" : "/admin");
+
+export const MEMBER_EMAIL_DOMAIN = "@usa.edu.ph";
+export const MIN_PASSWORD = 8;
+
+export type SignupInput = { name: string; email: string; role: string; studentId: string; password: string; confirm: string };
+export type SignupErrors = Partial<Record<keyof SignupInput, string>>;
+
+/** Field errors for the sign-up form; an empty object means it can be submitted. */
+export function validateSignup(i: SignupInput): SignupErrors {
+  const errors: SignupErrors = {};
+  if (!i.name.trim()) errors.name = "Enter your full name as registered with the parking office.";
+  if (!i.email.trim().toLowerCase().endsWith(MEMBER_EMAIL_DOMAIN)) errors.email = `Use your university email (ends with ${MEMBER_EMAIL_DOMAIN}).`;
+  if (i.role !== "student" && i.role !== "personnel") errors.role = "Choose student or personnel.";
+  if (!i.studentId.trim()) errors.studentId = "Enter your student or employee ID.";
+  if (i.password.length < MIN_PASSWORD) errors.password = `Use at least ${MIN_PASSWORD} characters.`;
+  if (i.confirm !== i.password) errors.confirm = "Passwords don't match. Re-enter the same password.";
+  return errors;
+}
