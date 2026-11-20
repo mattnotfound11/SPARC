@@ -49,7 +49,7 @@ export function SparcProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!store || isSupabaseConfigured) return;
     if (store.getState().logs.length === 0) store.loadSample();
-    portal.seedDrivers(store.getState().users.map((u) => ({ card: cardKey(u.nfcId), type: u.vehicle })));
+    portal.seedDrivers(store.getState().users.filter((u) => u.nfcId).map((u) => ({ card: cardKey(u.nfcId) })));
     portal.seedDemo();
   }, [store]);
 

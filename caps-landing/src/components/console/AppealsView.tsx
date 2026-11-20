@@ -76,7 +76,7 @@ export function AppealsView() {
   // Demo: make sample drivers if the console has none yet, then give them violations and appeals
   function loadSample() {
     if (sparc.getState().logs.length === 0) sparc.loadSample();
-    portal.seedDrivers(sparc.getState().users.map((u) => ({ card: cardKey(u.nfcId), type: u.vehicle })));
+    portal.seedDrivers(sparc.getState().users.filter((u) => u.nfcId).map((u) => ({ card: cardKey(u.nfcId) })));
   }
 
   function clear(card: string) {

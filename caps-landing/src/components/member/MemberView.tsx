@@ -6,14 +6,14 @@ import { Badge, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "@/c
 import { ID_LABEL, ROLE_LABEL } from "@/components/console/UserPanel";
 import { listMySuggestions, loadMemberData, sendSuggestion, type MemberData, type Suggestion } from "@/lib/member/data";
 import { buildVisits, passState, SUGGESTION_CATEGORIES, SUGGESTION_MAX } from "@/lib/member/logic";
-import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
 
 const dateFmt = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" });
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const day = (t: number) => dateFmt.format(t);
 const time = (t: number) => timeFmt.format(t);
 
-const PASS_TONE = { active: "live", expiring: "gold", expired: "crimson" } as const;
+const PASS_TONE = { pending: "gold", active: "live", expiring: "gold", expired: "crimson" } as const;
+const PASS_LABEL = { pending: "Pending", active: "Active", expiring: "Expiring soon", expired: "Expired" } as const;
 const STATUS_LABEL = { new: "Sent", read: "Read", resolved: "Resolved" } as const;
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -27,11 +27,25 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function PassPanel({ data, now }: { data: MemberData; now: number }) {
   const state = passState(data.user.expiresAt, now);
+  if (state.kind === "pending") {
+    return (
+      <Panel aria-labelledby="pass-h">
+        <PanelHeader id="pass-h" title="Monthly pass" aside={<Badge tone={PASS_TONE.pending}>{PASS_LABEL.pending}</Badge>} />
+        <div className="px-4 pb-5 sm:px-5">
+          <p className="display text-[1.5rem] text-ink">Waiting for the parking office</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            Your account is registered. The parking office activates your monthly pass and gives you your card. Until then the gate won&apos;t let you in.
+            Your name appears on their list of members waiting for a pass.
+          </p>
+        </div>
+      </Panel>
+    );
+  }
   const headline =
     state.kind === "expired" ? "Your pass has expired" : state.daysLeft === 1 ? "Expires within a day" : `${state.daysLeft} days left`;
   return (
     <Panel aria-labelledby="pass-h">
-      <PanelHeader id="pass-h" title="Monthly pass" aside={<Badge tone={PASS_TONE[state.kind]}>{state.kind === "active" ? "Active" : state.kind === "expiring" ? "Expiring soon" : "Expired"}</Badge>} />
+      <PanelHeader id="pass-h" title="Monthly pass" aside={<Badge tone={PASS_TONE[state.kind]}>{PASS_LABEL[state.kind]}</Badge>} />
       <div className="px-4 pb-5 sm:px-5">
         <p className="display text-[1.75rem] text-ink">{headline}</p>
         <p className="mt-1 text-sm text-ink-muted">
@@ -53,7 +67,7 @@ function ProfilePanel({ data }: { data: MemberData }) {
         <Row label="Name">{u.name}</Row>
         <Row label="Role">{ROLE_LABEL[u.role]}</Row>
         <Row label={ID_LABEL[u.role]}>{u.studentId || "Not on file"}</Row>
-        <Row label="Vehicle">{VEHICLE_LABEL[u.vehicle]}</Row>
+        {u.email && <Row label="Email">{u.email}</Row>}
         <Row label="Registered">{day(u.createdAt)}</Row>
       </dl>
     </Panel>

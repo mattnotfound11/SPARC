@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, LoaderCircle, Maximize, Minus, Plus } from "lucide-react";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
-import { VEHICLE_LABEL, floorStats, formatDuration } from "@/lib/sparc/selectors";
+import { floorStats, formatDuration } from "@/lib/sparc/selectors";
 import type { Slot } from "@/lib/sparc/types";
 import type { ParkingScene, ParkingTarget } from "./towerScene";
-import { Panel, PanelHeader, VehicleBadge } from "./ui";
+import { Panel, PanelHeader } from "./ui";
 
 const stageButton =
   "grid size-10 place-items-center rounded-lg border border-line-strong bg-canvas/80 text-ink-soft backdrop-blur transition-colors hover:border-gold/50 hover:text-ink";
@@ -146,7 +146,6 @@ export function ParkingTowers() {
                 <span className="hidden sm:inline">All towers</span>
               </button>
               <h3 className="font-display text-lg font-semibold text-ink">Floor {currentStat.floor}</h3>
-              <VehicleBadge vehicle={currentStat.vehicle} />
             </div>
           ) : (
             <p className="text-sm text-ink-soft">Click a level to see its pallets. Drag to turn the towers.</p>
@@ -160,7 +159,7 @@ export function ParkingTowers() {
               key={f.floor}
               type="button"
               aria-pressed={floor === f.floor}
-              aria-label={`Floor ${f.floor}, ${VEHICLE_LABEL[f.vehicle]}, ${f.free} of ${f.total} free`}
+              aria-label={`Floor ${f.floor}, ${f.free} of ${f.total} free`}
               onClick={() => openFloor(f.floor)}
               onFocus={() => scene.current?.highlightFloor(f.floor)}
               onBlur={() => scene.current?.highlightFloor(null)}
@@ -191,7 +190,7 @@ export function ParkingTowers() {
             <>
               <p className="font-semibold text-ink">Floor {hoverFloor.floor}</p>
               <p className="text-ink-muted">
-                {hoverFloor.free} of {hoverFloor.total} free, {VEHICLE_LABEL[hoverFloor.vehicle]}
+                {hoverFloor.free} of {hoverFloor.total} free
               </p>
             </>
           )}

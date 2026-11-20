@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, LoaderCircle, Maximize, Minus, Plus } from "lucide-react";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
-import { VEHICLE_LABEL, floorStats, formatDuration } from "@/lib/sparc/selectors";
+import { floorStats, formatDuration } from "@/lib/sparc/selectors";
 import type { Slot, SlotStatus } from "@/lib/sparc/types";
 import { FloorList } from "./FloorList";
 import type { ParkingScene, ParkingTarget } from "./parkingScene";
 import { SlotMap } from "./SlotMap";
-import { Badge, Panel, PanelHeader, VehicleBadge } from "./ui";
+import { Badge, Panel, PanelHeader } from "./ui";
 
 const STATUS_LABEL: Record<SlotStatus, string> = { free: "free", occupied: "occupied" };
 const stageButton = "grid size-10 place-items-center rounded-lg border border-line-strong bg-canvas/80 text-ink-soft backdrop-blur transition-colors hover:border-gold/50 hover:text-ink";
@@ -142,7 +142,6 @@ export function ParkingExplorer() {
                 <span className="hidden sm:inline">Whole building</span>
               </button>
               <h3 className="font-display text-lg font-semibold text-ink">Floor {currentStat.floor}</h3>
-              <VehicleBadge vehicle={currentStat.vehicle} />
             </div>
           ) : (
             <p className="text-sm text-ink-soft">Select a floor to go inside. Drag to turn the building.</p>
@@ -172,7 +171,7 @@ export function ParkingExplorer() {
             <>
               <p className="font-semibold text-ink">Floor {hoverFloor.floor}</p>
               <p className="text-ink-muted">
-                {hoverFloor.free} of {hoverFloor.total} free, {VEHICLE_LABEL[hoverFloor.vehicle]}
+                {hoverFloor.free} of {hoverFloor.total} free
               </p>
             </>
           )}

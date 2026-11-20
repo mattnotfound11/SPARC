@@ -16,7 +16,6 @@ const log = (iso: string, event: LogEntry["event"]): LogEntry => ({
   userName: "A",
   slot: "C1",
   floor: 3,
-  vehicle: "light",
 });
 
 const state = {

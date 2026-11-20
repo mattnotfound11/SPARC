@@ -5,9 +5,11 @@ import type { LogEntry } from "@/lib/sparc/types";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EXPIRING_DAYS = 7;
 
-export type PassState = { kind: "active" | "expiring" | "expired"; daysLeft: number };
+export type PassState = { kind: "pending" | "active" | "expiring" | "expired"; daysLeft: number };
 
+/** An expiry of 0 means the parking office hasn't activated a pass for this member yet. */
 export function passState(expiresAt: number, now: number): PassState {
+  if (expiresAt === 0) return { kind: "pending", daysLeft: 0 };
   if (expiresAt <= now) return { kind: "expired", daysLeft: 0 };
   const daysLeft = Math.ceil((expiresAt - now) / DAY_MS);
   return { kind: daysLeft <= EXPIRING_DAYS ? "expiring" : "active", daysLeft };
@@ -77,10 +79,32 @@ export type SignupErrors = Partial<Record<keyof SignupInput, string>>;
 export function validateSignup(i: SignupInput): SignupErrors {
   const errors: SignupErrors = {};
   if (!i.name.trim()) errors.name = "Enter your full name as registered with the parking office.";
-  if (!i.email.trim().toLowerCase().endsWith(MEMBER_EMAIL_DOMAIN)) errors.email = `Use your university email (ends with ${MEMBER_EMAIL_DOMAIN}).`;
+  const email = i.email.trim().toLowerCase();
+  if (!email.endsWith(MEMBER_EMAIL_DOMAIN)) errors.email = `Use your university email (ends with ${MEMBER_EMAIL_DOMAIN}).`;
+  // name+1@ and name+2@ all reach one mailbox, so aliases would let one person open many accounts.
+  else if (email.split("@")[0].includes("+")) errors.email = "Use your plain university email, without a + in front of the @.";
   if (i.role !== "student" && i.role !== "personnel") errors.role = "Choose student or personnel.";
   if (!i.studentId.trim()) errors.studentId = "Enter your student or employee ID.";
   if (i.password.length < MIN_PASSWORD) errors.password = `Use at least ${MIN_PASSWORD} characters.`;
   if (i.confirm !== i.password) errors.confirm = "Passwords don't match. Re-enter the same password.";
   return errors;
+}
+
+/**
+ * What the address fragment says about the link a student just clicked in their email. Supabase puts
+ * the result after the `#`: a session and `type=signup` when it worked, an `error` when it didn't.
+ */
+export function parseEmailLink(hash: string): "confirmed" | "expired" | null {
+  const params = new URLSearchParams(hash.replace(/^#/, ""));
+  if (params.get("error_code") === "otp_expired" || params.get("error") === "access_denied") return "expired";
+  const type = params.get("type");
+  if (params.get("access_token") && (type === "signup" || type === "email")) return "confirmed";
+  return null;
+}
+
+/** Which kind of failed sign-in this is, so each gets its own message. */
+export function classifySignInError(e: { status?: number; code?: string }): "unconfirmed" | "wrong" | "offline" {
+  if (e.code === "email_not_confirmed") return "unconfirmed";
+  if (typeof e.status === "number" && e.status >= 400 && e.status < 500) return "wrong";
+  return "offline";
 }

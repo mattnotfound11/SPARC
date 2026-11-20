@@ -33,9 +33,10 @@ grant execute on function public.is_admin() to anon, authenticated;
 -- ---------------------------------------------------------------------------
 create table if not exists public.users (
   id          text primary key,
-  nfc_id      text not null,
-  -- The same card however it was typed ("1234-5678-9012" = "123456789012"): one card, one driver.
+  -- Null until the parking office activates the pass and scans the card. The same card however it was typed ("1234-5678-9012" = "123456789012"): one card, one driver.
   card_key    text generated always as (regexp_replace(upper(nfc_id), '[-:]', '', 'g')) stored unique,
+  -- The university email the member signed up with (one account per email).
+  email       text,
   student_id  text,
   name        text not null,
   role        text not null check (role in ('student', 'personnel', 'visitor')),
@@ -45,6 +46,10 @@ create table if not exists public.users (
   expires_at  bigint not null
 );
 create unique index if not exists users_student_id_key on public.users (student_id) where student_id is not null and student_id <> '';
+-- For projects created before members signed themselves up:
+alter table public.users add column if not exists email text;
+alter table public.users alter column nfc_id drop not null;
+create unique index if not exists users_email_key on public.users (lower(email)) where email is not null;
 
 create table if not exists public.slots (
   code              text primary key,
@@ -223,9 +228,9 @@ revoke execute on function public.is_staff() from public;
 grant execute on function public.is_staff() to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- Members: registered students/personnel with a real login who see only their own pass, history
--- and can send one-way suggestions. An administrator links a Supabase account to a registered user
--- (Users page, or:  select public.link_member('someone@usa.edu.ph', '<users.id>');).
+-- Members: students and personnel register themselves on the site, confirm their email, and then see only
+-- their own pass and history and can send one-way suggestions. Their record starts as PENDING (no card,
+-- expires_at = 0) until the parking office activates the pass from the Users page.
 -- Members' own-row reads on users/logs are added by supabase/lock-down.sql; until then the open
 -- "public mode" policies apply and member privacy is NOT enforced.
 -- ---------------------------------------------------------------------------
@@ -288,39 +293,18 @@ create policy admin_update on public.suggestions for update to authenticated
   using (public.staff_role() = 'admin') with check (public.staff_role() = 'admin');
 revoke all on public.suggestions from anon;
 
--- Admin-only: give a Supabase account (by email) the member view of one registered user.
-create or replace function public.link_member(p_email text, p_user_id text)
-returns text
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_auth uuid;
-  v_role text;
-begin
-  if public.staff_role() is distinct from 'admin' then return 'Only administrators can link a member.'; end if;
-  select id into v_auth from auth.users where lower(email) = lower(trim(p_email));
-  if v_auth is null then return 'No account with that email. Create it in Supabase (Authentication -> Users) first.'; end if;
-  select role into v_role from public.users where id = p_user_id;
-  if v_role is null then return 'That registered user does not exist.'; end if;
-  if v_role = 'visitor' then return 'Visitors cannot have a member login.'; end if;
-  -- An administrator's choice wins: it replaces any earlier link of this login or of this record
-  -- (for example a wrong self sign-up claim).
-  delete from public.members where user_id = v_auth or registered_user_id = p_user_id;
-  insert into public.members (user_id, registered_user_id) values (v_auth, p_user_id);
-  return 'ok';
-end;
-$$;
-revoke execute on function public.link_member(text, text) from public;
-grant execute on function public.link_member(text, text) to authenticated;
+-- Members register themselves now (see claim_member_pass below), so nobody links a login by hand.
+drop function if exists public.link_member(text, text);
 
 -- ---------------------------------------------------------------------------
--- Member self sign-up. The site's sign-up form calls auth.signUp with the person's name and
--- student/employee ID in the account metadata. Once they CONFIRM their email, this links the new
--- account to the registered record whose ID and name match. It links only when: the email ends in
--- @usa.edu.ph, the record is a student or personnel with an active card, and it isn't linked already.
--- No match = the account stays unlinked (sign-in explains it; an admin can link it from Users).
+-- Member self sign-up. The site's sign-up form calls auth.signUp with the person's name, role and
+-- student/employee ID in the account metadata. When they CONFIRM their email (which proves the address is
+-- theirs), this creates their record in `users` and links the login to it, in one step.
+-- The record is Pending: no card, expires_at = 0. Rules:
+--   * the email must end in @usa.edu.ph and have no "+" alias in front of the @;
+--   * the role must be student or personnel, and a name and ID must be given;
+--   * one record per email and per student ID: if either already exists, no record is created and the
+--     login stays unlinked (the sign-in page explains it).
 -- Requires Authentication -> Providers -> Email -> "Confirm email" ON and sign-ups allowed.
 -- ---------------------------------------------------------------------------
 create or replace function public.claim_member_pass()
@@ -330,25 +314,26 @@ security definer
 set search_path = public
 as $$
 declare
-  v_sid  text := upper(trim(coalesce(new.raw_user_meta_data ->> 'student_id', '')));
-  v_name text := lower(regexp_replace(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), '\s+', ' ', 'g'));
-  v_user text;
+  v_email text := lower(coalesce(new.email, ''));
+  v_sid   text := upper(trim(coalesce(new.raw_user_meta_data ->> 'student_id', '')));
+  v_name  text := regexp_replace(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), '\s+', ' ', 'g');
+  v_role  text := coalesce(new.raw_user_meta_data ->> 'campus_role', '');
+  v_id    text;
 begin
   if new.email_confirmed_at is null or v_sid = '' or v_name = '' then return new; end if;
-  if lower(coalesce(new.email, '')) not like '%@usa.edu.ph' then return new; end if;
+  if v_role not in ('student', 'personnel') then return new; end if;
+  if v_email not like '%@usa.edu.ph' or split_part(v_email, '@', 1) like '%+%' then return new; end if;
   if exists (select 1 from public.members where user_id = new.id) then return new; end if;
 
-  select id into v_user
-  from public.users
-  where upper(trim(student_id)) = v_sid
-    and lower(regexp_replace(trim(name), '\s+', ' ', 'g')) = v_name
-    and role in ('student', 'personnel')
-    and active
-    and not exists (select 1 from public.members m where m.registered_user_id = public.users.id);
-
-  if v_user is not null then
-    insert into public.members (user_id, registered_user_id) values (new.id, v_user) on conflict do nothing;
-  end if;
+  v_id := 'M' || replace(gen_random_uuid()::text, '-', '');
+  begin
+    -- "vehicle" is a leftover column that is no longer used; it only needs a value.
+    insert into public.users (id, nfc_id, student_id, name, role, vehicle, active, created_at, expires_at, email)
+    values (v_id, null, v_sid, v_name, v_role, 'light', true, (extract(epoch from now()) * 1000)::bigint, 0, v_email);
+    insert into public.members (user_id, registered_user_id) values (new.id, v_id);
+  exception when unique_violation then
+    return new; -- this student ID or email already has a record
+  end;
   return new;
 end;
 $$;
@@ -361,3 +346,7 @@ drop trigger if exists claim_member_pass_on_confirm on auth.users;
 create trigger claim_member_pass_on_confirm
   after insert or update of email_confirmed_at on auth.users
   for each row execute function public.claim_member_pass();
+
+-- Superseded: records are created at sign-up now, so nothing links a login to a hand-made record.
+drop trigger if exists claim_pass_on_user_change on public.users;
+drop function if exists public.claim_pass_for_user();

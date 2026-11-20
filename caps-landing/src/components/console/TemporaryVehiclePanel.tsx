@@ -5,9 +5,7 @@ import { CarFront } from "lucide-react";
 import { portal } from "@/lib/portal/store";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { useSparcState } from "@/lib/sparc/SparcProvider";
-import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
 import { cardKey } from "@/lib/sparc/store";
-import type { VehicleClass } from "@/lib/sparc/types";
 import { Badge, Panel, PanelHeader, useToast } from "./ui";
 
 /**
@@ -20,7 +18,6 @@ export function TemporaryVehiclePanel() {
   const { vehicles } = usePortalState();
   const [card, setCard] = useState("");
   const [plate, setPlate] = useState("");
-  const [type, setType] = useState<VehicleClass>("light");
   const [error, setError] = useState<string | null>(null);
 
   const key = cardKey(card);
@@ -31,10 +28,10 @@ export function TemporaryVehiclePanel() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!driver) {
-      setError(key ? "That card isn't registered. Check the number, or register the driver first." : "Enter the driver's card number.");
+      setError(key ? "That card isn't registered to anyone. Check the number." : "Enter the driver's card number.");
       return;
     }
-    const r = portal.addTemporary(key, { plate, type });
+    const r = portal.addTemporary(key, { plate });
     if (!r.ok) {
       setError(r.error);
       return;
@@ -51,7 +48,7 @@ export function TemporaryVehiclePanel() {
         <p className="mb-3 max-w-prose text-sm leading-relaxed text-ink-muted">
           For a driver in a borrowed or rental car. The vehicle is linked to their card and lapses at midnight.
         </p>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
           <div>
             <label htmlFor="temp-card" className="mb-1.5 block text-sm font-semibold text-ink">
               Card number
@@ -84,15 +81,6 @@ export function TemporaryVehiclePanel() {
                 setError(null);
               }}
             />
-          </div>
-          <div>
-            <label htmlFor="temp-type" className="mb-1.5 block text-sm font-semibold text-ink">
-              Type
-            </label>
-            <select id="temp-type" className="c-input w-full" value={type} onChange={(e) => setType(e.target.value as VehicleClass)}>
-              <option value="light">{VEHICLE_LABEL.light}</option>
-              <option value="heavy">{VEHICLE_LABEL.heavy}</option>
-            </select>
           </div>
           <button type="submit" className="c-btn c-btn-gold">
             <CarFront className="size-4" aria-hidden />

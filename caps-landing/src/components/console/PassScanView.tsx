@@ -165,7 +165,7 @@ export function PassScanView() {
                 className="c-btn c-btn-sm mt-3"
                 onClick={() => {
                   if (sparc.getState().logs.length === 0) sparc.loadSample();
-                  portal.seedDrivers(sparc.getState().users.map((u) => ({ card: cardKey(u.nfcId), type: u.vehicle })));
+                  portal.seedDrivers(sparc.getState().users.filter((u) => u.nfcId).map((u) => ({ card: cardKey(u.nfcId) })));
                 }}
               >
                 Load sample passes (demo)

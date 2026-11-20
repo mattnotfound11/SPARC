@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeftFromLine, ArrowRightToLine, CircleAlert, CircleHelp, ParkingSquareOff } from "lucide-react";
-import { formatDate, passStatus, VEHICLE_LABEL } from "@/lib/sparc/selectors";
+import { formatDate, passStatus } from "@/lib/sparc/selectors";
 import type { ScanOutcome } from "@/lib/sparc/types";
 import { Badge } from "./ui";
 
@@ -31,14 +31,25 @@ function Banner({
 }
 
 /** What the admin sees right after a card tap. */
-export function ScanResultCard({ outcome, now }: { outcome: ScanOutcome; now: number }) {
+export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcome; now: number; onWalkIn?: (card: string) => void }) {
   if (outcome.status === "unregistered") {
     return (
       <Banner tone="crimson" icon={CircleHelp} title="Unregistered card">
-        <span className="font-mono">{outcome.nfcId}</span> isn&apos;t linked to a driver.{" "}
-        <Link href={`/admin/users?nfc=${encodeURIComponent(outcome.nfcId)}`} className="font-semibold text-gold underline">
-          Register this card
-        </Link>
+        <span className="font-mono">{outcome.nfcId}</span> isn&apos;t linked to a member.
+        {onWalkIn && (
+          <span className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button type="button" className="c-btn c-btn-sm c-btn-gold" onClick={() => onWalkIn(outcome.nfcId)}>
+              Let in (receipt shown)
+            </button>
+            <span className="text-xs text-ink-muted">Only after the driver shows a paid receipt.</span>
+          </span>
+        )}
+        <span className="mt-2 block text-xs">
+          A member whose pass isn&apos;t active yet?{" "}
+          <Link href={`/admin/users?nfc=${encodeURIComponent(outcome.nfcId)}`} className="font-semibold text-gold underline">
+            Activate their pass with this card
+          </Link>
+        </span>
       </Banner>
     );
   }
@@ -70,13 +81,15 @@ export function ScanResultCard({ outcome, now }: { outcome: ScanOutcome; now: nu
     );
   if (outcome.status === "full")
     return (
-      <Banner tone="gold" icon={ParkingSquareOff} title="No free slot for this vehicle class">
-        {user.name} · {VEHICLE_LABEL[user.vehicle]}
+      <Banner tone="gold" icon={ParkingSquareOff} title="That floor is full">
+        {user.name}
       </Banner>
     );
 
+  if (outcome.status === "needs-floor") return null; // the floor picker is shown instead
   if (outcome.status !== "entered" && outcome.status !== "exited") return null;
 
+  const walkIn = outcome.walkIn === true;
   const pass = passStatus(user, now);
   const entered = outcome.status === "entered";
   const Icon = entered ? ArrowRightToLine : ArrowLeftFromLine;
@@ -89,17 +102,19 @@ export function ScanResultCard({ outcome, now }: { outcome: ScanOutcome; now: nu
             {entered ? "Entered" : "Exited"} · slot <span className="font-mono">{outcome.slot}</span> · floor {outcome.floor}
           </p>
           <p className="mt-1 truncate font-display text-2xl font-semibold text-ink">{user.name}</p>
-          <p className="mt-0.5 text-sm text-ink-muted">
-            {ROLE_LABEL[user.role]} · {VEHICLE_LABEL[user.vehicle]}
-          </p>
+          <p className="mt-0.5 text-sm text-ink-muted">{walkIn ? "Paid at the gate" : ROLE_LABEL[user.role]}</p>
         </div>
-        <Badge tone={pass.state === "active" ? "live" : "gold"}>
-          {pass.state === "active"
-            ? `Active · ${pass.daysLeft} days left`
-            : `Expiring in ${pass.daysLeft} ${pass.daysLeft === 1 ? "day" : "days"}`}
-        </Badge>
+        {walkIn ? (
+          <Badge tone="gold">Walk-in · receipt checked</Badge>
+        ) : (
+          <Badge tone={pass.state === "active" ? "live" : "gold"}>
+            {pass.state === "active"
+              ? `Active · ${pass.daysLeft} days left`
+              : `Expiring in ${pass.daysLeft} ${pass.daysLeft === 1 ? "day" : "days"}`}
+          </Badge>
+        )}
       </div>
-      <p className="mt-3 text-xs text-ink-muted">Pass valid until {formatDate(user.expiresAt)}</p>
+      {!walkIn && <p className="mt-3 text-xs text-ink-muted">Pass valid until {formatDate(user.expiresAt)}</p>}
     </div>
   );
 }

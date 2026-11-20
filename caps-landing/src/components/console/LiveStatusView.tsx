@@ -254,7 +254,7 @@ export function LiveStatusView() {
           state.logs.length === 0 ? (
             <button type="button" className="c-btn c-btn-gold" onClick={() => {
                 store.loadSample();
-                portal.seedDrivers(store.getState().users.map((u) => ({ card: cardKey(u.nfcId), type: u.vehicle })));
+                portal.seedDrivers(store.getState().users.filter((u) => u.nfcId).map((u) => ({ card: cardKey(u.nfcId) })));
               }}>
               Load sample data
             </button>

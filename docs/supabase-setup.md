@@ -124,28 +124,64 @@ finish.
 
 ---
 
-## Member logins (students and personnel with a monthly pass)
+## Members: self-registration and the monthly pass
 
-Members sign in at `/login` and see only their own pass, profile, parking history, the live count,
-and a suggestions box (one-way: administrators read them at **Admin → Suggestions**).
+Students and personnel **register themselves** at `/signup`. Nobody adds them in the console: the admin
+**Users** page is a roster that shows who is registered, plus the actions that matter (activate, renew,
+suspend, remove).
 
-1. Run `supabase/schema.sql` again (it adds the `members` and `suggestions` tables and `link_member`).
-2. **Authentication → Users → Add user** for the member (tick **Auto Confirm User**).
-3. Sign in to the console as an administrator, open **Users**, edit the person, and enter the
-   member's email under **Member login** → **Link**. (Or in the SQL Editor:
-   `select public.link_member('student@usa.edu.ph', '<users.id>');`.) Visitors cannot be linked.
-4. **Privacy:** members only see their own rows once `supabase/lock-down.sql` has been run. Until
-   then the database is in public mode and anyone holding the site key can read everything, members included.
+**The flow**
 
-### Member self sign-up (optional)
+1. The student signs up with their `@usa.edu.ph` email (no `+` aliases), name, role, student or employee
+   ID and a password, and sees "Check your email" (with a Resend button after 60 seconds).
+2. They click the link in the email, which proves the address is theirs, and land on the log-in page
+   with "Email confirmed".
+3. At that moment the database creates their record and links it to their login (`claim_member_pass` in
+   `supabase/schema.sql`). The record is **Pending**: no card and no pass. It shows in **Admin → Users**
+   with an **Activate pass** button.
+4. When the parking office is satisfied (payment, ID check), it clicks **Activate pass**, scans the
+   member's campus card, and the monthly pass starts. Only then does the gate let that card in.
+5. The member signs in and sees their pass, history, the live count and a suggestions box.
 
-Students and personnel can register at `/signup` with their `@usa.edu.ph` email, name and student/employee ID.
+**Blocking duplicates and bulk accounts**
 
-1. Run `supabase/schema.sql` again (adds the `claim_member_pass` trigger).
-2. **Authentication → Sign In / Providers → Email**: keep **Confirm email** ON and sign-ups allowed.
-3. **Authentication → URL Configuration**: set **Site URL** to your deployed site and add `<site>/login` under **Redirect URLs**, so the confirmation link lands on the sign-in page.
-4. After the person clicks the link in their email, their login is linked automatically **only if** a registered, active student/personnel record has the same ID *and* name (ignoring case and extra spaces) and isn't linked yet. Otherwise they can sign in but see "not linked"; an administrator can link them from **Users**.
+- One account per email: Supabase refuses a second sign-up with the same email, and `+` aliases are
+  rejected on the form and again in the database.
+- One record per student ID: if an ID already has a record, a second sign-up creates none, and that login
+  says it has no parking record (contact the parking office).
+- A pending account has no pass, so fake sign-ups gain nothing until an admin approves them.
 
-Limits worth knowing: the match is ID plus name, not a secret, so anyone who knows another registered person's ID and exact name
-could claim their pass first. An administrator can fix that from **Users** (re-linking the right account replaces the wrong one).
-For stronger proof, use the admin-linking flow above instead and turn sign-ups off.
+**Setup**
+
+1. Run `supabase/schema.sql` (it is safe to run again). For a project made before self-registration it
+   also adds `users.email`, makes `users.nfc_id` optional, and replaces the sign-up trigger.
+2. **Authentication → Sign In / Providers → Email:** keep **Confirm email** on and sign-ups allowed.
+3. **Authentication → URL Configuration:** set **Site URL** to the live site and add `<site>/login`
+   (and `http://localhost:3000/login` for local testing) under **Redirect URLs**.
+4. **Connect an email provider.** Supabase's built-in email only delivers to people on your Supabase team
+   and allows a few emails an hour, so students would not receive the confirmation email. Use
+   **Authentication → Emails → SMTP Settings → Custom SMTP** (Resend, Gmail with an app password,
+   SendGrid, or the school's mail server) and send a test sign-up.
+5. **Authentication → Emails → Confirm signup:** set the subject to `Confirm your SPARC parking account`
+   and the body to:
+
+```html
+<h2>Confirm your email</h2>
+<p>Hi, you (or someone using your university address) signed up for the SPARC parking portal.</p>
+<p>Confirm that this address is yours:</p>
+<p><a href="{{ .ConfirmationURL }}">Confirm my email</a></p>
+<p>After confirming, sign in at the SPARC site with your email and password. The parking office will
+activate your monthly pass and your card.</p>
+<p>If you didn't sign up, ignore this email and nothing happens.</p>
+```
+
+**Privacy:** members only see their own rows once `supabase/lock-down.sql` has been run. Until then the
+database is in public mode and anyone holding the site key can read everything, members included.
+
+**The gate:** at entry the facilitator taps the card and then chooses the floor (there is no vehicle size
+anymore); the system books the first free bay on that floor.
+
+**Walk-ins (₱30 receipt, no monthly pass):** the driver shows the paid receipt and is given an NFC card. When
+that unregistered card is tapped at entry, the result offers **Let in (receipt shown)**; the facilitator
+confirms, picks the floor, and the car is logged as a "Walk-in" and takes a bay. The same card tapped at
+exit frees the bay. A registered card is always checked as a member, so this can't be used to skip a pass.

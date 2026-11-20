@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import * as mock from "@/lib/mockSession";
-import type { AccountType } from "@/lib/member/logic";
+import { classifySignInError, type AccountType } from "@/lib/member/logic";
 
 /*
  * One admin-session API for the whole app. With Supabase configured it is real authentication
@@ -75,11 +75,15 @@ export async function signOut() {
 
 const OPEN_SESSION: AdminSession = { status: "in", email: mock.DEMO_EMAIL, role: "admin", open: true };
 
-const NOT_LINKED = "This account isn't linked to a SPARC pass. Ask an administrator to link it.";
+const NOT_LINKED = "We couldn't set up your member record. That student ID or email may already have an account. Contact the parking office to sort it out.";
+const NOT_CONFIRMED = "Confirm your email first. Open the link we sent to your inbox, or send it again below.";
 const WRONG_LOGIN = "That email and password don't match a SPARC account.";
 
-/** Sign in as staff or as a member. Resolves to what kind of account it is, or an error message. */
-export async function signInAccount(email: string, password: string): Promise<{ error: string } | { type: AccountType }> {
+/** Why a sign-in didn't go through; `kind` lets the screen offer the right next step. */
+export type SignInFailure = { error: string; kind?: "unconfirmed" | "unlinked" };
+
+/** Sign in as staff or as a member. Resolves to what kind of account it is, or why it didn't work. */
+export async function signInAccount(email: string, password: string): Promise<SignInFailure | { type: AccountType }> {
   const db = getSupabase();
   if (!db) {
     if (!mockAllowed) return { error: "Sign-in isn't configured for this deployment." };
@@ -88,8 +92,9 @@ export async function signInAccount(email: string, password: string): Promise<{ 
   }
   const { error } = await db.auth.signInWithPassword({ email: email.trim(), password });
   if (error) {
-    const rejected = typeof error.status === "number" && error.status >= 400 && error.status < 500;
-    return { error: rejected ? WRONG_LOGIN : OFFLINE };
+    const kind = classifySignInError(error);
+    if (kind === "unconfirmed") return { error: NOT_CONFIRMED, kind: "unconfirmed" };
+    return { error: kind === "wrong" ? WRONG_LOGIN : OFFLINE };
   }
   const { data, error: checkError } = await db.rpc("account_type");
   if (checkError) {
@@ -98,12 +103,12 @@ export async function signInAccount(email: string, password: string): Promise<{ 
   }
   if (data !== "admin" && data !== "facilitator" && data !== "member") {
     await db.auth.signOut();
-    return { error: NOT_LINKED };
+    return { error: NOT_LINKED, kind: "unlinked" };
   }
   return { type: data };
 }
 
-export type SignupResult = { error: string } | { ok: true };
+export type SignupResult = { error: string } | { ok: true } | { exists: true };
 
 /** A plain-language reason for a failed sign-up, with the service's own code in brackets so it can be looked up. */
 function signUpFailure(error: { status?: number; code?: string; name?: string; message?: string }): string {
@@ -118,7 +123,9 @@ function signUpFailure(error: { status?: number; code?: string; name?: string; m
     if (!error.status) return "Couldn't reach the sign-in service. Check your connection, and turn off any ad blocker or VPN that may block it.";
     return "Couldn't create the account. Try again, or ask an administrator.";
   })();
-  return `${reason} [${code}]`;
+  // The code is only useful to whoever has to fix an unexpected failure, so known, self-explanatory ones omit it.
+  const known = ["email_address_invalid", "email_address_not_authorized", "signup_disabled", "over_email_send_rate_limit", "weak_password"];
+  return known.includes(error.code ?? "") || error.status === 429 ? reason : `${reason} [${code}]`;
 }
 
 /**
@@ -129,7 +136,7 @@ function signUpFailure(error: { status?: number; code?: string; name?: string; m
 export async function signUpMember(input: { name: string; email: string; role: string; studentId: string; password: string }): Promise<SignupResult> {
   const db = getSupabase();
   if (!db) return { error: "Sign-up needs the shared database, which isn't connected in this build. In development, use the demo member login instead." };
-  const { error } = await db.auth.signUp({
+  const { data, error } = await db.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
     options: {
@@ -138,7 +145,20 @@ export async function signUpMember(input: { name: string; email: string; role: s
     },
   });
   if (error) return { error: signUpFailure(error) };
+  // With email confirmation on, an address that already has an account comes back as a user with no
+  // identities (and no email is sent), so the student has to be told to log in instead.
+  if (data.user && (data.user.identities?.length ?? 1) === 0) return { exists: true };
   return { ok: true };
+}
+
+/** Sends the sign-up confirmation email again. Resolves to an error message, or null when it was sent. */
+export async function resendConfirmation(email: string): Promise<string | null> {
+  const db = getSupabase();
+  if (!db) return "Email isn't connected in this build.";
+  const { error } = await db.auth.resend({ type: "signup", email: email.trim().toLowerCase(), options: { emailRedirectTo: `${window.location.origin}/login` } });
+  if (!error) return null;
+  if (error.status === 429 || error.code === "over_email_send_rate_limit") return "Too many emails sent. Wait a minute and try again.";
+  return "Couldn't send the email. Check your connection and try again.";
 }
 
 export type MemberSession = mock.MemberSession;

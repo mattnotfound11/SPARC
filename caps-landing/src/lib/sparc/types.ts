@@ -1,8 +1,5 @@
 /** Domain types for the SPARC admin console. Mirrors the proposal's data stores D1–D3. */
 
-/** "heavy" = SUVs and vans (floors 1–2 by default), "light" = lighter vehicles (floors 3–5). */
-export type VehicleClass = "heavy" | "light";
-
 export type SlotStatus = "free" | "occupied";
 
 export type Occupant = {
@@ -18,14 +15,12 @@ export type Slot = {
   code: string; // A1, B7 …
   floor: number; // 1-based
   index: number; // 1-based position on the floor
-  vehicle: VehicleClass;
   status: SlotStatus;
   occupant?: Occupant;
 };
 
 export type FloorConfig = {
   floor: number;
-  vehicle: VehicleClass;
   slots: number;
 };
 
@@ -35,15 +30,17 @@ export type UserRole = "student" | "personnel" | "visitor";
 /** D1 Registered Users */
 export type RegisteredUser = {
   id: string;
-  nfcId: string; // "1234-5678-9012"
-  /** School-issued ID (student number, or employee/visitor ID), typed by the admin. Separate from the card. Absent on records saved before it existed. */
+  /** "1234-5678-9012". Empty while the pass is Pending: the parking office scans the card when it activates the pass. */
+  nfcId: string;
+  /** School-issued ID (student number or employee ID), given by the member at sign-up. Separate from the card. */
   studentId?: string;
+  /** The university email the member signed up with. */
+  email?: string;
   name: string;
   role: UserRole;
-  vehicle: VehicleClass;
   active: boolean;
   createdAt: number;
-  /** Monthly pass expiry: one calendar month after registration or last renewal. */
+  /** Monthly pass expiry: one calendar month after activation or last renewal. 0 means Pending: no pass has been activated yet. */
   expiresAt: number;
 };
 
@@ -61,7 +58,6 @@ export type LogEntry = {
   userName: string | null;
   slot: string | null;
   floor: number | null;
-  vehicle: VehicleClass | null;
   /** Which gate the tap came through. Absent on records made before gates were recorded. */
   gate?: string;
 };
@@ -71,10 +67,11 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 export type UserInput = {
   name: string;
   studentId: string;
+  /** Empty creates a Pending member; otherwise the card for an active pass. */
   nfcId: string;
   role: UserRole;
-  vehicle: VehicleClass;
   active: boolean;
+  email?: string;
 };
 
 /** Which gate the admin is scanning for. */
@@ -82,11 +79,14 @@ export type ScanMode = "entry" | "exit";
 
 /** Result of tapping a card at the entry/exit scanner. */
 export type ScanOutcome =
-  | { status: "entered"; user: RegisteredUser; slot: string; floor: number }
-  | { status: "exited"; user: RegisteredUser; slot: string; floor: number }
-  | { status: "already-inside"; user: RegisteredUser; slot: string; floor: number }
+  | { status: "entered"; user: RegisteredUser; slot: string; floor: number; walkIn?: boolean }
+  | { status: "exited"; user: RegisteredUser; slot: string; floor: number; walkIn?: boolean }
+  | { status: "already-inside"; user: RegisteredUser; slot: string; floor: number; walkIn?: boolean }
   | { status: "not-inside"; user: RegisteredUser }
-  | { status: "expired" | "no-pass" | "full"; user: RegisteredUser }
+  | { status: "expired" | "no-pass"; user: RegisteredUser }
+  | { status: "full"; user: RegisteredUser; walkIn?: boolean }
+  /** A valid pass at the entry scanner: the facilitator now chooses which floor the car goes to. Nothing is booked yet. */
+  | { status: "needs-floor"; user: RegisteredUser; walkIn?: boolean }
   | { status: "unregistered"; nfcId: string };
 
 /** One row in the scanner's recent-scans list. Rejected scans live here, not in the audit log. */

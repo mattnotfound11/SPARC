@@ -40,8 +40,17 @@ export type SparcStore = {
   updateUser: (id: string, input: UserInput) => ActionResult;
   removeUser: (id: string) => ActionResult;
   renewUser: (id: string) => ActionResult;
-  /** A card tap at the entry or exit scanner: does what the mode says, or explains why not. */
-  scan: (nfcId: string, mode: ScanMode, gate?: string) => ScanOutcome;
+  /** Starts a pending member's monthly pass: gives them the card and one month from now. */
+  activateUser: (id: string, nfcId: string) => ActionResult;
+  /**
+   * A card tap at the entry or exit scanner: does what the mode says, or explains why not.
+   * At entry the first tap only checks the pass and answers `needs-floor`; the facilitator then picks a
+   * floor and the same call is repeated with `floor`, which books the first free bay there.
+   * `walkIn: true` is the facilitator confirming a receipt for a card nobody registered: it lets that card
+   * in as a "Walk-in" (and the same card is recognised at exit). It never applies to a registered card,
+   * so it can't be used to get around a member's pass.
+   */
+  scan: (nfcId: string, mode: ScanMode, options?: ScanOptions) => ScanOutcome;
   /** Re-reads saved data, e.g. after another browser tab changed it. Does not write back. */
   refresh: () => void;
   /**
@@ -54,6 +63,12 @@ export type SparcStore = {
   /** Demo only: replaces the console's data with made-up drivers, a week of traffic and cars parked now. */
   loadSample: () => void;
 };
+
+export type ScanOptions = { gate?: string; floor?: number; walkIn?: boolean };
+
+/** Name shown for, and recorded against, a driver who paid at the gate with a card nobody registered. */
+export const WALK_IN_NAME = "Walk-in";
+const WALK_IN_PREFIX = "walk-in:";
 
 export type HydrateData = Pick<SparcState, "slots" | "users" | "logs" | "scans">;
 
@@ -122,17 +137,24 @@ export function normalizeStudentId(value: string) {
 
 const STUDENT_ID_PATTERN = /^[A-Z0-9][A-Z0-9-]{2,19}$/;
 
+/** An error message when the card can't be given to this user, or undefined when it can. */
+export function validateCard(nfcId: string, users: RegisteredUser[], editingId?: string): string | undefined {
+  const nfc = normalizeNfc(nfcId);
+  const nfcDigits = nfc.replace(/-/g, "");
+  const validDigits = NFC_PATTERN.test(nfc) && nfcDigits.length >= 4 && nfcDigits.length <= 20;
+  if (!validDigits && !NFC_HEX_PATTERN.test(nfc)) return "Scan the card, or use numbers like 1234-5678-9012 or hex like 04:A1:B2:C3.";
+  const owner = users.find((u) => u.nfcId && cardKey(u.nfcId) === cardKey(nfc) && u.id !== editingId);
+  if (owner) return `This card already belongs to ${owner.name}. One card can only hold one user: remove ${owner.name} first if the card has a new owner.`;
+  return undefined;
+}
+
+/** A blank card is allowed: that is a Pending member, who gets their card when the pass is activated. */
 export function validateUser(input: UserInput, users: RegisteredUser[], editingId?: string): UserErrors {
   const errors: UserErrors = {};
   if (input.name.trim().length < 2) errors.name = "Enter the driver's full name.";
-  const nfc = normalizeNfc(input.nfcId);
-  const nfcDigits = nfc.replace(/-/g, "");
-  const validDigits = NFC_PATTERN.test(nfc) && nfcDigits.length >= 4 && nfcDigits.length <= 20;
-  if (!validDigits && !NFC_HEX_PATTERN.test(nfc))
-    errors.nfcId = "Scan the card, or use numbers like 1234-5678-9012 or hex like 04:A1:B2:C3.";
-  else {
-    const owner = users.find((u) => cardKey(u.nfcId) === cardKey(nfc) && u.id !== editingId);
-    if (owner) errors.nfcId = `This card already belongs to ${owner.name}. One card can only hold one user: remove ${owner.name} first if the card has a new owner.`;
+  if (input.nfcId.trim()) {
+    const cardError = validateCard(input.nfcId, users, editingId);
+    if (cardError) errors.nfcId = cardError;
   }
   const sid = normalizeStudentId(input.studentId);
   if (sid && !STUDENT_ID_PATTERN.test(sid)) errors.studentId = "Use 3 to 20 letters, numbers or dashes, like 2021-00123.";
@@ -152,7 +174,6 @@ function demoExpiredUser(now: number): RegisteredUser {
     studentId: "2021-00123",
     name: "Juan Dela Cruz (demo)",
     role: "student",
-    vehicle: "light",
     active: true,
     createdAt,
     expiresAt,
@@ -238,16 +259,18 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     const errors = validateUser(input, state.users);
     const first = Object.values(errors)[0];
     if (first) return { ok: false, error: first };
+    const hasCard = input.nfcId.trim() !== "";
     const user: RegisteredUser = {
       id: newId?.("U") ?? `U-${String(state.nextUserSeq).padStart(3, "0")}`,
-      nfcId: normalizeNfc(input.nfcId),
+      nfcId: hasCard ? normalizeNfc(input.nfcId) : "",
       studentId: normalizeStudentId(input.studentId),
+      ...(input.email ? { email: input.email.trim().toLowerCase() } : {}),
       name: input.name.trim(),
       role: input.role,
-      vehicle: input.vehicle,
       active: input.active,
       createdAt: Date.now(),
-      expiresAt: addOneMonth(Date.now()),
+      // No card means no pass yet: the member is Pending until the parking office activates it.
+      expiresAt: hasCard ? addOneMonth(Date.now()) : 0,
     };
     set({ users: [user, ...state.users], nextUserSeq: state.nextUserSeq + 1, now: Date.now() });
     return { ok: true };
@@ -263,10 +286,9 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
           ? {
               ...u,
               name: input.name.trim(),
-              nfcId: normalizeNfc(input.nfcId),
+              nfcId: input.nfcId.trim() ? normalizeNfc(input.nfcId) : "",
               studentId: normalizeStudentId(input.studentId),
               role: input.role,
-              vehicle: input.vehicle,
               active: input.active,
             }
           : u,
@@ -294,10 +316,33 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     return { ok: true };
   }
 
-  function scan(rawNfc: string, mode: ScanMode, gate: string = GATE): ScanOutcome {
+  function activateUser(id: string, rawNfc: string): ActionResult {
+    const user = state.users.find((u) => u.id === id);
+    if (!user) return { ok: false, error: "User not found." };
+    const cardError = validateCard(rawNfc, state.users, id);
+    if (cardError) return { ok: false, error: cardError };
+    const at = Date.now();
+    set({
+      users: state.users.map((u) => (u.id === id ? { ...u, nfcId: normalizeNfc(rawNfc), active: true, expiresAt: addOneMonth(at) } : u)),
+      now: at,
+    });
+    return { ok: true };
+  }
+
+  function scan(rawNfc: string, mode: ScanMode, { gate = GATE, floor, walkIn = false }: ScanOptions = {}): ScanOutcome {
     const at = Date.now();
     const nfcId = normalizeNfc(rawNfc);
-    const user = state.users.find((u) => cardKey(u.nfcId) === cardKey(nfcId));
+    const key = cardKey(nfcId);
+    // A pending member has no card yet, and a blank scan must never match them.
+    const member = key ? state.users.find((u) => u.nfcId && cardKey(u.nfcId) === key) : undefined;
+    // An unregistered card is a walk-in only if it is already parked as one, or the facilitator confirmed it
+    // at entry. A registered card is never a walk-in, so its pass is always checked.
+    const parkedWalkIn = !member && key ? state.slots.find((s) => s.occupant?.userId.startsWith(WALK_IN_PREFIX) && cardKey(s.occupant.nfcId) === key) : undefined;
+    const isGuest = !member && key !== "" && (parkedWalkIn !== undefined || (mode === "entry" && walkIn));
+    // A stand-in record so the scanner's screens can show the walk-in. It is never saved in `users`.
+    const guest: RegisteredUser = { id: `${WALK_IN_PREFIX}${key}`, nfcId, name: WALK_IN_NAME, role: "visitor", active: true, createdAt: at, expiresAt: at };
+    const user = member ?? (isGuest ? guest : undefined);
+    const tag = isGuest ? { walkIn: true as const } : {};
 
     function record(outcome: ScanOutcome, patch: Partial<SparcState> = {}): ScanOutcome {
       const row: ScanRecord = { id: newId?.("S") ?? `S-${state.nextScanSeq}`, at, nfcId, outcome };
@@ -308,26 +353,25 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     if (!user) return record({ status: "unregistered", nfcId });
 
     const parked = state.slots.find((s) => s.occupant?.userId === user.id);
-    if (parked && mode === "entry") return record({ status: "already-inside", user, slot: parked.code, floor: parked.floor });
+    if (parked && mode === "entry") return record({ status: "already-inside", user, slot: parked.code, floor: parked.floor, ...tag });
     if (!parked && mode === "exit") return record({ status: "not-inside", user });
     if (parked) {
       // Leaving is always allowed, even if the pass lapsed while parked.
-      const entry = state.logs.find((l) => l.event === "entry" && l.userId === user.id);
+      const entry = state.logs.find((l) => l.event === "entry" && (isGuest ? l.userId === null && cardKey(l.nfcId) === key : l.userId === user.id));
       const log: LogEntry = {
         id: newId?.("L") ?? `L-${String(state.nextLogSeq).padStart(4, "0")}`,
         visitId: entry?.visitId ?? null,
         at,
         event: "exit",
         nfcId: user.nfcId,
-        userId: user.id,
+        userId: isGuest ? null : user.id,
         userName: user.name,
         slot: parked.code,
         floor: parked.floor,
-        vehicle: parked.vehicle,
         gate,
       };
       return record(
-        { status: "exited", user, slot: parked.code, floor: parked.floor },
+        { status: "exited", user, slot: parked.code, floor: parked.floor, ...tag },
         {
           slots: state.slots.map((s) => (s.code === parked.code ? { ...s, status: "free", occupant: undefined } : s)),
           logs: [log, ...state.logs],
@@ -336,11 +380,16 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
       );
     }
 
-    if (!user.active) return record({ status: "no-pass", user });
-    if (user.expiresAt <= at) return record({ status: "expired", user });
+    if (!isGuest) {
+      if (!user.active || user.expiresAt === 0) return record({ status: "no-pass", user });
+      if (user.expiresAt <= at) return record({ status: "expired", user });
+    }
 
-    const free = pickFreeSlot(state.config, state.slots, user.vehicle, at);
-    if (!free) return record({ status: "full", user });
+    // The card is good. Which floor the car goes to is the facilitator's call, so ask before booking anything.
+    if (floor === undefined) return { status: "needs-floor", user, ...tag };
+
+    const free = pickFreeSlot(state.config, state.slots, floor, at);
+    if (!free) return record({ status: "full", user, ...tag });
 
     const seq = state.nextLogSeq;
     const log: LogEntry = {
@@ -349,15 +398,14 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
       at,
       event: "entry",
       nfcId: user.nfcId,
-      userId: user.id,
+      userId: isGuest ? null : user.id,
       userName: user.name,
       slot: free.code,
       floor: free.floor,
-      vehicle: free.vehicle,
       gate,
     };
     return record(
-      { status: "entered", user, slot: free.code, floor: free.floor },
+      { status: "entered", user, slot: free.code, floor: free.floor, ...tag },
       {
         slots: state.slots.map((s) =>
           s.code === free.code
@@ -380,6 +428,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     updateUser,
     removeUser,
     renewUser,
+    activateUser,
     scan,
     refresh,
     hydrate: (data) => set({ ...data, now: Date.now() }),
@@ -397,7 +446,6 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
         userName: `Visitor ${guestName} (${plate}), host ${host?.name ?? "unknown"}`,
         slot: null,
         floor: null,
-        vehicle: null,
         gate,
       };
       set({ logs: [log, ...state.logs], nextLogSeq: seq + 1, now: at });
@@ -415,7 +463,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
         const since = at - 2.5 * 60 * 60 * 1000;
         const n = String(nextLogSeq).padStart(4, "0");
         slots = slots.map((s) => (s.code === bay.code ? { ...s, status: "occupied" as const, occupant: { userId: demo.id, name: demo.name, nfcId: demo.nfcId, since } } : s));
-        const entry: LogEntry = { id: `L-${n}`, visitId: `V-${n}`, at: since, event: "entry", nfcId: demo.nfcId, userId: demo.id, userName: demo.name, slot: bay.code, floor: bay.floor, vehicle: bay.vehicle, gate: GATE };
+        const entry: LogEntry = { id: `L-${n}`, visitId: `V-${n}`, at: since, event: "entry", nfcId: demo.nfcId, userId: demo.id, userName: demo.name, slot: bay.code, floor: bay.floor, gate: GATE };
         logs = [entry, ...logs].sort((a, b) => b.at - a.at);
         nextLogSeq++;
       }

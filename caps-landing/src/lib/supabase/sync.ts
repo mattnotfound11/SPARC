@@ -19,13 +19,17 @@ const LIVE_GRACE_MS = 10000;
 
 type Row = Record<string, unknown>;
 
+/** The old vehicle-size columns are still in the tables but nothing reads them; every write puts this in them. */
+const LEGACY_VEHICLE = "light";
+
 export const userToRow = (u: RegisteredUser): Row => ({
   id: u.id,
-  nfc_id: u.nfcId,
+  nfc_id: u.nfcId || null, // empty while the pass is pending: the database keeps null, not a blank card
   student_id: u.studentId || null,
+  email: u.email ?? null,
   name: u.name,
   role: u.role,
-  vehicle: u.vehicle,
+  vehicle: LEGACY_VEHICLE, // no longer used; the column only needs a value
   active: u.active,
   created_at: u.createdAt,
   expires_at: u.expiresAt,
@@ -33,11 +37,11 @@ export const userToRow = (u: RegisteredUser): Row => ({
 
 export const userFromRow = (r: Row): RegisteredUser => ({
   id: r.id as string,
-  nfcId: r.nfc_id as string,
+  nfcId: (r.nfc_id as string | null) ?? "",
   ...(r.student_id ? { studentId: String(r.student_id) } : {}),
+  ...(r.email ? { email: String(r.email) } : {}),
   name: r.name as string,
   role: r.role as RegisteredUser["role"],
-  vehicle: r.vehicle as RegisteredUser["vehicle"],
   active: Boolean(r.active),
   createdAt: Number(r.created_at),
   expiresAt: Number(r.expires_at),
@@ -47,7 +51,7 @@ export const slotToRow = (s: Slot): Row => ({
   code: s.code,
   floor: s.floor,
   idx: s.index,
-  vehicle: s.vehicle,
+  vehicle: LEGACY_VEHICLE,
   status: s.status,
   occupant_user_id: s.occupant?.userId ?? null,
   occupant_name: s.occupant?.name ?? null,
@@ -59,7 +63,6 @@ export const slotFromRow = (r: Row): Slot => ({
   code: r.code as string,
   floor: Number(r.floor),
   index: Number(r.idx),
-  vehicle: r.vehicle as Slot["vehicle"],
   status: r.status as Slot["status"],
   ...(r.status === "occupied" && r.occupant_user_id
     ? {
@@ -83,7 +86,6 @@ export const logToRow = (l: LogEntry): Row => ({
   user_name: l.userName,
   slot: l.slot,
   floor: l.floor,
-  vehicle: l.vehicle,
 });
 
 export const logFromRow = (r: Row): LogEntry => ({
@@ -96,7 +98,6 @@ export const logFromRow = (r: Row): LogEntry => ({
   userName: (r.user_name as string | null) ?? null,
   slot: (r.slot as string | null) ?? null,
   floor: r.floor == null ? null : Number(r.floor),
-  vehicle: (r.vehicle as LogEntry["vehicle"]) ?? null,
 });
 
 export const scanToRow = (s: ScanRecord): Row => ({ id: s.id, at: s.at, nfc_id: s.nfcId, outcome: s.outcome });

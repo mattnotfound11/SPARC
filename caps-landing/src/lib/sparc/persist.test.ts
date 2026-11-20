@@ -21,7 +21,6 @@ const input = (n: number): UserInput => ({
   studentId: "",
   nfcId: `04:A1:B2:0${n}`,
   role: "student",
-  vehicle: "light",
   active: true,
 });
 
@@ -37,7 +36,7 @@ describe("store persistence", () => {
     const storage = memoryStorage();
     const a = createSparcStore(T0, storage);
     a.addUser(input(1));
-    const out = a.scan("04:A1:B2:01", "entry");
+    const out = a.scan("04:A1:B2:01", "entry", { floor: 3 });
     expect(out.status).toBe("entered");
 
     const b = createSparcStore(T0 + 60_000, storage).getState();

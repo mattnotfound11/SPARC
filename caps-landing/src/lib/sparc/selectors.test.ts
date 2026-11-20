@@ -10,7 +10,6 @@ const u = (daysLeft: number, active = true): RegisteredUser => ({
   nfcId: "04:A1:B2:C3",
   name: "A",
   role: "student",
-  vehicle: "light",
   active,
   createdAt: 0,
   expiresAt: NOW + daysLeft * DAY,

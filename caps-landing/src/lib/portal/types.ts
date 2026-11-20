@@ -1,7 +1,5 @@
 /** Driver portal types. Vehicles are separate records from the person (plan: "register vehicles separately from the person"). */
 
-import type { VehicleClass } from "@/lib/sparc/types";
-
 export const MAX_VEHICLES = 3;
 
 export type VehicleKind = "owned" | "temporary";
@@ -11,7 +9,6 @@ export type Vehicle = {
   /** Owner's card key (cardKey of the registered NFC ID). */
   ownerCard: string;
   plate: string;
-  type: VehicleClass;
   kind: VehicleKind;
   /** Temporary vehicles only: the day (ms epoch, end of day) the pass is valid until. */
   validUntil?: number;
@@ -61,8 +58,8 @@ export type VisitorPass = {
   sample?: boolean;
 };
 
-/** A driver asking to be told when a bay of their vehicle class is free. */
-export type WaitEntry = { id: string; ownerCard: string; vehicle: VehicleClass; createdAt: number };
+/** A driver asking to be told when a bay is free. */
+export type WaitEntry = { id: string; ownerCard: string; createdAt: number };
 
 /** A special day (graduation, a game) the marshal flags, so drivers and the lobby screen are warned. */
 export type EventMode = {
