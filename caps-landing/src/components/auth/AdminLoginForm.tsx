@@ -6,7 +6,7 @@ import { LoaderCircle } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
 import { DEMO_PASSWORD } from "@/lib/mockSession";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { signIn, useAdminSession } from "@/lib/session";
+import { signIn, useAdminSession, useMemberSession } from "@/lib/session";
 import { STAFF_LOGINS } from "@/lib/staffLogins";
 import { FormNotice } from "./FormNotice";
 import { PasswordField, TextField } from "./fields";
@@ -15,6 +15,7 @@ export function AdminLoginForm() {
   const root = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const session = useAdminSession();
+  const member = useMemberSession();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   useAuthMotion(root);
@@ -24,6 +25,11 @@ export function AdminLoginForm() {
   useEffect(() => {
     if (session.status === "in" && !session.open && !pending) router.replace("/admin");
   }, [session.status, session, pending, router]);
+
+  // A member opening the staff page goes to their own dashboard instead.
+  useEffect(() => {
+    if (member.status === "in") router.replace("/member");
+  }, [member.status, router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

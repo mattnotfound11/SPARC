@@ -119,3 +119,18 @@ on the admin list. The public homepage still shows the live count.
 
 **Order matters:** if you run the lock-down before step 4 is live, the console stops saving until you
 finish.
+
+---
+
+## Member logins (students and personnel with a monthly pass)
+
+Members sign in at `/login` and see only their own pass, profile, parking history, the live count,
+and a suggestions box (one-way: administrators read them at **Admin → Suggestions**).
+
+1. Run `supabase/schema.sql` again (it adds the `members` and `suggestions` tables and `link_member`).
+2. **Authentication → Users → Add user** for the member (tick **Auto Confirm User**).
+3. Sign in to the console as an administrator, open **Users**, edit the person, and enter the
+   member's email under **Member login** → **Link**. (Or in the SQL Editor:
+   `select public.link_member('student@usa.edu.ph', '<users.id>');`.) Visitors cannot be linked.
+4. **Privacy:** members only see their own rows once `supabase/lock-down.sql` has been run. Until
+   then the database is in public mode and anyone holding the site key can read everything, members included.

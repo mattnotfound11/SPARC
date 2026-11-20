@@ -36,6 +36,17 @@ describe("canAccess", () => {
     vi.resetModules();
     const { canAccess } = await import("./session");
     for (const p of ["/admin", "/admin/scan", "/admin/pass", "/admin/logs"]) expect(canAccess("facilitator", p)).toBe(true);
-    for (const p of ["/admin/users", "/admin/reports", "/admin/analytics", "/admin/appeals"]) expect(canAccess("facilitator", p)).toBe(false);
+    for (const p of ["/admin/users", "/admin/reports", "/admin/analytics", "/admin/appeals", "/admin/suggestions"]) expect(canAccess("facilitator", p)).toBe(false);
+  });
+});
+
+describe("isStaffRole", () => {
+  it("accepts only the two staff roles, so a stored member never opens the console", async () => {
+    vi.resetModules();
+    const { isStaffRole } = await import("./mockSession");
+    expect(isStaffRole("admin")).toBe(true);
+    expect(isStaffRole("facilitator")).toBe(true);
+    expect(isStaffRole("member")).toBe(false);
+    expect(isStaffRole(undefined)).toBe(false);
   });
 });
