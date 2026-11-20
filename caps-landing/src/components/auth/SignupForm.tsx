@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LoaderCircle, MailCheck, Nfc } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
 import { useNfcReader } from "@/lib/nfc/useNfcReader";
@@ -28,6 +29,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 
 export function SignupForm() {
   const root = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [role, setRole] = useState<keyof typeof ID_LABEL>("student");
   const [errors, setErrors] = useState<SignupErrors>({});
@@ -88,6 +90,9 @@ export function SignupForm() {
     if ("error" in result) {
       setStatus("idle");
       setFailure(result.error);
+    } else if ("signedIn" in result) {
+      // No email confirmation on this project: they are already signed in, so go to their page.
+      router.replace("/member");
     } else if ("exists" in result) {
       setStatus("idle");
       setExists(true);
