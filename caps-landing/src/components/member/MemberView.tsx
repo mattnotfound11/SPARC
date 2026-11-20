@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePortalState } from "@/lib/portal/usePortal";
-import { useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
+import { SparcGate, useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
 import { useSharedAvailability } from "@/lib/sparc/useShared";
 import { availabilityTone, buildingTotals, floorStats } from "@/lib/sparc/selectors";
 import { ParkingExplorer } from "@/components/console/ParkingExplorer";
@@ -359,6 +359,14 @@ function MemberPage({ render }: { render: (data: MemberData, now: number) => Rea
   return <div ref={root} className="space-y-5 lg:space-y-6">{render(state.data, now)}</div>;
 }
 
+function MapLoading() {
+  return (
+    <div role="status" className="grid h-72 place-items-center rounded-2xl border border-line bg-surface/40 px-6 text-center text-sm text-ink-muted">
+      Loading the building map…
+    </div>
+  );
+}
+
 /** Live status: your pass, the live count, and the 3D building. */
 export function MemberHome() {
   return (
@@ -371,8 +379,10 @@ export function MemberHome() {
             <LiveTile />
             <VisitTiles data={data} now={now} />
           </div>
-          <div data-enter><ParkingExplorer /></div>
-          <div data-enter><ParkingTowers /></div>
+          <SparcGate fallback={<MapLoading />}>
+            <div data-enter><ParkingExplorer /></div>
+            <div data-enter><ParkingTowers /></div>
+          </SparcGate>
         </>
       )}
     />
