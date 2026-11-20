@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleAlert, CircleCheck, Clock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { SparcGate, useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
@@ -50,6 +51,20 @@ function Tile({ label, aside, children }: { label: string; aside?: React.ReactNo
   );
 }
 
+/** True once `ms` has passed while `waiting`; resets when the wait ends. Lets a spinner turn into a message. */
+function useTimedOut(waiting: boolean, ms = 10000) {
+  const [late, setLate] = useState(false);
+  useEffect(() => {
+    if (!waiting) return;
+    const id = window.setTimeout(() => setLate(true), ms);
+    return () => {
+      window.clearTimeout(id);
+      setLate(false);
+    };
+  }, [waiting, ms]);
+  return waiting && late;
+}
+
 const BIG = "num font-display text-[2.5rem] leading-none font-semibold tracking-tight text-ink";
 
 function PassTile({ data, now }: { data: MemberData; now: number }) {
@@ -80,79 +95,109 @@ function PassTile({ data, now }: { data: MemberData; now: number }) {
   );
 }
 
+const LIVE_ICON = { live: CircleCheck, gold: Clock, crimson: CircleAlert } as const;
+
 function LiveBody() {
   const state = useSparcState();
   usePortalState();
   const shared = useSharedAvailability();
-  const { free, total } = shared ?? buildingTotals(floorStats(state.config, state.slots));
-  const tone = free === 0 ? { ...LIVE_TONE.crimson, label: "Parking full" } : LIVE_TONE[availabilityTone(free, total)];
+  const levels = floorStats(state.config, state.slots);
+  const { free, total } = shared ?? buildingTotals(levels);
+  const key = free === 0 ? "crimson" : availabilityTone(free, total);
+  const tone = free === 0 ? { ...LIVE_TONE.crimson, label: "Parking full" } : LIVE_TONE[key];
+  const Icon = LIVE_ICON[key];
   const pct = total > 0 ? Math.round((free / total) * 100) : 0;
   return (
     <>
-      <p className="flex items-baseline gap-2">
-        <span className={BIG}>{free}</span>
-        <span className="text-sm text-ink-faint">/ {total} free</span>
-      </p>
-      <div className="mt-auto pt-3">
-        <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
-          <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${pct}%` }} />
-        </div>
-        <p className={`mt-1.5 text-xs font-semibold ${tone.text}`}>{tone.label}</p>
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <p className="flex items-baseline gap-2.5">
+          <span className="num font-display text-[4.25rem] leading-none font-semibold tracking-tight text-ink">{free}</span>
+          <span className="text-base text-ink-muted">of {total} slots free</span>
+        </p>
+        <p className={`inline-flex items-center gap-1.5 rounded-lg border border-line-strong px-2.5 py-1 text-sm font-semibold ${tone.text}`}>
+          <Icon className="size-4" aria-hidden />
+          {tone.label}
+        </p>
       </div>
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
+        <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${pct}%`, transition: "width 0.9s cubic-bezier(0.16, 1, 0.3, 1)" }} />
+      </div>
+      <ul className="mt-5 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3 xl:grid-cols-5" aria-label="Free slots by level">
+        {levels.map((l) => (
+          <li key={l.floor}>
+            <p className="flex items-baseline justify-between text-sm">
+              <span className="text-ink-muted">Level {l.floor}</span>
+              <span className="num font-semibold text-ink">{l.free}<span className="font-normal text-ink-faint"> / {l.total}</span></span>
+            </p>
+            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
+              <div className="h-full rounded-full bg-live" style={{ width: `${l.total ? (l.free / l.total) * 100 : 0}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
     </>
   );
 }
 
-function LiveTile() {
+function LiveHero() {
   const store = useSparcStoreOrNull();
+  const late = useTimedOut(!store);
   return (
-    <Tile
-      label="Live parking"
-      aside={<span className="dot-pulse size-1.5 rounded-full bg-live" aria-hidden />}
-    >
-      {store ? <LiveBody /> : <p className="text-ink-faint">Checking the lot…</p>}
-    </Tile>
+    <section aria-label="Live parking" className="rounded-2xl border border-line bg-surface/40 p-5 sm:p-6 lg:col-span-2 lg:row-span-2">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Live parking</h2>
+        {store && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
+            <span className="dot-pulse size-1.5 rounded-full bg-live" aria-hidden />
+            Updates every few seconds
+          </span>
+        )}
+      </div>
+      {store ? (
+        <LiveBody />
+      ) : late ? (
+        <div className="mt-4">
+          <p className="num font-display text-[4.25rem] leading-none font-semibold text-ink-faint">—</p>
+          <p className="mt-3 text-sm text-ink-muted">Live count unavailable right now. Check your connection, then reload.</p>
+        </div>
+      ) : (
+        <div className="mt-4 animate-pulse space-y-4" role="status" aria-label="Checking the lot">
+          <div className="h-16 w-48 rounded-lg bg-white/[0.06]" />
+          <div className="h-2 rounded-full bg-white/[0.06]" />
+          <div className="grid grid-cols-3 gap-4 xl:grid-cols-5">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-8 rounded bg-white/[0.04]" />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
-function VisitTiles({ data, now }: { data: MemberData; now: number }) {
+function StatusTile({ data }: { data: MemberData }) {
   const visits = useMemo(() => buildVisits(data.logs), [data.logs]);
-  const monthStart = new Date(now);
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
-  const thisMonth = visits.filter((v) => (v.entryAt ?? v.exitAt ?? 0) >= monthStart.getTime()).length;
   const latest = visits[0];
   const parked = !!latest && latest.entryAt !== null && latest.exitAt === null;
   return (
-    <>
-      <Tile label="Visits">
-        <p className="flex items-baseline gap-2">
-          <span className={BIG}>{thisMonth}</span>
-          <span className="text-sm text-ink-muted">this month</span>
-        </p>
-        <p className="mt-auto pt-2 text-xs text-ink-muted">{visits.length} in total</p>
-      </Tile>
-      <Tile label="Status" aside={parked ? <Badge tone="live">Parked now</Badge> : undefined}>
-        {parked ? (
-          <>
-            <p className="display text-[1.5rem] leading-tight text-ink">
-              Level {latest.floor ?? "—"}
-            </p>
-            <p className="mt-auto pt-2 text-xs text-ink-muted">Slot {latest.slot ?? "—"}, in at {time(latest.entryAt!)}</p>
-          </>
-        ) : latest ? (
-          <>
-            <p className="display text-[1.5rem] leading-tight text-ink">Not parked</p>
-            <p className="mt-auto pt-2 text-xs text-ink-muted">Last visit {day(latest.entryAt ?? latest.exitAt ?? 0)}</p>
-          </>
-        ) : (
-          <>
-            <p className="display text-[1.5rem] leading-tight text-ink">No visits yet</p>
-            <p className="mt-auto pt-2 text-xs text-ink-muted">Tap your card at the gate.</p>
-          </>
-        )}
-      </Tile>
-    </>
+    <Tile label="Status" aside={parked ? <Badge tone="live">Parked now</Badge> : undefined}>
+      {parked ? (
+        <>
+          <p className="display text-[1.5rem] leading-tight text-ink">Level {latest.floor ?? "—"}</p>
+          <p className="mt-auto pt-2 text-xs text-ink-muted">Slot {latest.slot ?? "—"}, in at {time(latest.entryAt!)}</p>
+        </>
+      ) : latest ? (
+        <>
+          <p className="display text-[1.5rem] leading-tight text-ink">Not parked</p>
+          <p className="mt-auto pt-2 text-xs text-ink-muted">Last visit {day(latest.entryAt ?? latest.exitAt ?? 0)}. {visits.length} in total.</p>
+        </>
+      ) : (
+        <>
+          <p className="display text-[1.5rem] leading-tight text-ink">No visits yet</p>
+          <p className="mt-auto pt-2 text-xs text-ink-muted">Tap your card at the gate.</p>
+        </>
+      )}
+    </Tile>
   );
 }
 
@@ -160,7 +205,7 @@ function ProfilePanel({ data }: { data: MemberData }) {
   const u = data.user;
   return (
     <Panel aria-labelledby="profile-h">
-      <PanelHeader id="profile-h" title="Profile" />
+      <PanelHeader id="profile-h" title="Details on file" />
       <dl>
         <Row label="Name">{u.name}</Row>
         <Row label="Role">{ROLE_LABEL[u.role]}</Row>
@@ -222,7 +267,7 @@ function NotificationsPanel({ data, now }: { data: MemberData; now: number }) {
   const notices = useMemo(() => memberNotices(data.user, buildVisits(data.logs), now), [data, now]);
   return (
     <Panel aria-labelledby="notif-h">
-      <PanelHeader id="notif-h" title="Notifications" aside={<span className="text-sm text-ink-muted">{notices.length}</span>} />
+      <PanelHeader id="notif-h" title="Recent" aside={<span className="text-sm text-ink-muted">{notices.length}</span>} />
       {notices.length === 0 ? (
         <EmptyState title="You are all caught up">Reminders about your pass and your parking show up here.</EmptyState>
       ) : (
@@ -276,7 +321,7 @@ function SupportForm() {
         <p className="text-sm text-ink-muted">Ask about your pass, your card or the building, or tell the office what would make parking better. The office reads every message. Replies are handled in person at the parking office.</p>
         <div>
           <label htmlFor="sg-cat" className="mb-1.5 block text-sm font-semibold text-ink">Category</label>
-          <select id="sg-cat" className="c-input w-full" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <select id="sg-cat" className="c-input min-h-11 w-full" value={category} onChange={(e) => setCategory(e.target.value)}>
             {SUGGESTION_CATEGORIES.map((c) => (
               <option key={c}>{c}</option>
             ))}
@@ -296,7 +341,7 @@ function SupportForm() {
           <p className="mt-1 text-right text-xs text-ink-faint">{message.length} / {SUGGESTION_MAX}</p>
         </div>
         {error && <p id="sg-err" role="alert" className="text-sm text-crimson">{error}</p>}
-        <button type="submit" className="c-btn c-btn-gold" disabled={busy}>
+        <button type="submit" className="c-btn c-btn-gold min-h-11" disabled={busy || !message.trim()}>
           {busy ? "Sending…" : "Send message"}
         </button>
       </form>
@@ -339,15 +384,29 @@ function useMemberData(): Loaded {
   return state;
 }
 
+/** Fades the page sections in. Mounted only once the data is there, so the sections it animates exist. */
+function Entering({ children }: { children: React.ReactNode }) {
+  const root = useRef<HTMLDivElement>(null);
+  useEnter(root);
+  return <div ref={root} className="space-y-5 lg:space-y-6">{children}</div>;
+}
+
 /** Handles loading, errors and "not linked yet" so each page only deals with a loaded member. */
 function MemberPage({ render }: { render: (data: MemberData, now: number) => React.ReactNode }) {
   const state = useMemberData();
   const [now] = useState(() => Date.now());
-  const root = useRef<HTMLDivElement>(null);
-  useEnter(root);
   if (state === "loading") return <p className="text-ink-muted" role="status">Loading…</p>;
   if (state === "error")
-    return <p role="alert" className="text-crimson">Couldn&apos;t load your account. Check your connection and refresh.</p>;
+    return (
+      <Panel role="alert">
+        <EmptyState title="Could not load your account">
+          Check your connection, then try again.
+          <span className="mt-3 block">
+            <button type="button" className="c-btn c-btn-gold" onClick={() => window.location.reload()}>Try again</button>
+          </span>
+        </EmptyState>
+      </Panel>
+    );
   if (!state.data)
     return (
       <Panel>
@@ -356,13 +415,24 @@ function MemberPage({ render }: { render: (data: MemberData, now: number) => Rea
         </EmptyState>
       </Panel>
     );
-  return <div ref={root} className="space-y-5 lg:space-y-6">{render(state.data, now)}</div>;
+  return <Entering>{render(state.data, now)}</Entering>;
 }
 
 function MapLoading() {
+  const late = useTimedOut(true);
   return (
-    <div role="status" className="grid h-72 place-items-center rounded-2xl border border-line bg-surface/40 px-6 text-center text-sm text-ink-muted">
-      Loading the building map…
+    <div role="status" className="grid min-h-72 place-items-center rounded-2xl border border-line bg-surface/40 px-6 py-10 text-center">
+      {late ? (
+        <div>
+          <p className="text-sm font-semibold text-ink">The building map did not load.</p>
+          <p className="mt-1 text-sm text-ink-muted">Check your connection, then try again. If it keeps happening, contact support.</p>
+          <button type="button" className="c-btn c-btn-gold mt-4" onClick={() => window.location.reload()}>
+            Try again
+          </button>
+        </div>
+      ) : (
+        <p className="text-sm text-ink-muted">Loading the building map…</p>
+      )}
     </div>
   );
 }
@@ -374,10 +444,10 @@ export function MemberHome() {
       render={(data, now) => (
         <>
           <PageHeader title={`Hello, ${data.user.name.split(" ")[0]}`} description="Your semester pass and the building right now." />
-          <div data-enter className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div data-enter className="grid gap-3 lg:grid-cols-3">
+            <LiveHero />
             <PassTile data={data} now={now} />
-            <LiveTile />
-            <VisitTiles data={data} now={now} />
+            <StatusTile data={data} />
           </div>
           <SparcGate fallback={<MapLoading />}>
             <div data-enter><ParkingExplorer /></div>
