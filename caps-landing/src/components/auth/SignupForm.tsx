@@ -111,7 +111,7 @@ export function SignupForm() {
           account, then sign in.
         </p>
         <p data-anim className="mt-3 text-sm text-ink-muted">
-          Clicking it confirms the address is yours. Then sign in on the next page. The parking office activates your monthly pass and your card
+          Clicking it confirms the address is yours. Then sign in on the next page. The parking office activates your semester pass and your card
           after that, and your pass page shows it as pending until then.
         </p>
         <div data-anim className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
@@ -156,7 +156,7 @@ export function SignupForm() {
         Create account
       </h1>
       <p data-anim className="mt-2 mb-[1.375rem] text-ink-muted">
-        For students and personnel with a registered monthly parking pass
+        For students and personnel with a registered semester parking pass
       </p>
 
       <AuthTabs active="signup" />

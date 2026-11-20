@@ -63,9 +63,9 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
     );
   if (outcome.status === "no-pass")
     return (
-      <Banner tone="crimson" icon={CircleAlert} title={isPending(user) ? "Pass not activated yet" : "Invalid monthly pass"}>
+      <Banner tone="crimson" icon={CircleAlert} title={isPending(user) ? "Pass not activated yet" : "Invalid semester pass"}>
         {user.name}
-        {isPending(user) && " signed up, but the parking office hasn't activated their monthly pass."}
+        {isPending(user) && " signed up, but the parking office hasn't activated their semester pass."}
       </Banner>
     );
   if (outcome.status === "already-inside")

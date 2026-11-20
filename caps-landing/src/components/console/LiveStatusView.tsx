@@ -120,7 +120,7 @@ function TodayPanel() {
   );
 }
 
-/* ── Expired monthly passes ───────────────────────────────── */
+/* ── Expired semester passes ───────────────────────────────── */
 function ExpiredPassesPanel() {
   const state = useSparcState();
   const now = useNow(30000);
@@ -131,7 +131,7 @@ function ExpiredPassesPanel() {
     <Panel aria-labelledby="expired-title">
       <PanelHeader
         id="expired-title"
-        title="Expired monthly passes"
+        title="Expired semester passes"
         aside={
           expired.length > 0 ? (
             <Link href="/admin/users" className="text-[0.8125rem] font-semibold text-ink-soft transition-colors hover:text-gold">
@@ -144,7 +144,7 @@ function ExpiredPassesPanel() {
         <div className="flex items-start gap-3 px-4 pb-5 sm:px-5">
           <CalendarClock className="mt-0.5 size-5 shrink-0 text-ink-faint" aria-hidden />
           <p className="text-sm leading-relaxed text-ink-muted">
-            Nothing waiting. When a driver&apos;s monthly pass lapses, it shows up here.
+            Nothing waiting. When a driver&apos;s semester pass lapses, it shows up here.
           </p>
         </div>
       ) : (
@@ -158,7 +158,7 @@ function ExpiredPassesPanel() {
                 </p>
                 <p className="mt-0.5 text-xs text-ink-muted">Expired {formatDate(u.expiresAt)} · {u.nfcId}</p>
               </div>
-              <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
+              <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s semester pass`}>
                 <RotateCw className="size-3.5" aria-hidden />
                 Renew
               </button>

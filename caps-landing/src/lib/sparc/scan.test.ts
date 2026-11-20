@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addOneMonth, createSparcStore } from "./store";
+import { createSparcStore } from "./store";
 import type { UserInput } from "./types";
 
 const T0 = new Date("2026-11-10T08:00:00").getTime();
 const DAY = 24 * 60 * 60 * 1000;
+/** The end of a semester, as the admin's semester dates would give it. */
+const SEMESTER_END = T0 + 60 * DAY;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -120,7 +122,7 @@ describe("store.scan passes", () => {
   it("lets a renewed driver in", () => {
     const store = createSparcStore(T0);
     expect(store.scan("1234-5678-9012", "entry").status).toBe("expired");
-    store.renewUser("U-DEMO-001");
+    store.renewUser("U-DEMO-001", SEMESTER_END);
     expect(store.scan("1234-5678-9012", "entry").status).toBe("needs-floor");
   });
 });
@@ -146,18 +148,18 @@ describe("pending members", () => {
     expect(store.scan("04:AB:CD:EF", "entry", { walkIn: true, floor: 3 }).status).toBe("no-pass");
     expect(store.getState().logs).toHaveLength(0);
     // the office activates it with the card already on file
-    expect(store.activateUser("M1", "04:AB:CD:EF").ok).toBe(true);
-    expect(store.getState().users.find((u) => u.id === "M1")).toMatchObject({ expiresAt: addOneMonth(T0), active: true });
+    expect(store.activateUser("M1", "04:AB:CD:EF", SEMESTER_END).ok).toBe(true);
+    expect(store.getState().users.find((u) => u.id === "M1")).toMatchObject({ expiresAt: SEMESTER_END, active: true });
     expect(enter(store, "04:AB:CD:EF", 2).status).toBe("entered");
   });
 
-  it("activating gives the card, turns the pass on for a month, and lets them in", () => {
+  it("activating gives the card, runs the pass to the semester end, and lets them in", () => {
     const store = createSparcStore(T0);
     store.addUser(user(7, { nfcId: "" }));
     const id = store.getState().users.find((u) => u.name === "Driver 7")!.id;
-    expect(store.activateUser(id, "04:aa:bb:cc").ok).toBe(true);
+    expect(store.activateUser(id, "04:aa:bb:cc", SEMESTER_END).ok).toBe(true);
     const u = store.getState().users.find((x) => x.id === id)!;
-    expect(u).toMatchObject({ nfcId: "04:AA:BB:CC", active: true, expiresAt: addOneMonth(T0) });
+    expect(u).toMatchObject({ nfcId: "04:AA:BB:CC", active: true, expiresAt: SEMESTER_END });
     expect(enter(store, "04:AA:BB:CC", 2).status).toBe("entered");
   });
 
@@ -166,11 +168,11 @@ describe("pending members", () => {
     store.addUser(user(1));
     store.addUser(user(7, { nfcId: "" }));
     const id = store.getState().users.find((u) => u.name === "Driver 7")!.id;
-    const taken = store.activateUser(id, nfc(1));
+    const taken = store.activateUser(id, nfc(1), SEMESTER_END);
     expect(taken.ok).toBe(false);
     expect(store.getState().users.find((u) => u.id === id)!.expiresAt).toBe(0);
-    expect(store.activateUser("nope", "04:AA:BB:CC").ok).toBe(false);
-    expect(store.activateUser(id, "xyz").ok).toBe(false);
+    expect(store.activateUser("nope", "04:AA:BB:CC", SEMESTER_END).ok).toBe(false);
+    expect(store.activateUser(id, "xyz", SEMESTER_END).ok).toBe(false);
   });
 });
 
@@ -241,6 +243,26 @@ describe("walk-ins (an unregistered card the facilitator lets in after seeing a 
     store.addUser(user(2, { active: false }));
     expect(store.scan(nfc(2), "entry", { walkIn: true, floor: 3 }).status).toBe("no-pass");
     expect(store.getState().logs).toHaveLength(0);
+  });
+});
+
+describe("pass end dates", () => {
+  it("refuses an end date that isn't in the future, for activation and renewal", () => {
+    const store = createSparcStore(T0);
+    store.addUser(user(7, { nfcId: "" }));
+    const id = store.getState().users.find((u) => u.name === "Driver 7")!.id;
+    expect(store.activateUser(id, "04:AA:BB:CC", T0 - DAY).ok).toBe(false);
+    expect(store.activateUser(id, "04:AA:BB:CC", 0).ok).toBe(false);
+    expect(store.getState().users.find((u) => u.id === id)!.expiresAt).toBe(0);
+    expect(store.renewUser("U-DEMO-001", T0 - DAY).ok).toBe(false);
+  });
+
+  it("renewing sets the pass to the given semester end and turns a suspended card back on", () => {
+    const store = createSparcStore(T0);
+    store.addUser(user(1, { active: false }));
+    const id = store.getState().users.find((u) => u.name === "Driver 1")!.id;
+    expect(store.renewUser(id, SEMESTER_END).ok).toBe(true);
+    expect(store.getState().users.find((u) => u.id === id)).toMatchObject({ expiresAt: SEMESTER_END, active: true });
   });
 });
 

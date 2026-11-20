@@ -16,7 +16,7 @@ export function FloorPicker({
 }: {
   /** Who is entering: the member's name, or "Walk-in". */
   name: string;
-  /** A driver let in on a paid receipt rather than a monthly pass. */
+  /** A driver let in on a paid receipt rather than a semester pass. */
   walkIn?: boolean;
   stats: FloorStat[];
   onPick: (floor: number) => void;

@@ -30,11 +30,11 @@ function PassPanel({ data, now }: { data: MemberData; now: number }) {
   if (state.kind === "pending") {
     return (
       <Panel aria-labelledby="pass-h">
-        <PanelHeader id="pass-h" title="Monthly pass" aside={<Badge tone={PASS_TONE.pending}>{PASS_LABEL.pending}</Badge>} />
+        <PanelHeader id="pass-h" title="Semester pass" aside={<Badge tone={PASS_TONE.pending}>{PASS_LABEL.pending}</Badge>} />
         <div className="px-4 pb-5 sm:px-5">
           <p className="display text-[1.5rem] text-ink">Waiting for the parking office</p>
           <p className="mt-1 text-sm text-ink-muted">
-            Your account is registered. The parking office activates your monthly pass and gives you your card. Until then the gate won&apos;t let you in.
+            Your account is registered. The parking office activates your semester pass and gives you your card. Until then the gate won&apos;t let you in.
             Your name appears on their list of members waiting for a pass.
           </p>
         </div>
@@ -45,7 +45,7 @@ function PassPanel({ data, now }: { data: MemberData; now: number }) {
     state.kind === "expired" ? "Your pass has expired" : state.daysLeft === 1 ? "Expires within a day" : `${state.daysLeft} days left`;
   return (
     <Panel aria-labelledby="pass-h">
-      <PanelHeader id="pass-h" title="Monthly pass" aside={<Badge tone={PASS_TONE[state.kind]}>{PASS_LABEL[state.kind]}</Badge>} />
+      <PanelHeader id="pass-h" title="Semester pass" aside={<Badge tone={PASS_TONE[state.kind]}>{PASS_LABEL[state.kind]}</Badge>} />
       <div className="px-4 pb-5 sm:px-5">
         <p className="display text-[1.75rem] text-ink">{headline}</p>
         <p className="mt-1 text-sm text-ink-muted">
@@ -223,7 +223,7 @@ export function MemberView() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`Hello, ${data.user.name.split(" ")[0]}`} description="Your monthly pass, your parking, and the lot right now." />
+      <PageHeader title={`Hello, ${data.user.name.split(" ")[0]}`} description="Your semester pass, your parking, and the lot right now." />
       <div className="grid gap-6 md:grid-cols-2">
         <div data-enter><PassPanel data={data} now={now} /></div>
         <div data-enter className="flex items-start justify-center rounded-2xl border border-line bg-surface/40 pb-10"><LiveSlotCount /></div>

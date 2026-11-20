@@ -40,9 +40,10 @@ export type SparcStore = {
   addUser: (input: UserInput) => ActionResult;
   updateUser: (id: string, input: UserInput) => ActionResult;
   removeUser: (id: string) => ActionResult;
-  renewUser: (id: string) => ActionResult;
-  /** Starts a pending member's monthly pass: gives them the card and one month from now. */
-  activateUser: (id: string, nfcId: string) => ActionResult;
+  /** Renews a pass to `expiresAt`, the end of the semester it is for (the caller works that out from the semester dates). */
+  renewUser: (id: string, expiresAt: number) => ActionResult;
+  /** Starts a pending member's pass: gives them the card and runs the pass to `expiresAt`, the end of a semester. */
+  activateUser: (id: string, nfcId: string, expiresAt: number) => ActionResult;
   /**
    * A card tap at the entry or exit scanner: does what the mode says, or explains why not.
    * At entry the first tap only checks the pass and answers `needs-floor`; the facilitator then picks a
@@ -89,15 +90,11 @@ export function uniqueId(prefix: string) {
 
 const MAX_SCANS = 50;
 
-/** Monthly passes run one calendar month from the given moment (Nov 9 → Dec 9). */
-export function addOneMonth(ms: number) {
-  const d = new Date(ms);
-  const day = d.getDate();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + 1);
-  d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
-  return d.getTime();
-}
+/**
+ * How long a pass lasts when a user is added straight into the store (development seeding and tests only).
+ * Real passes run to the end of a semester: the screens work that out from the semester dates.
+ */
+const SEED_PASS_MS = 120 * 24 * 60 * 60 * 1000;
 
 // Kept here so existing imports keep working; the card helpers live in ./card so sign-up can use them too.
 export { cardKey, normalizeNfc };
@@ -243,7 +240,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
       active: input.active,
       createdAt: Date.now(),
       // No card means no pass yet: the member is Pending until the parking office activates it.
-      expiresAt: hasCard ? addOneMonth(Date.now()) : 0,
+      expiresAt: hasCard ? Date.now() + SEED_PASS_MS : 0,
     };
     set({ users: [user, ...state.users], nextUserSeq: state.nextUserSeq + 1, now: Date.now() });
     return { ok: true };
@@ -278,25 +275,27 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     return { ok: true };
   }
 
-  function renewUser(id: string): ActionResult {
+  function renewUser(id: string, expiresAt: number): ActionResult {
     const user = state.users.find((u) => u.id === id);
     if (!user) return { ok: false, error: "User not found." };
     const at = Date.now();
+    if (!(expiresAt > at)) return { ok: false, error: "The pass end date has to be in the future. Check the semester dates." };
     set({
-      users: state.users.map((u) => (u.id === id ? { ...u, active: true, expiresAt: addOneMonth(at) } : u)),
+      users: state.users.map((u) => (u.id === id ? { ...u, active: true, expiresAt } : u)),
       now: at,
     });
     return { ok: true };
   }
 
-  function activateUser(id: string, rawNfc: string): ActionResult {
+  function activateUser(id: string, rawNfc: string, expiresAt: number): ActionResult {
     const user = state.users.find((u) => u.id === id);
     if (!user) return { ok: false, error: "User not found." };
     const cardError = validateCard(rawNfc, state.users, id);
     if (cardError) return { ok: false, error: cardError };
     const at = Date.now();
+    if (!(expiresAt > at)) return { ok: false, error: "The pass end date has to be in the future. Check the semester dates." };
     set({
-      users: state.users.map((u) => (u.id === id ? { ...u, nfcId: normalizeNfc(rawNfc), active: true, expiresAt: addOneMonth(at) } : u)),
+      users: state.users.map((u) => (u.id === id ? { ...u, nfcId: normalizeNfc(rawNfc), active: true, expiresAt } : u)),
       now: at,
     });
     return { ok: true };

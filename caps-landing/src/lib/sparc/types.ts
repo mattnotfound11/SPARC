@@ -40,7 +40,7 @@ export type RegisteredUser = {
   role: UserRole;
   active: boolean;
   createdAt: number;
-  /** Monthly pass expiry: one calendar month after activation or last renewal. 0 means Pending: no pass has been activated yet. */
+  /** When the semester pass ends: the end of the semester it was activated or renewed for. 0 means Pending: no pass has been activated yet. */
   expiresAt: number;
 };
 

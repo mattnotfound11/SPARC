@@ -124,7 +124,7 @@ finish.
 
 ---
 
-## Members: self-registration and the monthly pass
+## Members: self-registration and the semester pass
 
 Students and personnel **register themselves** at `/signup`. Nobody adds them in the console: the admin
 **Users** page is a roster that shows who is registered, plus the actions that matter (activate, renew,
@@ -140,10 +140,18 @@ suspend, remove).
 3. At that moment the database creates their record and links it to their login (`claim_member_pass` in
    `supabase/schema.sql`). The card they entered is saved, but the record is **Pending**: no pass yet, so
    the gate denies the card. It shows in **Admin → Users** with an **Activate pass** button.
-4. When the parking office has checked its monthly records (and, if it wants, scanned the physical card to
-   confirm it matches the number entered), it clicks **Activate pass** and the monthly pass starts. Only
+4. When the parking office has checked its semester records (and, if it wants, scanned the physical card to
+   confirm it matches the number entered), it clicks **Activate pass** and the semester pass starts. Only
    then does the gate let that card in.
 5. The member signs in and sees their pass, history, the live count and a suggestions box.
+
+**Semester passes.** A pass runs to the **end of a semester** (a college year has two), not for a month. The
+admin keeps the dates on **Admin → Semesters** (first and last day of each semester). Activating a pass
+during a semester runs it to that semester's end, activating in the break runs it to the next semester's
+end, and **Renew** runs it to the end of the next semester. The `semesters` table starts empty on purpose:
+nothing is guessed, and **Activate pass** and **Renew** refuse (with a link to the Semesters page) until
+dates have been entered. Passes that are already activated keep the end date they were given when the dates
+are edited later.
 
 **Blocking duplicates and bulk accounts**
 
@@ -173,7 +181,7 @@ suspend, remove).
 <p>Confirm that this address is yours:</p>
 <p><a href="{{ .ConfirmationURL }}">Confirm my email</a></p>
 <p>After confirming, sign in at the SPARC site with your email and password. The parking office will
-activate your monthly pass and your card.</p>
+activate your semester pass and your card.</p>
 <p>If you didn't sign up, ignore this email and nothing happens.</p>
 ```
 
@@ -183,7 +191,7 @@ database is in public mode and anyone holding the site key can read everything, 
 **The gate:** at entry the facilitator taps the card and then chooses the floor (there is no vehicle size
 anymore); the system books the first free bay on that floor.
 
-**Walk-ins (₱30 receipt, no monthly pass):** the driver shows the paid receipt and is given an NFC card. When
+**Walk-ins (₱30 receipt, no semester pass):** the driver shows the paid receipt and is given an NFC card. When
 that unregistered card is tapped at entry, the result offers **Let in (receipt shown)**; the facilitator
 confirms, picks the floor, and the car is logged as a "Walk-in" and takes a bay. The same card tapped at
 exit frees the bay. A registered card is always checked as a member, so this can't be used to skip a pass.
