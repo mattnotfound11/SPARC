@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import * as mock from "@/lib/mockSession";
 import { classifySignInError, type AccountType } from "@/lib/member/logic";
+import { normalizeNfc } from "@/lib/sparc/card";
 
 /*
  * One admin-session API for the whole app. With Supabase configured it is real authentication
@@ -133,7 +134,7 @@ function signUpFailure(error: { status?: number; code?: string; name?: string; m
  * matching registered record only after the email is confirmed (see claim_member_pass in schema.sql).
  * Always reports the same success whether or not the email or ID exists, so it can't be used to probe.
  */
-export async function signUpMember(input: { name: string; email: string; role: string; studentId: string; password: string }): Promise<SignupResult> {
+export async function signUpMember(input: { name: string; email: string; role: string; studentId: string; nfcId: string; password: string }): Promise<SignupResult> {
   const db = getSupabase();
   if (!db) return { error: "Sign-up needs the shared database, which isn't connected in this build. In development, use the demo member login instead." };
   const { data, error } = await db.auth.signUp({
@@ -141,7 +142,7 @@ export async function signUpMember(input: { name: string; email: string; role: s
     password: input.password,
     options: {
       emailRedirectTo: `${window.location.origin}/login`,
-      data: { full_name: input.name.trim().replace(/\s+/g, " "), student_id: input.studentId.trim().toUpperCase().replace(/\s+/g, "-"), campus_role: input.role },
+      data: { full_name: input.name.trim().replace(/\s+/g, " "), student_id: input.studentId.trim().toUpperCase().replace(/\s+/g, "-"), campus_role: input.role, nfc_id: normalizeNfc(input.nfcId) },
     },
   });
   if (error) return { error: signUpFailure(error) };

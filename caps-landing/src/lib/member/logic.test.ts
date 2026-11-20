@@ -73,7 +73,7 @@ describe("homeFor", () => {
 });
 
 describe("validateSignup", () => {
-  const ok = { name: "Ana Reyes", email: "ana@usa.edu.ph", role: "student", studentId: "2024-10037", password: "longenough1", confirm: "longenough1" };
+  const ok = { name: "Ana Reyes", email: "ana@usa.edu.ph", role: "student", studentId: "2024-10037", nfcId: "1234-5678-9012", password: "longenough1", confirm: "longenough1" };
   it("accepts a complete university sign-up", () => expect(validateSignup(ok)).toEqual({}));
   it("requires a usa.edu.ph email, ignoring case and spaces", () => {
     expect(validateSignup({ ...ok, email: "ana@gmail.com" }).email).toBeTruthy();
@@ -88,6 +88,11 @@ describe("validateSignup", () => {
   it("rejects plus-aliases, since name+1@ and name+2@ reach one mailbox", () => {
     expect(validateSignup({ ...ok, email: "ana+2@usa.edu.ph" }).email).toBeTruthy();
     expect(validateSignup({ ...ok, email: "ana.reyes@usa.edu.ph" }).email).toBeUndefined();
+  });
+  it("needs the NFC card ID, in a form that looks like a card", () => {
+    expect(validateSignup({ ...ok, nfcId: "" }).nfcId).toBeTruthy();
+    expect(validateSignup({ ...ok, nfcId: "abc" }).nfcId).toBeTruthy();
+    expect(validateSignup({ ...ok, nfcId: "04:A1:B2:C3" }).nfcId).toBeUndefined();
   });
   it("needs an 8+ character password that matches its confirmation", () => {
     expect(validateSignup({ ...ok, password: "short", confirm: "short" }).password).toBeTruthy();

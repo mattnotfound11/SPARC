@@ -133,22 +133,24 @@ suspend, remove).
 **The flow**
 
 1. The student signs up with their `@usa.edu.ph` email (no `+` aliases), name, role, student or employee
-   ID and a password, and sees "Check your email" (with a Resend button after 60 seconds).
+   ID, **NFC card ID** (scanned with an Android phone, or typed from the number printed on the card) and a
+   password, and sees "Check your email" (with a Resend button after 60 seconds).
 2. They click the link in the email, which proves the address is theirs, and land on the log-in page
    with "Email confirmed".
 3. At that moment the database creates their record and links it to their login (`claim_member_pass` in
-   `supabase/schema.sql`). The record is **Pending**: no card and no pass. It shows in **Admin → Users**
-   with an **Activate pass** button.
-4. When the parking office is satisfied (payment, ID check), it clicks **Activate pass**, scans the
-   member's campus card, and the monthly pass starts. Only then does the gate let that card in.
+   `supabase/schema.sql`). The card they entered is saved, but the record is **Pending**: no pass yet, so
+   the gate denies the card. It shows in **Admin → Users** with an **Activate pass** button.
+4. When the parking office has checked its monthly records (and, if it wants, scanned the physical card to
+   confirm it matches the number entered), it clicks **Activate pass** and the monthly pass starts. Only
+   then does the gate let that card in.
 5. The member signs in and sees their pass, history, the live count and a suggestions box.
 
 **Blocking duplicates and bulk accounts**
 
 - One account per email: Supabase refuses a second sign-up with the same email, and `+` aliases are
   rejected on the form and again in the database.
-- One record per student ID: if an ID already has a record, a second sign-up creates none, and that login
-  says it has no parking record (contact the parking office).
+- One record per student ID and per NFC card: if either already has a record, a second sign-up creates
+  none, and that login says it has no parking record (contact the parking office).
 - A pending account has no pass, so fake sign-ups gain nothing until an admin approves them.
 
 **Setup**
