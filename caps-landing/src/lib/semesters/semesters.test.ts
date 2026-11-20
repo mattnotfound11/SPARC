@@ -38,6 +38,24 @@ describe("passEndAfter", () => {
   });
 });
 
+describe("pass end is the semester end, never six months from the day of availing", () => {
+  // The calendar as the school described it: the 1st semester runs Aug 1 to Jan 15, the 2nd Jan 16 to Jul 15.
+  const A: Semester = { id: "a", name: "1st Semester", startsAt: dateToStart("2026-08-01"), endsAt: dateToEnd("2027-01-15") };
+  const B: Semester = { id: "b", name: "2nd Semester", startsAt: dateToStart("2027-01-16"), endsAt: dateToEnd("2027-07-15") };
+  const end = (when: number) => toDateInput(passEndAfter([A, B], when)!.endsAt);
+
+  it("an August driver, and an October driver, both renew in mid-January", () => {
+    expect(end(day(2026, 8, 10))).toBe("2027-01-15");
+    expect(end(day(2026, 10, 20))).toBe("2027-01-15"); // not April 20, which would be six months on
+  });
+  it("a driver who avails in mid-January gets the pass to mid-July", () => {
+    expect(end(day(2027, 1, 20))).toBe("2027-07-15");
+  });
+  it("renewing in mid-January moves the August or October driver to mid-July", () => {
+    expect(end(dateToEnd("2027-01-15"))).toBe("2027-07-15");
+  });
+});
+
 describe("validateSemesters", () => {
   it("accepts a clean calendar and an empty one", () => {
     expect(validateSemesters(SEMS)).toBeNull();
