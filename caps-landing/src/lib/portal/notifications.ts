@@ -21,7 +21,7 @@ const MAX_NOTICES = 30;
 export type GateContext = {
   /** Free bays in the whole building right now. */
   free: number;
-  /** When the monthly pass ends. */
+  /** When the semester pass ends. */
   expiresAt?: number;
   /** When the car in the building came in. */
   parkedSince?: number;
@@ -102,7 +102,7 @@ export function noticesFor(state: PortalState, card: string, gate: GateContext, 
   if (gate.expiresAt !== undefined) {
     const left = Math.ceil((gate.expiresAt - now) / DAY);
     if (left <= 0) {
-      out.push({ id: "pass-expired", at: gate.expiresAt, title: "Your monthly pass has expired", body: "The card can't open the gate until the pass is renewed at the office.", tone: "crimson" });
+      out.push({ id: "pass-expired", at: gate.expiresAt, title: "Your semester pass has expired", body: "The card can't open the gate until the pass is renewed at the office.", tone: "crimson" });
     } else if (left <= PASS_WARN_DAYS) {
       out.push({ id: "pass-soon", at: gate.expiresAt - PASS_WARN_DAYS * DAY, title: `Your pass expires in ${left} day${left === 1 ? "" : "s"}`, body: "Renew it at the office to keep using the gate.", tone: "gold" });
     }

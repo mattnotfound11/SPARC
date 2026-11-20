@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Nfc, RotateCw, X } from "lucide-react";
 import gsap from "gsap";
 import { useNfcReader } from "@/lib/nfc/useNfcReader";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
-import { addOneMonth, normalizeNfc, validateCard } from "@/lib/sparc/store";
+import { normalizeNfc, validateCard } from "@/lib/sparc/store";
+import { passEndAfter } from "@/lib/semesters/semesters";
+import { useSemesters } from "@/lib/semesters/useSemesters";
 import { formatDate, isExpired, isPending } from "@/lib/sparc/selectors";
 import type { RegisteredUser, UserRole } from "@/lib/sparc/types";
 import { useRenewConfirm } from "./RenewConfirm";
@@ -46,6 +49,9 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
   const [nfcId, setNfcId] = useState(mode.type === "activate" ? (mode.nfc ?? user.nfcId) : user.nfcId);
   const [active, setActive] = useState(user.active);
   const [error, setError] = useState<string | null>(null);
+  // The pass runs to the end of a semester. undefined while the dates load, null when no semester is set up.
+  const { semesters } = useSemesters();
+  const passEnd = semesters ? passEndAfter(semesters, now) : undefined;
 
   // Slide in, focus the first field, trap Tab, close on Escape, and hand focus back on exit.
   useEffect(() => {
@@ -109,12 +115,16 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
       return;
     }
     if (activating) {
-      const result = store.activateUser(user.id, nfcId);
+      if (!passEnd) {
+        setError("Add the semester dates first (Admin, Semesters), so the pass has an end date.");
+        return;
+      }
+      const result = store.activateUser(user.id, nfcId, passEnd.endsAt);
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      toast(`${user.name}'s pass is active until ${formatDate(addOneMonth(Date.now()))}.`);
+      toast(`${user.name}'s pass is active until ${formatDate(passEnd.endsAt)}, the end of ${passEnd.name}.`);
     } else {
       const result = store.updateUser(user.id, {
         name: user.name,
@@ -147,7 +157,7 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
       >
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
           <h2 id="user-panel-title" className="font-display text-xl font-semibold tracking-[-0.01em] text-ink">
-            {activating ? "Activate monthly pass" : "Manage member"}
+            {activating ? "Activate semester pass" : "Manage member"}
           </h2>
           <button type="button" onClick={onClose} aria-label="Close" className="grid size-10 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/[0.05] hover:text-ink">
             <X className="size-5" aria-hidden />
@@ -212,8 +222,22 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
 
             {activating ? (
               <div className="rounded-xl border border-line bg-field/60 px-3.5 py-3">
-                <p className="text-sm font-semibold text-ink">Monthly pass</p>
-                <p className="mt-1 text-[0.8125rem] text-ink-muted">Starts today and runs one month, until {formatDate(addOneMonth(now))}. The gate lets this card in from now on.</p>
+                <p className="text-sm font-semibold text-ink">Semester pass</p>
+                {passEnd === undefined ? (
+                  <p className="mt-1 text-[0.8125rem] text-ink-muted">Loading the semester dates…</p>
+                ) : passEnd ? (
+                  <p className="mt-1 text-[0.8125rem] text-ink-muted">
+                    Starts today and runs to the end of <span className="font-semibold text-ink">{passEnd.name}</span>, {formatDate(passEnd.endsAt)}. The gate lets this card in from now on.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[0.8125rem] text-gold">
+                    No semester ends after today, so there is no end date for the pass.{" "}
+                    <Link href="/admin/semesters" className="font-semibold underline">
+                      Add the semester dates
+                    </Link>{" "}
+                    first.
+                  </p>
+                )}
               </div>
             ) : (
               <>
@@ -226,7 +250,7 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
                 </label>
 
                 <div className="rounded-xl border border-line bg-field/60 px-3.5 py-3">
-                  <p className="text-sm font-semibold text-ink">Monthly pass</p>
+                  <p className="text-sm font-semibold text-ink">Semester pass</p>
                   {pending ? (
                     <p className="mt-1 text-[0.8125rem] text-ink-muted">Pending. Activate the pass from the Users list.</p>
                   ) : (
@@ -236,7 +260,7 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
                       </p>
                       <button type="button" onClick={() => askRenew(user)} className="c-btn c-btn-sm mt-2.5">
                         <RotateCw className="size-3.5" aria-hidden />
-                        Renew for another month
+                        Renew for the next semester
                       </button>
                     </>
                   )}
@@ -249,7 +273,7 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
             <button type="button" className="c-btn" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="c-btn c-btn-gold">
+            <button type="submit" className="c-btn c-btn-gold" disabled={activating && !passEnd}>
               {activating ? "Activate pass" : "Save changes"}
             </button>
           </div>

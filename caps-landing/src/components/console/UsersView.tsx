@@ -132,13 +132,13 @@ export function UsersView() {
     ) : (
       <div className="flex items-center justify-end gap-1.5">
         {isPending(u) ? (
-          <button type="button" className="c-btn c-btn-sm c-btn-gold" onClick={() => activate(u)} aria-label={`Activate ${u.name}'s monthly pass`}>
+          <button type="button" className="c-btn c-btn-sm c-btn-gold" onClick={() => activate(u)} aria-label={`Activate ${u.name}'s semester pass`}>
             Activate pass
           </button>
         ) : (
           <>
             {(isExpired(u, now) || isExpiringSoon(u, now)) && (
-              <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
+              <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s semester pass`}>
                 <RotateCw className="size-3.5" aria-hidden />
                 Renew
               </button>
@@ -174,7 +174,7 @@ export function UsersView() {
     <div ref={root} className="space-y-5 lg:space-y-6">
       <PageHeader
         title="Users"
-        description="Members register themselves on the site. New sign-ups wait here as Pending until you activate their monthly pass, and this list shows who is registered."
+        description="Members register themselves on the site. New sign-ups wait here as Pending until you activate their semester pass, and this list shows who is registered."
       />
 
       {scannedCard && (
@@ -206,7 +206,7 @@ export function UsersView() {
                     {u.studentId && ` · ${u.studentId}`} · signed up {formatDate(u.createdAt)}
                   </p>
                 </div>
-                <button type="button" className="c-btn c-btn-sm c-btn-gold" onClick={() => activate(u)} aria-label={`Activate ${u.name}'s monthly pass`}>
+                <button type="button" className="c-btn c-btn-sm c-btn-gold" onClick={() => activate(u)} aria-label={`Activate ${u.name}'s semester pass`}>
                   Activate pass
                 </button>
               </li>
@@ -225,7 +225,7 @@ export function UsersView() {
 
       {expiredUsers.length > 0 && (
         <Panel data-enter aria-labelledby="expired-title" className="border-crimson/30">
-          <PanelHeader id="expired-title" title={`${expiredUsers.length} monthly pass${expiredUsers.length === 1 ? "" : "es"} expired`} />
+          <PanelHeader id="expired-title" title={`${expiredUsers.length} semester pass${expiredUsers.length === 1 ? "" : "es"} expired`} />
           <ul className="divide-y divide-line border-t border-line">
             {expiredUsers.slice(0, 5).map((u) => (
               <li key={u.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-5">
@@ -238,7 +238,7 @@ export function UsersView() {
                     Expired {formatDate(u.expiresAt)} · <span className="font-mono">{u.nfcId}</span>
                   </p>
                 </div>
-                <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s monthly pass`}>
+                <button type="button" className="c-btn c-btn-sm" onClick={() => askRenew(u)} aria-label={`Renew ${u.name}'s semester pass`}>
                   <RotateCw className="size-3.5" aria-hidden />
                   Renew
                 </button>
@@ -354,7 +354,7 @@ export function UsersView() {
                     <th>ID</th>
                     <th>NFC card ID</th>
                     {sortHead("role", "Role")}
-                    {sortHead("createdAt", "Monthly pass")}
+                    {sortHead("createdAt", "Semester pass")}
                     <th>
                       <span className="sr-only">Actions</span>
                     </th>

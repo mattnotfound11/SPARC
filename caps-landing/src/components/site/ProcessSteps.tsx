@@ -6,7 +6,7 @@ const steps = [
   {
     n: "01",
     title: "Register",
-    body: "Create your SPARC account with your USA email and confirm it from your inbox. The parking office then activates your monthly pass.",
+    body: "Create your SPARC account with your USA email and confirm it from your inbox. The parking office then activates your semester pass.",
   },
   {
     n: "02",

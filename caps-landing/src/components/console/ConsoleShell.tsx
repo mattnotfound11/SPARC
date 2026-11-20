@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartColumn, Gavel, Inbox, LayoutGrid, LogOut, ScanLine, ScrollText, Ticket, Users } from "lucide-react";
+import { CalendarRange, ChartColumn, Gavel, Inbox, LayoutGrid, LogOut, ScanLine, ScrollText, Ticket, Users } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { SparcGate, useSyncNotice } from "@/lib/sparc/SparcProvider";
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin/scan", label: "Entry / Exit", short: "Scan", icon: ScanLine },
   { href: "/admin/pass", label: "Visitor pass", short: "Pass", icon: Ticket },
   { href: "/admin/users", label: "Users", short: "Users", icon: Users },
+  { href: "/admin/semesters", label: "Semesters", short: "Terms", icon: CalendarRange },
   { href: "/admin/logs", label: "Audit log", short: "Log", icon: ScrollText },
   { href: "/admin/reports", label: "Reports", short: "Reports", icon: ChartColumn },
   { href: "/admin/appeals", label: "Appeals", short: "Appeals", icon: Gavel },

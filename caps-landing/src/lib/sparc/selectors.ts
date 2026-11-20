@@ -189,7 +189,7 @@ export function isPending(user: RegisteredUser) {
   return user.expiresAt === 0;
 }
 
-/** A monthly pass that has run past its expiry date. A pending member never had one, so isn't expired. */
+/** A semester pass that has run past its expiry date. A pending member never had one, so isn't expired. */
 export function isExpired(user: RegisteredUser, now: number) {
   return !isPending(user) && user.expiresAt <= now;
 }
@@ -234,7 +234,7 @@ export const EXPIRING_DAYS = 5;
 
 export type PassStatus = { state: "pending" | "active" | "expiring" | "expired" | "suspended"; daysLeft: number };
 
-/** What the scanner shows about a driver's monthly pass. */
+/** What the scanner shows about a driver's semester pass. */
 export function passStatus(user: RegisteredUser, now: number): PassStatus {
   const daysLeft = Math.max(0, Math.ceil((user.expiresAt - now) / DAY_MS));
   if (isPending(user)) return { state: "pending", daysLeft: 0 };

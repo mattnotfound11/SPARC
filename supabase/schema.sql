@@ -85,6 +85,17 @@ create table if not exists public.scans (
 );
 create index if not exists scans_at_idx on public.scans (at desc);
 
+-- The semester calendar. A member's pass runs to the end of a semester (a college year has two), so the
+-- admin keeps these dates up to date on the Semesters page. It starts EMPTY on purpose: no dates are
+-- guessed, and passes can't be activated or renewed until the admin has entered them.
+create table if not exists public.semesters (
+  id         text primary key,
+  name       text not null,
+  starts_at  bigint not null, -- start of the first day, ms since 1970
+  ends_at    bigint not null, -- end of the last day, ms since 1970
+  check (ends_at > starts_at)
+);
+
 -- The building: 5 floors x 22 slots = 110. Floors 1-2 take SUVs and vans, 3-5 lighter vehicles
 -- (same as caps-landing/src/lib/sparc/seed.ts).
 insert into public.slots (code, floor, idx, vehicle)
@@ -97,17 +108,18 @@ alter table public.users enable row level security;
 alter table public.slots enable row level security;
 alter table public.logs  enable row level security;
 alter table public.scans enable row level security;
+alter table public.semesters enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['users', 'slots', 'logs', 'scans'] loop
+  foreach t in array array['users', 'slots', 'logs', 'scans', 'semesters'] loop
     execute format('drop policy if exists admin_all on public.%I', t);
     execute format('drop policy if exists public_all on public.%I', t);
     execute format('create policy public_all on public.%I for all to anon, authenticated using (true) with check (true)', t);
   end loop;
 end $$;
-grant select, insert, update, delete on public.users, public.slots, public.logs, public.scans to anon, authenticated;
+grant select, insert, update, delete on public.users, public.slots, public.logs, public.scans, public.semesters to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- A gate tap, saved all at once: the slot change, the log row and the scan row either all

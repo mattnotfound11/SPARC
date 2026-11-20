@@ -21,7 +21,7 @@ const SUMMARY: Record<ScanOutcome["status"], string> = {
   "already-inside": "Already inside",
   "not-inside": "Not inside",
   expired: "Pass expired",
-  "no-pass": "Invalid monthly pass",
+  "no-pass": "Invalid semester pass",
   "needs-floor": "Choose a floor",
   full: "No free slot",
   unregistered: "Unregistered card",

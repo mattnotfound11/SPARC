@@ -7,14 +7,14 @@
 do $$
 declare t text;
 begin
-  foreach t in array array['users', 'slots', 'logs', 'scans'] loop
+  foreach t in array array['users', 'slots', 'logs', 'scans', 'semesters'] loop
     execute format('drop policy if exists public_all on public.%I', t);
     execute format('drop policy if exists admin_all on public.%I', t);
     execute format(
       'create policy admin_all on public.%I for all to authenticated using (public.is_staff()) with check (public.is_staff())', t);
   end loop;
 end $$;
-revoke all on public.users, public.slots, public.logs, public.scans from anon;
+revoke all on public.users, public.slots, public.logs, public.scans, public.semesters from anon;
 
 revoke execute on function public.record_tap(jsonb, jsonb, jsonb, jsonb) from anon;
 revoke execute on function public.is_staff() from anon;

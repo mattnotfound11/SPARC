@@ -58,7 +58,7 @@ describe("noticesFor", () => {
     expect(titles).toContain("Your pass expires in 3 days");
     expect(titles).toContain("You've been parked 11 hours");
     expect(titles).toContain("Level 1, Level 2 are full");
-    expect(noticesFor(empty(), CARD, { free, expiresAt: now - DAY }, now)[0].title).toBe("Your monthly pass has expired");
+    expect(noticesFor(empty(), CARD, { free, expiresAt: now - DAY }, now)[0].title).toBe("Your semester pass has expired");
     expect(noticesFor(empty(), CARD, { free, expiresAt: now + 20 * DAY, parkedSince: now - 2 * HOUR }, now)).toEqual([]);
   });
 });

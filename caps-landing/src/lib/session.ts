@@ -20,7 +20,7 @@ export type AdminSession = { status: "loading" } | { status: "out" } | { status:
 
 /** Facilitators run the gate (live status, scanning, audit log); Users and Reports are for administrators. */
 /** Pages only administrators may open; facilitators run the gate and nothing more. */
-export const ADMIN_ONLY_PATHS = ["/admin/users", "/admin/reports", "/admin/analytics", "/admin/appeals", "/admin/suggestions"] as const;
+export const ADMIN_ONLY_PATHS = ["/admin/users", "/admin/reports", "/admin/analytics", "/admin/appeals", "/admin/suggestions", "/admin/semesters"] as const;
 
 export function canAccess(role: StaffRole, pathname: string) {
   return role === "admin" || !ADMIN_ONLY_PATHS.some((p) => pathname.startsWith(p));
