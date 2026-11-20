@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeftFromLine, ArrowRightToLine, CircleAlert, CircleHelp, ParkingSquareOff } from "lucide-react";
-import { formatDate, passStatus } from "@/lib/sparc/selectors";
+import { formatDate, isPending, passStatus } from "@/lib/sparc/selectors";
 import type { ScanOutcome } from "@/lib/sparc/types";
 import { Badge } from "./ui";
 
@@ -45,9 +45,9 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
           </span>
         )}
         <span className="mt-2 block text-xs">
-          A member whose pass isn&apos;t active yet?{" "}
+          A member who signed up with a different card?{" "}
           <Link href={`/admin/users?nfc=${encodeURIComponent(outcome.nfcId)}`} className="font-semibold text-gold underline">
-            Activate their pass with this card
+            Open Users to switch them to this card
           </Link>
         </span>
       </Banner>
@@ -63,8 +63,9 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
     );
   if (outcome.status === "no-pass")
     return (
-      <Banner tone="crimson" icon={CircleAlert} title="Invalid monthly pass">
+      <Banner tone="crimson" icon={CircleAlert} title={isPending(user) ? "Pass not activated yet" : "Invalid monthly pass"}>
         {user.name}
+        {isPending(user) && " signed up, but the parking office hasn't activated their monthly pass."}
       </Banner>
     );
   if (outcome.status === "already-inside")

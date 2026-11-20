@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LoaderCircle, MailCheck } from "lucide-react";
+import { LoaderCircle, MailCheck, Nfc } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
+import { useNfcReader } from "@/lib/nfc/useNfcReader";
 import { MEMBER_EMAIL_DOMAIN, MIN_PASSWORD, validateSignup, type SignupErrors } from "@/lib/member/logic";
 import { resendConfirmation, signUpMember } from "@/lib/session";
 import { AuthTabs } from "./AuthTabs";
@@ -33,6 +34,17 @@ export function SignupForm() {
   const [failure, setFailure] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState("");
   const [exists, setExists] = useState(false);
+  const [nfcId, setNfcId] = useState("");
+  // A tap of the member's card on the phone fills the field, then the reader switches itself off.
+  const stopScan = useRef<() => void>(() => {});
+  const reader = useNfcReader((serial) => {
+    setNfcId(serial);
+    setErrors((e) => ({ ...e, nfcId: undefined }));
+    stopScan.current();
+  });
+  useEffect(() => {
+    stopScan.current = reader.stop;
+  }, [reader.stop]);
   const [wait, setWait] = useState(RESEND_WAIT_SECONDS);
   const [resendNote, setResendNote] = useState<{ ok: boolean; text: string } | null>(null);
   useAuthMotion(root);
@@ -59,6 +71,7 @@ export function SignupForm() {
       email: String(data.get("email") ?? ""),
       role,
       studentId: String(data.get("studentId") ?? ""),
+      nfcId,
       password: String(data.get("password") ?? ""),
       confirm: String(data.get("confirmPassword") ?? ""),
     };
@@ -187,6 +200,34 @@ export function SignupForm() {
             />
             <FieldError id="su-id-err" message={errors.studentId} />
           </div>
+        </div>
+
+        <TextField
+          label="NFC card ID"
+          name="nfcId"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="Printed on your campus ID, like 1234-5678-9012"
+          value={nfcId}
+          onChange={(e) => {
+            setNfcId(e.target.value);
+            setErrors((er) => ({ ...er, nfcId: undefined }));
+          }}
+          aria-invalid={errors.nfcId ? true : undefined}
+          aria-describedby={errors.nfcId ? "su-card-err" : "su-card-hint"}
+        />
+        <FieldError id="su-card-err" message={errors.nfcId} />
+        <div id="su-card-hint" data-anim className={`${errors.nfcId ? "" : "-mt-2.5 "}mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted`}>
+          <button
+            type="button"
+            onClick={reader.status === "scanning" ? reader.stop : reader.start}
+            disabled={reader.status === "unsupported"}
+            className="inline-flex items-center gap-1.5 font-semibold text-ink underline underline-offset-4 transition-colors enabled:hover:text-gold disabled:cursor-not-allowed disabled:text-ink-muted disabled:no-underline"
+          >
+            <Nfc className="size-4" aria-hidden />
+            {reader.status === "scanning" ? "Hold your card to the phone…" : "Scan my card"}
+          </button>
+          <span>{reader.message ?? (reader.status === "unsupported" ? "Scanning needs Chrome on an Android phone. Type the number instead." : "Scan it, or type the number.")}</span>
         </div>
 
         <div className="sm:grid sm:grid-cols-2 sm:gap-x-4">

@@ -1,3 +1,4 @@
+import { validateCardFormat } from "@/lib/sparc/card";
 import type { LogEntry } from "@/lib/sparc/types";
 
 /* Pure helpers for the Member dashboard: pass state, parking history, suggestion rules, routing. */
@@ -72,7 +73,7 @@ export const homeFor = (type: AccountType) => (type === "member" ? "/member" : "
 export const MEMBER_EMAIL_DOMAIN = "@usa.edu.ph";
 export const MIN_PASSWORD = 8;
 
-export type SignupInput = { name: string; email: string; role: string; studentId: string; password: string; confirm: string };
+export type SignupInput = { name: string; email: string; role: string; studentId: string; nfcId: string; password: string; confirm: string };
 export type SignupErrors = Partial<Record<keyof SignupInput, string>>;
 
 /** Field errors for the sign-up form; an empty object means it can be submitted. */
@@ -85,6 +86,8 @@ export function validateSignup(i: SignupInput): SignupErrors {
   else if (email.split("@")[0].includes("+")) errors.email = "Use your plain university email, without a + in front of the @.";
   if (i.role !== "student" && i.role !== "personnel") errors.role = "Choose student or personnel.";
   if (!i.studentId.trim()) errors.studentId = "Enter your student or employee ID.";
+  const cardError = validateCardFormat(i.nfcId);
+  if (cardError) errors.nfcId = i.nfcId.trim() ? cardError : "Scan your NFC card, or type the number printed on it.";
   if (i.password.length < MIN_PASSWORD) errors.password = `Use at least ${MIN_PASSWORD} characters.`;
   if (i.confirm !== i.password) errors.confirm = "Passwords don't match. Re-enter the same password.";
   return errors;

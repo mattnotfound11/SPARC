@@ -1,6 +1,7 @@
 import { DEFAULT_CONFIG, GATE, buildSlots } from "./seed";
 import { sampleData } from "./sample";
 import { pickFreeSlot } from "./selectors";
+import { cardKey, normalizeNfc, validateCardFormat } from "./card";
 import type {
   ActionResult,
   FloorConfig,
@@ -98,37 +99,11 @@ export function addOneMonth(ms: number) {
   return d.getTime();
 }
 
-const NFC_PATTERN = /^[0-9]+(-[0-9]+)*$/;
-/** Web NFC serial: 4 to 10 hex bytes, colon-separated, uppercase. */
-const NFC_HEX_PATTERN = /^[0-9A-F]{2}(:[0-9A-F]{2}){3,9}$/;
-
-export function normalizeNfc(value: string) {
-  const trimmed = value.trim();
-  // iOS Shortcuts "Scan NFC Tag" produces space-separated hex bytes: "04 A1 B2 C3".
-  // Colon-separated comes from Web NFC (Android) or manual entry.
-  // Both collapse to uppercase colon-separated: 04:A1:B2:C3.
-  const hasHexSeparator = trimmed.includes(":") || /^[0-9A-Fa-f]{2}( [0-9A-Fa-f]{2})+$/.test(trimmed);
-  if (hasHexSeparator) {
-    const bytes = trimmed.toUpperCase().replace(/[^0-9A-F]/g, "").match(/.{2}/g) ?? [];
-    return bytes.join(":");
-  }
-  // Letters without separators are not a valid ID in either format; leave them so validation rejects them.
-  if (/[a-z]/i.test(trimmed)) return trimmed.toUpperCase();
-  return trimmed
-    .replace(/[^0-9-]/g, "")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+// Kept here so existing imports keep working; the card helpers live in ./card so sign-up can use them too.
+export { cardKey, normalizeNfc };
 
 export type UserErrors = Partial<Record<keyof UserInput, string>>;
 
-/**
- * One physical card, however its ID was typed: "1234-5678-9012" = "123456789012", "04:a1:b2:c3" = "04 A1 B2 C3".
- * Used for every "is this the same card?" check, so a card can only ever belong to one user.
- */
-export function cardKey(value: string) {
-  return normalizeNfc(value).replace(/[-:]/g, "");
-}
 
 /** "2021 00123 " -> "2021-00123": trimmed, uppercased, spaces become dashes. */
 export function normalizeStudentId(value: string) {
@@ -139,11 +114,9 @@ const STUDENT_ID_PATTERN = /^[A-Z0-9][A-Z0-9-]{2,19}$/;
 
 /** An error message when the card can't be given to this user, or undefined when it can. */
 export function validateCard(nfcId: string, users: RegisteredUser[], editingId?: string): string | undefined {
-  const nfc = normalizeNfc(nfcId);
-  const nfcDigits = nfc.replace(/-/g, "");
-  const validDigits = NFC_PATTERN.test(nfc) && nfcDigits.length >= 4 && nfcDigits.length <= 20;
-  if (!validDigits && !NFC_HEX_PATTERN.test(nfc)) return "Scan the card, or use numbers like 1234-5678-9012 or hex like 04:A1:B2:C3.";
-  const owner = users.find((u) => u.nfcId && cardKey(u.nfcId) === cardKey(nfc) && u.id !== editingId);
+  const formatError = validateCardFormat(nfcId);
+  if (formatError) return formatError;
+  const owner = users.find((u) => u.nfcId && cardKey(u.nfcId) === cardKey(nfcId) && u.id !== editingId);
   if (owner) return `This card already belongs to ${owner.name}. One card can only hold one user: remove ${owner.name} first if the card has a new owner.`;
   return undefined;
 }

@@ -43,7 +43,7 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
   // Read the live record, so a renewal made from this panel shows its new date.
   const user = state.users.find((u) => u.id === mode.user.id) ?? mode.user;
 
-  const [nfcId, setNfcId] = useState(mode.type === "activate" ? (mode.nfc ?? "") : user.nfcId);
+  const [nfcId, setNfcId] = useState(mode.type === "activate" ? (mode.nfc ?? user.nfcId) : user.nfcId);
   const [active, setActive] = useState(user.active);
   const [error, setError] = useState<string | null>(null);
 
@@ -182,7 +182,11 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
               label="NFC card ID"
               htmlFor="u-nfc"
               error={error ?? undefined}
-              hint={reader.message ?? (activating ? "Scan the member's campus card, or type digits like 1234-5678-9012 or hex like 04:A1:B2:C3." : "Change this only if the member has a new card.")}
+              hint={reader.message ?? (activating
+                ? user.nfcId
+                  ? "The member entered this card when they signed up. Scan their card to check it matches, or change it."
+                  : "Scan the member's campus card, or type digits like 1234-5678-9012 or hex like 04:A1:B2:C3."
+                : "Change this only if the member has a new card.")}
             >
               <div className="flex gap-2">
                 <input

@@ -128,7 +128,7 @@ export function sampleData(config: FloorConfig[], now: number): SampleData {
   ];
   const pending: RegisteredUser[] = waiting.map(([name, role, email], i) => ({
     id: `U-${String(users.length + 1 + i).padStart(3, "0")}`,
-    nfcId: "",
+    nfcId: `4000-0000-${String(2001 + i)}`,
     studentId: role === "student" ? `2025-${String(20100 + i * 53).slice(-5)}` : `EMP-${String(300 + i)}`,
     email,
     name,

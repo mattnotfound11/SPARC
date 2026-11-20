@@ -68,6 +68,7 @@ function ProfilePanel({ data }: { data: MemberData }) {
         <Row label="Role">{ROLE_LABEL[u.role]}</Row>
         <Row label={ID_LABEL[u.role]}>{u.studentId || "Not on file"}</Row>
         {u.email && <Row label="Email">{u.email}</Row>}
+        {u.nfcId && <Row label="NFC card"><span className="font-mono">{u.nfcId}</span></Row>}
         <Row label="Registered">{day(u.createdAt)}</Row>
       </dl>
     </Panel>

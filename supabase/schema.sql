@@ -229,8 +229,8 @@ grant execute on function public.is_staff() to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Members: students and personnel register themselves on the site, confirm their email, and then see only
--- their own pass and history and can send one-way suggestions. Their record starts as PENDING (no card,
--- expires_at = 0) until the parking office activates the pass from the Users page.
+-- their own pass and history and can send one-way suggestions. Their record starts as PENDING (the card they
+-- entered is saved, but expires_at = 0) until the parking office activates the pass from the Users page.
 -- Members' own-row reads on users/logs are added by supabase/lock-down.sql; until then the open
 -- "public mode" policies apply and member privacy is NOT enforced.
 -- ---------------------------------------------------------------------------
@@ -300,11 +300,12 @@ drop function if exists public.link_member(text, text);
 -- Member self sign-up. The site's sign-up form calls auth.signUp with the person's name, role and
 -- student/employee ID in the account metadata. When they CONFIRM their email (which proves the address is
 -- theirs), this creates their record in `users` and links the login to it, in one step.
--- The record is Pending: no card, expires_at = 0. Rules:
+-- The record is Pending: the card they entered is saved, but expires_at = 0 so the gate denies it until the
+-- parking office activates the pass. Rules:
 --   * the email must end in @usa.edu.ph and have no "+" alias in front of the @;
 --   * the role must be student or personnel, and a name and ID must be given;
---   * one record per email and per student ID: if either already exists, no record is created and the
---     login stays unlinked (the sign-in page explains it).
+--   * one record per email, per student ID and per NFC card: if any already exists, no record is created
+--     and the login stays unlinked (the sign-in page explains it).
 -- Requires Authentication -> Providers -> Email -> "Confirm email" ON and sign-ups allowed.
 -- ---------------------------------------------------------------------------
 create or replace function public.claim_member_pass()
@@ -318,6 +319,8 @@ declare
   v_sid   text := upper(trim(coalesce(new.raw_user_meta_data ->> 'student_id', '')));
   v_name  text := regexp_replace(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), '\s+', ' ', 'g');
   v_role  text := coalesce(new.raw_user_meta_data ->> 'campus_role', '');
+  -- The NFC card the member entered at sign-up. It is kept on the record, but the pass stays Pending.
+  v_nfc   text := nullif(upper(trim(coalesce(new.raw_user_meta_data ->> 'nfc_id', ''))), '');
   v_id    text;
 begin
   if new.email_confirmed_at is null or v_sid = '' or v_name = '' then return new; end if;
@@ -329,10 +332,10 @@ begin
   begin
     -- "vehicle" is a leftover column that is no longer used; it only needs a value.
     insert into public.users (id, nfc_id, student_id, name, role, vehicle, active, created_at, expires_at, email)
-    values (v_id, null, v_sid, v_name, v_role, 'light', true, (extract(epoch from now()) * 1000)::bigint, 0, v_email);
+    values (v_id, v_nfc, v_sid, v_name, v_role, 'light', true, (extract(epoch from now()) * 1000)::bigint, 0, v_email);
     insert into public.members (user_id, registered_user_id) values (new.id, v_id);
   exception when unique_violation then
-    return new; -- this student ID or email already has a record
+    return new; -- this student ID, email or card already has a record
   end;
   return new;
 end;

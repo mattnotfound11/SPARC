@@ -136,6 +136,21 @@ describe("pending members", () => {
     expect(store.scan("04:FF:FF:FF", "entry").status).toBe("unregistered");
   });
 
+  it("a member who gave their card at sign-up is known at the gate but denied until the pass is activated", () => {
+    const store = createSparcStore(T0);
+    const base = store.getState();
+    const member = { id: "M1", nfcId: "04:AB:CD:EF", name: "Signed Up", role: "student" as const, active: true, createdAt: T0, expiresAt: 0, email: "s@usa.edu.ph" };
+    store.hydrate({ slots: base.slots, users: [...base.users, member], logs: [], scans: [] });
+    // known card, so not "unregistered", and not a walk-in either
+    expect(store.scan("04:AB:CD:EF", "entry").status).toBe("no-pass");
+    expect(store.scan("04:AB:CD:EF", "entry", { walkIn: true, floor: 3 }).status).toBe("no-pass");
+    expect(store.getState().logs).toHaveLength(0);
+    // the office activates it with the card already on file
+    expect(store.activateUser("M1", "04:AB:CD:EF").ok).toBe(true);
+    expect(store.getState().users.find((u) => u.id === "M1")).toMatchObject({ expiresAt: addOneMonth(T0), active: true });
+    expect(enter(store, "04:AB:CD:EF", 2).status).toBe("entered");
+  });
+
   it("activating gives the card, turns the pass on for a month, and lets them in", () => {
     const store = createSparcStore(T0);
     store.addUser(user(7, { nfcId: "" }));

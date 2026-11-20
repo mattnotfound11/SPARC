@@ -30,7 +30,7 @@ export type UserRole = "student" | "personnel" | "visitor";
 /** D1 Registered Users */
 export type RegisteredUser = {
   id: string;
-  /** "1234-5678-9012". Empty while the pass is Pending: the parking office scans the card when it activates the pass. */
+  /** "1234-5678-9012". The member enters it when signing up. Empty only on records made before cards were collected. */
   nfcId: string;
   /** School-issued ID (student number or employee ID), given by the member at sign-up. Separate from the card. */
   studentId?: string;
