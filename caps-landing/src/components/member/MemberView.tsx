@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarDays, CircleAlert, CircleCheck, Clock, CreditCard, Hash, Mail } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, CircleAlert, CircleCheck, Clock, CreditCard, Hash, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { SparcGate, useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
@@ -179,67 +180,109 @@ function StatusTile({ data }: { data: MemberData }) {
   );
 }
 
-function Field({ icon: Icon, label, children }: { icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>; label: string; children: React.ReactNode }) {
+type IconType = React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+
+/** One read-only detail: a small label above a boxed value with an icon, like a locked form field. */
+function Field({ icon: Icon, label, hint, children }: { icon: IconType; label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-white/[0.03] text-gold">
-        <Icon className="size-[1.125rem]" aria-hidden />
-      </span>
-      <div className="min-w-0">
-        <dt className="text-xs font-semibold tracking-wide text-ink-muted uppercase">{label}</dt>
-        <dd className="mt-0.5 break-words text-[0.9375rem] font-medium text-ink">{children}</dd>
-      </div>
+    <div className="min-w-0">
+      <dt className="text-xs font-semibold text-ink-soft">{label}</dt>
+      <dd className="mt-1.5 flex min-h-11 items-center gap-2.5 rounded-xl border border-line bg-white/[0.03] px-3.5 text-[0.9375rem] text-ink">
+        <Icon className="size-4 shrink-0 text-ink-muted" aria-hidden />
+        <span className="min-w-0 break-words">{children}</span>
+      </dd>
+      {hint && <p className="mt-1.5 text-xs text-ink-muted italic">{hint}</p>}
     </div>
   );
 }
 
-/** The member's own details: who they are, how to reach them, and the card the gate reads. */
+function SummaryRow({ label, value, tone }: { label: string; value: React.ReactNode; tone?: "live" | "gold" | "crimson" }) {
+  const color = tone === "live" ? "text-live" : tone === "gold" ? "text-gold" : tone === "crimson" ? "text-crimson" : "text-ink";
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-2 text-sm">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className={`num font-semibold ${color}`}>{value}</dd>
+    </div>
+  );
+}
+
+/** The member's own details: an identity card with a parking summary, and the read-only account details. */
 function ProfileView({ data, now }: { data: MemberData; now: number }) {
   const u = data.user;
   const pass = passState(u.expiresAt, now);
-  const initials = u.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
+  const visits = useMemo(() => buildVisits(data.logs), [data.logs]);
+  const monthStart = new Date(now);
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const thisMonth = visits.filter((v) => (v.entryAt ?? v.exitAt ?? 0) >= monthStart.getTime()).length;
+  const last = visits[0];
+  const initial = (u.name.trim()[0] ?? "?").toUpperCase();
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <section aria-labelledby="who-h" className="rounded-2xl border border-gold/25 bg-gradient-to-b from-gold/[0.10] to-surface/30 p-6 text-center sm:p-7 lg:text-left">
-        <span aria-hidden className="mx-auto grid size-[4.5rem] place-items-center rounded-full border border-gold/40 bg-gold/15 font-display text-2xl font-bold text-gold lg:mx-0">
-          {initials}
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+      <section aria-labelledby="who-h" className="rounded-2xl border border-line bg-surface/40 p-6">
+        <span aria-hidden className="mx-auto grid size-24 place-items-center rounded-full border border-gold/40 bg-gold/15 font-display text-4xl font-bold text-gold">
+          {initial}
         </span>
-        <h2 id="who-h" className="display mt-4 text-[1.625rem] leading-tight text-ink">{u.name}</h2>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+        <h2 id="who-h" className="display mt-4 text-center text-[1.5rem] leading-tight text-ink">{u.name}</h2>
+        <p className="mt-1 text-center text-sm break-all text-ink-muted">{u.email || "No email on file"}</p>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <Badge>{ROLE_LABEL[u.role]}</Badge>
           <Badge tone={PASS_TONE[pass.kind]}>Pass: {PASS_LABEL[pass.kind]}</Badge>
         </div>
-        <p className="mt-5 text-sm text-ink-muted">Member since {day(u.createdAt)}</p>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <h3 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Parking summary</h3>
+          <dl className="mt-2 divide-y divide-line/60">
+            <SummaryRow label="Total visits" value={visits.length} />
+            <SummaryRow label="This month" value={thisMonth} />
+            <SummaryRow label="Last visit" value={last ? day(last.entryAt ?? last.exitAt ?? 0) : "None yet"} />
+            <SummaryRow
+              label="Pass"
+              value={pass.kind === "pending" ? "Not activated" : pass.kind === "expired" ? "Expired" : `${pass.daysLeft} days left`}
+              tone={pass.kind === "active" ? "live" : pass.kind === "expiring" ? "gold" : pass.kind === "expired" ? "crimson" : undefined}
+            />
+          </dl>
+        </div>
       </section>
 
-      <div className="space-y-4 lg:col-span-2">
-        <section aria-label="Contact and identity" className="rounded-2xl border border-line bg-surface/40 p-5 sm:p-6">
-          <dl className="grid gap-5 sm:grid-cols-2">
-            <Field icon={Hash} label={ID_LABEL[u.role]}>{u.studentId || "Not on file"}</Field>
-            <Field icon={Mail} label="Email">{u.email || "Not on file"}</Field>
-            <Field icon={CalendarDays} label="Pass valid until">
-              {pass.kind === "pending" ? "Not activated yet" : `${day(u.expiresAt)}, ${time(u.expiresAt)}`}
-            </Field>
-          </dl>
-        </section>
+      <section aria-labelledby="details-h" className="rounded-2xl border border-line bg-surface/40 p-5 sm:p-6">
+        <h2 id="details-h" className="flex items-center gap-2 font-display text-[1.0625rem] font-semibold text-ink">
+          <UserRound className="size-[1.125rem] text-gold" aria-hidden />
+          Account details
+        </h2>
+        <dl className="mt-5 grid gap-x-5 gap-y-5 sm:grid-cols-2">
+          <Field icon={UserRound} label="Full name" hint="Your name is managed by the parking office and cannot be changed here.">{u.name}</Field>
+          <Field icon={Mail} label="Institutional email" hint="Your email is your sign-in and cannot be changed here.">{u.email || "Not on file"}</Field>
+          <Field icon={Hash} label={ID_LABEL[u.role]}>{u.studentId || "Not on file"}</Field>
+          <Field icon={ShieldCheck} label="Role">{ROLE_LABEL[u.role]}</Field>
+          <Field icon={CalendarDays} label="Pass valid until">
+            {pass.kind === "pending" ? "Not activated yet" : `${day(u.expiresAt)}, ${time(u.expiresAt)}`}
+          </Field>
+          <Field icon={CalendarDays} label="Registered">{day(u.createdAt)}</Field>
+        </dl>
 
-        <section aria-label="Parking card" className="relative max-w-md overflow-hidden rounded-2xl border border-line-strong bg-gradient-to-br from-[#1a1d27] via-[#10131b] to-[#0b0d13] p-5 sm:p-6">
-          <span aria-hidden className="pointer-events-none absolute -top-16 -right-12 size-48 rounded-full bg-gold/[0.12] blur-2xl" />
-          <div className="relative flex items-center justify-between">
-            <p className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Parking card</p>
-            <CreditCard className="size-5 text-gold" aria-hidden />
+        <h3 className="mt-7 text-xs font-semibold text-ink-soft">Parking card</h3>
+        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-dashed border-line-strong bg-white/[0.02] p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-white/[0.03] text-gold">
+              <CreditCard className="size-5" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              {u.nfcId ? (
+                <p className="font-mono text-[0.9375rem] tracking-wider break-all text-ink">{u.nfcId}</p>
+              ) : (
+                <p className="text-sm font-semibold text-ink">No card yet</p>
+              )}
+              <p className="mt-0.5 text-xs text-ink-muted">
+                {u.nfcId ? "Tap it at the gate. Lost or damaged? Tell the parking office." : "The parking office gives you one when your pass is activated."}
+              </p>
+            </div>
           </div>
-          {u.nfcId ? (
-            <p className="relative mt-8 font-mono text-[1.0625rem] tracking-wider text-ink">{u.nfcId}</p>
-          ) : (
-            <p className="relative mt-8 text-sm text-ink-muted">No card yet. The parking office gives you one when your pass is activated.</p>
-          )}
-          <p className="relative mt-5 flex items-end justify-between gap-3 text-sm">
-            <span className="font-medium text-ink">{u.name}</span>
-            <span className="text-xs text-ink-muted">Tap at the gate</span>
-          </p>
-        </section>
-      </div>
+          <Link href="/member/support" className="c-btn c-btn-gold min-h-11">
+            Contact support
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
