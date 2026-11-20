@@ -8,8 +8,20 @@ const FIRST_HOUR = 5;
 const LAST_HOUR = 22;
 const HOURS = Array.from({ length: LAST_HOUR - FIRST_HOUR + 1 }, (_, i) => FIRST_HOUR + i);
 
-/** One-hue gold scale: quiet cells are barely there, the busiest is solid. */
-const shade = (share: number) => `rgba(245, 179, 1, ${(0.08 + share * 0.92).toFixed(2)})`;
+/**
+ * Five named steps. The gold family steps up in lightness and warms to a bright yellow at the top, so each
+ * level is easy to tell apart, and the legend names them so colour is never the only cue.
+ */
+const LEVELS = [
+  { label: "None", color: "rgba(255, 255, 255, 0.04)" },
+  { label: "Low", color: "#5b4510" },
+  { label: "Medium", color: "#9a6f0b" },
+  { label: "High", color: "#e09c05" },
+  { label: "Very high", color: "#ffd84d" },
+] as const;
+
+/** Which step a cell falls in: 0 for none, then four equal bands of the busiest cell. */
+const levelOf = (value: number, max: number) => (value <= 0 || max <= 0 ? 0 : Math.min(4, Math.ceil((value / max) * 4)));
 
 /** Average entries by weekday and hour. Recharts has no heatmap, so this is a plain grid with a scale legend. */
 export function HeatmapChart({ heat, monthLabel }: { heat: Heatmap; monthLabel: string }) {
@@ -29,11 +41,14 @@ export function HeatmapChart({ heat, monthLabel }: { heat: Heatmap; monthLabel: 
             "Hover a square for the numbers."
           )}
         </p>
-        <div className="flex items-center gap-2 text-xs text-ink-muted" aria-hidden>
-          Quieter
-          <span className="h-2.5 w-24 rounded-full" style={{ background: `linear-gradient(90deg, ${shade(0)}, ${shade(1)})` }} />
-          Busier
-        </div>
+        <ul className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-ink-muted" aria-label="Legend">
+          {LEVELS.map((l) => (
+            <li key={l.label} className="flex items-center gap-1.5">
+              <span aria-hidden className="size-3 rounded-[3px] border border-line-strong" style={{ background: l.color }} />
+              {l.label}
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="relative overflow-x-auto">
@@ -43,7 +58,6 @@ export function HeatmapChart({ heat, monthLabel }: { heat: Heatmap; monthLabel: 
               <span className="w-10 shrink-0 text-xs text-ink-muted">{WEEKDAYS[w].slice(0, 3)}</span>
               {HOURS.map((h) => {
                 const v = heat.grid[w][h];
-                const share = heat.max ? v / heat.max : 0;
                 const isPeak = heat.peak?.weekday === w && heat.peak?.hour === h;
                 return (
                   <span
@@ -51,8 +65,8 @@ export function HeatmapChart({ heat, monthLabel }: { heat: Heatmap; monthLabel: 
                     onPointerEnter={() => setHover({ weekday: w, hour: h })}
                     className="h-7 flex-1 rounded-[5px]"
                     style={{
-                      background: v > 0 ? shade(share) : "rgba(255,255,255,0.03)",
-                      outline: hover?.weekday === w && hover?.hour === h ? `2px solid ${COLORS.cursor}` : isPeak ? `1.5px solid ${COLORS.entriesBright}` : "none",
+                      background: LEVELS[levelOf(v, heat.max)].color,
+                      outline: hover?.weekday === w && hover?.hour === h ? "2px solid rgba(255,255,255,0.5)" : isPeak ? `1.5px solid ${COLORS.entriesBright}` : "none",
                       outlineOffset: hover?.weekday === w && hover?.hour === h ? 1 : 0,
                     }}
                   />
@@ -73,7 +87,10 @@ export function HeatmapChart({ heat, monthLabel }: { heat: Heatmap; monthLabel: 
           <div className="pointer-events-none absolute top-0 right-0 hidden sm:block">
             <TipCard
               title={`${WEEKDAYS[hover.weekday]} ${hourLabel(hover.hour)}`}
-              rows={[{ label: "Entries on average", value: active.toFixed(1), color: COLORS.entries }]}
+              rows={[
+                { label: "Entries on average", value: active.toFixed(1), color: LEVELS[levelOf(active, heat.max)].color },
+                { label: "Level", value: LEVELS[levelOf(active, heat.max)].label },
+              ]}
             />
           </div>
         )}
