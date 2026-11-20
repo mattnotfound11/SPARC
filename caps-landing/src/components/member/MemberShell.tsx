@@ -33,7 +33,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-xl">
-        <nav aria-label="Member" className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-4 px-5 sm:px-8">
+        <nav aria-label="Member" className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
           <Link href="/" className="brand-mark flex items-center gap-2.5 rounded-lg" aria-label="SPARC home">
             <SparcSeal size={32} priority className="size-8" />
             <SparcWordmark className="hidden text-lg text-ink min-[480px]:inline" />
@@ -53,7 +53,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
           )}
         </nav>
       </header>
-      <main id="main-content" className="mx-auto w-full max-w-4xl flex-1 px-5 py-8 sm:px-8 sm:py-12">
+      <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:px-8 sm:py-12">
         {member.status === "in" ? children : null}
       </main>
     </ToastProvider>
