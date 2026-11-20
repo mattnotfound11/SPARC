@@ -66,8 +66,6 @@ export type EventMode = {
   name: string;
   /** Start of the event day (ms epoch). Holds apply on that day only. */
   date: number;
-  /** Floors closed for the event. */
-  closedFloors: number[];
   /** Bays held back on every open floor for the event. */
   reservedPerFloor: number;
 };

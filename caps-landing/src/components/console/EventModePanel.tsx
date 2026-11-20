@@ -5,7 +5,6 @@ import { CalendarDays } from "lucide-react";
 import { describeEvent, eventPhase } from "@/lib/portal/event";
 import { portal } from "@/lib/portal/store";
 import { useMinute, usePortalState } from "@/lib/portal/usePortal";
-import { useSparcState } from "@/lib/sparc/SparcProvider";
 import { Badge, Panel, PanelHeader, useToast } from "./ui";
 
 const toInputDate = (ms: number) => {
@@ -19,18 +18,16 @@ const fromInputDate = (value: string) => {
 const longDate = (ms: number) => new Date(ms).toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric" });
 
 /**
- * Event mode: plan a big day. On that day the chosen floors are closed and some bays on the others
- * are held back, so the live count, the gate's bay choice and the homepage all adjust. Drivers and the
- * lobby screen are warned a couple of days ahead.
+ * Event mode: plan a big day. On that day some bays on every floor are held back, so the live count,
+ * the gate's bay choice and the homepage all adjust. Drivers and the lobby screen are warned a couple
+ * of days ahead.
  */
 export function EventModePanel() {
   const toast = useToast();
-  const { config } = useSparcState();
   const { event } = usePortalState();
   const now = useMinute();
   const [name, setName] = useState("");
   const [date, setDate] = useState(() => toInputDate(Date.now()));
-  const [closed, setClosed] = useState<number[]>([]);
   const [reserved, setReserved] = useState("0");
   const [error, setError] = useState<string | null>(null);
   const phase = eventPhase(event, now);
@@ -38,14 +35,13 @@ export function EventModePanel() {
 
   function start(e: React.FormEvent) {
     e.preventDefault();
-    const r = portal.setEvent({ name, date: fromInputDate(date), closedFloors: closed, reservedPerFloor: Number(reserved) || 0 });
+    const r = portal.setEvent({ name, date: fromInputDate(date), reservedPerFloor: Number(reserved) || 0 });
     if (!r.ok) {
       setError(r.error);
       return;
     }
     toast(`${name.trim()} is planned for ${longDate(fromInputDate(date))}.`);
     setName("");
-    setClosed([]);
     setReserved("0");
     setError(null);
   }
@@ -113,28 +109,6 @@ export function EventModePanel() {
                 <input id="event-reserved" type="number" min={0} max={60} className="c-input w-full sm:w-28" value={reserved} onChange={(e) => setReserved(e.target.value)} />
               </div>
             </div>
-            <fieldset className="mt-3">
-              <legend className="mb-1.5 text-sm font-semibold text-ink">Close these levels</legend>
-              <div className="flex flex-wrap gap-2">
-                {config.map((f) => {
-                  const on = closed.includes(f.floor);
-                  return (
-                    <label
-                      key={f.floor}
-                      className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${on ? "border-gold/60 bg-gold/[0.14] text-[#ffd666]" : "border-line text-ink-muted"}`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="size-4 accent-[#f5b301]"
-                        checked={on}
-                        onChange={() => setClosed((c) => (on ? c.filter((x) => x !== f.floor) : [...c, f.floor]))}
-                      />
-                      Level {f.floor}
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button type="submit" className="c-btn c-btn-gold">
                 Plan event

@@ -19,7 +19,7 @@ export function usePublishAvailability() {
       void publish({ free, total });
     };
     send();
-    // an event's closed floors and held bays change the count too
+    // an event's held bays change the count too
     const stopStore = store.subscribe(send);
     const stopPortal = portal.subscribe(send);
     return () => {

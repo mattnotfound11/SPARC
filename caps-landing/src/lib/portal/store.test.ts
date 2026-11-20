@@ -273,13 +273,13 @@ describe("waitlist and event mode", () => {
     expect(s.joinWaitlist(CARD, now).ok).toBe(true);
   });
 
-  it("plans an event for a day with closed floors and held bays, and cancels it", () => {
+  it("plans an event for a day with held bays, and cancels it", () => {
     const s = make();
     const day = new Date(2026, 10, 18).getTime();
-    expect(s.setEvent({ name: "  ", date: day, closedFloors: [], reservedPerFloor: 0 }, now).ok).toBe(false);
-    expect(s.setEvent({ name: "Graduation", date: new Date(2026, 10, 1).getTime(), closedFloors: [], reservedPerFloor: 0 }, now).ok).toBe(false);
-    expect(s.setEvent({ name: "Graduation", date: day, closedFloors: [2, 1, 2], reservedPerFloor: 4 }, now).ok).toBe(true);
-    expect(s.get().event).toMatchObject({ name: "Graduation", date: day, closedFloors: [1, 2], reservedPerFloor: 4 });
+    expect(s.setEvent({ name: "  ", date: day, reservedPerFloor: 0 }, now).ok).toBe(false);
+    expect(s.setEvent({ name: "Graduation", date: new Date(2026, 10, 1).getTime(), reservedPerFloor: 0 }, now).ok).toBe(false);
+    expect(s.setEvent({ name: "Graduation", date: day, reservedPerFloor: 4 }, now).ok).toBe(true);
+    expect(s.get().event).toMatchObject({ name: "Graduation", date: day, reservedPerFloor: 4 });
     s.setEvent(null);
     expect(s.get().event).toBeNull();
   });

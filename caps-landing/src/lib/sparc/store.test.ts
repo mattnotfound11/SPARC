@@ -126,7 +126,7 @@ describe("event holds", () => {
   const day = new Date(2026, 10, 17).getTime();
   const noon = new Date(2026, 10, 17, 12).getTime();
 
-  it("closed floors and held bays change the live count and the bay the gate picks", async () => {
+  it("held bays change the live count on every floor and the bay the gate picks", async () => {
     const { portal } = await import("@/lib/portal/store");
     const { floorStats, pickFreeSlot } = await import("./selectors");
     const store = createSparcStore(noon);
@@ -134,14 +134,16 @@ describe("event holds", () => {
     const before = floorStats(config, slots, noon);
     expect(before.every((f) => f.held === 0)).toBe(true);
 
-    portal.setEvent({ name: "Graduation", date: day, closedFloors: [3], reservedPerFloor: 4 }, noon);
+    portal.setEvent({ name: "Graduation", date: day, reservedPerFloor: 4 }, noon);
     try {
       const stats = floorStats(config, slots, noon);
-      expect(stats.find((f) => f.floor === 3)).toMatchObject({ free: 0, held: 22 });
-      expect(stats.find((f) => f.floor === 4)).toMatchObject({ free: 18, held: 4 });
-      // a closed floor offers no bay, an open one does
-      expect(pickFreeSlot(config, slots, 3, noon)).toBeUndefined();
-      expect(pickFreeSlot(config, slots, 4, noon)?.floor).toBe(4);
+      // every floor stays open, with 4 bays held back
+      expect(stats.every((f) => f.free === 18 && f.held === 4)).toBe(true);
+      expect(pickFreeSlot(config, slots, 3, noon)?.floor).toBe(3);
+      // a floor down to its held bays offers none
+      const nearlyFull = slots.map((s) => (s.floor === 2 && s.index <= 18 ? { ...s, status: "occupied" as const } : s));
+      expect(pickFreeSlot(config, nearlyFull, 2, noon)).toBeUndefined();
+      expect(floorStats(config, nearlyFull, noon).find((f) => f.floor === 2)).toMatchObject({ free: 0, held: 4 });
       // another day: nothing is held
       const other = new Date(2026, 10, 19, 12).getTime();
       expect(floorStats(config, slots, other).every((f) => f.held === 0)).toBe(true);

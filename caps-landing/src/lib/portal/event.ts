@@ -14,18 +14,15 @@ export function eventPhase(event: EventMode | null | undefined, now: number): "t
   return days > 0 && days <= EVENT_WARN_DAYS ? "soon" : null;
 }
 
-export type Holds = { closed: number[]; reserved: number };
+export type Holds = { reserved: number };
 
 /** Bays the event takes out of service. Only applies on the event day. */
 export function holdsFor(event: EventMode | null | undefined, now: number): Holds | null {
   if (!event || eventPhase(event, now) !== "today") return null;
-  if (event.closedFloors.length === 0 && event.reservedPerFloor === 0) return null;
-  return { closed: event.closedFloors, reserved: event.reservedPerFloor };
+  if (event.reservedPerFloor === 0) return null;
+  return { reserved: event.reservedPerFloor };
 }
 
 export function describeEvent(event: EventMode): string {
-  const parts: string[] = [];
-  if (event.closedFloors.length) parts.push(`Level ${event.closedFloors.join(", ")} closed`);
-  if (event.reservedPerFloor) parts.push(`${event.reservedPerFloor} bays held on each open level`);
-  return parts.join(". ");
+  return event.reservedPerFloor ? `${event.reservedPerFloor} bays held on each level` : "";
 }
