@@ -105,6 +105,22 @@ export async function signInAccount(email: string, password: string): Promise<{ 
 
 export type SignupResult = { error: string } | { ok: true };
 
+/** A plain-language reason for a failed sign-up, with the service's own code in brackets so it can be looked up. */
+function signUpFailure(error: { status?: number; code?: string; name?: string; message?: string }): string {
+  const code = error.code ?? (error.status ? String(error.status) : (error.name ?? "unknown"));
+  const reason = (() => {
+    if (error.code === "email_address_invalid") return "That email address was rejected. Use your @usa.edu.ph address.";
+    if (error.code === "email_address_not_authorized") return "The mail service isn't set up to send to this address yet. Ask an administrator to connect an email provider.";
+    if (error.code === "signup_disabled") return "Sign-ups are turned off for this site. Ask an administrator.";
+    if (error.code === "over_email_send_rate_limit" || error.status === 429) return "Too many attempts. Wait a few minutes and try again.";
+    if (error.code === "weak_password" || error.status === 422) return "That password was rejected. Use a longer, less common password.";
+    if (error.status === 500) return "The server hit an error creating the account. Ask an administrator to check the database logs.";
+    if (!error.status) return "Couldn't reach the sign-in service. Check your connection, and turn off any ad blocker or VPN that may block it.";
+    return "Couldn't create the account. Try again, or ask an administrator.";
+  })();
+  return `${reason} [${code}]`;
+}
+
 /**
  * Member self sign-up. Creates the login and emails a confirmation link; the database links it to the
  * matching registered record only after the email is confirmed (see claim_member_pass in schema.sql).
@@ -121,11 +137,7 @@ export async function signUpMember(input: { name: string; email: string; role: s
       data: { full_name: input.name.trim().replace(/\s+/g, " "), student_id: input.studentId.trim().toUpperCase().replace(/\s+/g, "-"), campus_role: input.role },
     },
   });
-  if (error) {
-    if (error.status === 429) return { error: "Too many attempts. Wait a few minutes and try again." };
-    if (error.status === 422 || /password/i.test(error.message)) return { error: "That password was rejected. Use a longer, less common password." };
-    return { error: "Couldn't create the account. Check your connection and try again." };
-  }
+  if (error) return { error: signUpFailure(error) };
   return { ok: true };
 }
 
