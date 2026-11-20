@@ -45,6 +45,14 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
     else if (member.status === "out" && staff.status !== "loading") router.replace("/login");
   }, [member.status, staff.status, staffIn, router]);
 
+  /** The logo opens the dashboard; if you are already on it, it reloads the live data instead of doing nothing. */
+  function goHome(e: React.MouseEvent) {
+    if (pathname.replace(/\/$/, "") === "/member") {
+      e.preventDefault();
+      window.location.reload();
+    }
+  }
+
   async function handleSignOut() {
     await signOut();
     router.replace("/login");
@@ -58,7 +66,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
         <div className="min-h-svh bg-canvas">
           {/* Sidebar — desktop */}
           <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-canvas px-3 py-4 lg:flex">
-            <Link href="/" className="brand-mark flex items-center gap-2.5 rounded-lg px-2 py-1.5" aria-label="SPARC home">
+            <Link href="/member" onClick={goHome} className="brand-mark flex items-center gap-2.5 rounded-lg px-2 py-1.5" aria-label="SPARC member dashboard">
               <SparcSeal size={36} priority className="size-9" />
               <div className="leading-tight">
                 <SparcWordmark className="text-xl text-ink" />
@@ -99,7 +107,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
 
           {/* Top bar — phone and tablet */}
           <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-canvas/90 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
-            <Link href="/" className="brand-mark flex min-h-11 items-center gap-2.5 rounded-lg" aria-label="SPARC home">
+            <Link href="/member" onClick={goHome} className="brand-mark flex min-h-11 items-center gap-2.5 rounded-lg" aria-label="SPARC member dashboard">
               <SparcSeal size={30} className="size-[1.875rem]" />
               <SparcWordmark className="text-lg text-ink" />
               <span className="text-xs text-ink-muted">Member</span>
