@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
@@ -122,6 +123,18 @@ export function AdminLoginForm() {
           </div>
         )}
       </form>
+
+      <p data-anim className="pt-5 text-center text-[0.9375rem] leading-[1.9] text-ink-muted">
+        Student or personnel with a parking pass?
+        <br />
+        <Link href="/login" className="font-semibold text-ink underline-offset-4 transition-colors hover:text-gold hover:underline">
+          Log in
+        </Link>
+        {" · "}
+        <Link href="/signup" className="font-semibold text-ink underline-offset-4 transition-colors hover:text-gold hover:underline">
+          Sign up
+        </Link>
+      </p>
     </div>
   );
 }
