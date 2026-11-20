@@ -1,4 +1,4 @@
-import type { FloorConfig, LogEntry } from "@/lib/sparc/types";
+import type { LogEntry } from "@/lib/sparc/types";
 import type { Violation, ViolationType } from "@/lib/portal/types";
 
 /*
@@ -72,32 +72,39 @@ export function weekdayHour(logs: LogEntry[], m: Month, now: number): Heatmap {
   return { grid, max: peak ? (peak as { average: number }).average : 0, peak };
 }
 
-export type DeckStat = {
-  floor: number;
-  entries: number;
-  /** Entries per bay per day: how many times each bay was used on an average day. */
-  turnover: number;
-};
-
-export function deckStats(logs: LogEntry[], config: FloorConfig[], m: Month, now: number): DeckStat[] {
-  const inMonth = logsIn(logs, m);
-  const days = elapsedDays(m, now);
-  return config.map(({ floor, slots }) => {
-    const entries = inMonth.filter((l) => l.event === "entry" && l.floor === floor).length;
-    return {
-      floor,
-      entries,
-      turnover: days && slots ? entries / slots / days : 0,
-    };
-  });
-}
-
 /** Average entries in each hour of the day, across the elapsed days of the month. */
 export function hourlyEntries(logs: LogEntry[], m: Month, now: number): number[] {
   const days = elapsedDays(m, now);
   const sums = new Array<number>(24).fill(0);
   for (const l of logsIn(logs, m)) if (l.event === "entry") sums[new Date(l.at).getHours()]++;
   return sums.map((v) => (days ? v / days : 0));
+}
+
+export type HourFlow = { hour: number; entries: number; exits: number };
+
+/** Average entries and exits in each hour of the day, across the elapsed days of the month. */
+export function hourlyFlow(logs: LogEntry[], m: Month, now: number): HourFlow[] {
+  const days = elapsedDays(m, now);
+  const entries = new Array<number>(24).fill(0);
+  const exits = new Array<number>(24).fill(0);
+  for (const l of logsIn(logs, m)) (l.event === "entry" ? entries : exits)[new Date(l.at).getHours()]++;
+  return entries.map((e, hour) => ({ hour, entries: days ? e / days : 0, exits: days ? exits[hour] / days : 0 }));
+}
+
+/**
+ * Percent change in entries per elapsed day, month `index` against the month before it (index + 1 in the
+ * newest-first list). Null when there is no earlier month or it had no entries, so no figure is made up.
+ */
+export function monthChange(logs: LogEntry[], list: Month[], index: number, now: number): number | null {
+  const current = list[index];
+  const previous = list[index + 1];
+  if (!current || !previous) return null;
+  const rate = (m: Month) => {
+    const days = elapsedDays(m, now);
+    return days ? logsIn(logs, m).filter((l) => l.event === "entry").length / days : 0;
+  };
+  const before = rate(previous);
+  return before > 0 ? ((rate(current) - before) / before) * 100 : null;
 }
 
 export type DayFlow = { start: number; label: string; entries: number; exits: number };
@@ -144,35 +151,6 @@ export function violationWeeks(violations: Violation[], now: number, weeks = 8):
   return buckets;
 }
 
-export type GateStat = { gate: string; entries: number; exits: number; peakHour: number | null; peakAverage: number; perHour: number[] };
-
-/** Throughput per gate for a month. Logs with no gate recorded are left out; they are counted in `unassigned`. */
-export function gateStats(logs: LogEntry[], m: Month, now: number): { gates: GateStat[]; unassigned: number } {
-  const days = elapsedDays(m, now);
-  const byGate = new Map<string, { entries: number; exits: number; sums: number[] }>();
-  let unassigned = 0;
-  for (const l of logsIn(logs, m)) {
-    if (!l.gate) {
-      unassigned++;
-      continue;
-    }
-    const g = byGate.get(l.gate) ?? { entries: 0, exits: 0, sums: new Array<number>(24).fill(0) };
-    if (l.event === "entry") {
-      g.entries++;
-      g.sums[new Date(l.at).getHours()]++;
-    } else g.exits++;
-    byGate.set(l.gate, g);
-  }
-  const gates = [...byGate.entries()]
-    .map(([gate, g]) => {
-      const perHour = g.sums.map((v) => (days ? v / days : 0));
-      const peak = Math.max(0, ...perHour);
-      return { gate, entries: g.entries, exits: g.exits, peakHour: peak > 0 ? perHour.indexOf(peak) : null, peakAverage: peak, perHour };
-    })
-    .sort((a, b) => b.entries + b.exits - (a.entries + a.exits));
-  return { gates, unassigned };
-}
-
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 /** Monday first, the way the campus week reads. */
 export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -182,9 +160,9 @@ export function hourLabel(hour: number) {
   return `${h} ${hour < 12 ? "AM" : "PM"}`;
 }
 
-/** The monthly report as CSV rows: summary, daily flow, busiest times, decks, gates, violations. */
-export function monthlyRows(args: { month: Month; heat: Heatmap; decks: DeckStat[]; hourly: number[]; violations: WeekBucket[]; entries: number; gates?: GateStat[]; daily?: DayFlow[] }): (string | number)[][] {
-  const { month, heat, decks, hourly, violations, entries, gates = [], daily = [] } = args;
+/** The monthly report as CSV rows: summary, daily flow, busiest times, violations. */
+export function monthlyRows(args: { month: Month; heat: Heatmap; hourly: number[]; violations: WeekBucket[]; entries: number; daily?: DayFlow[] }): (string | number)[][] {
+  const { month, heat, hourly, violations, entries, daily = [] } = args;
   const peak = heat.peak ? `${WEEKDAYS[heat.peak.weekday]} ${hourLabel(heat.peak.hour)} (${heat.peak.average.toFixed(1)} entries on average)` : "n/a";
   const rows: (string | number)[][] = [
     ["SPARC monthly report", month.label],
@@ -194,12 +172,6 @@ export function monthlyRows(args: { month: Month; heat: Heatmap; decks: DeckStat
     [],
     ["Day", "Entries", "Exits"],
     ...daily.map((d) => [d.label, d.entries, d.exits]),
-    [],
-    ["Deck", "Entries", "Bay turnover (entries per bay per day)"],
-    ...decks.map((d) => [`Level ${d.floor}`, d.entries, Number(d.turnover.toFixed(2))]),
-    [],
-    ["Gate", "Entries", "Exits", "Busiest hour"],
-    ...gates.map((g) => [g.gate, g.entries, g.exits, g.peakHour === null ? "" : hourLabel(g.peakHour)]),
     [],
     ["Hour", "Average entries per day"],
     ...hourly.map((v, h) => [hourLabel(h), Number(v.toFixed(2))]).filter((r) => (r[1] as number) > 0),

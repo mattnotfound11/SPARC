@@ -1,5 +1,5 @@
 import type { FloorConfig, LogEntry, RegisteredUser, Slot, UserRole, VehicleClass } from "./types";
-import { GATES, slotCode } from "./seed";
+import { GATE, slotCode } from "./seed";
 
 /*
  * Made-up console data for demos: 30 drivers, a week of gate traffic, and cars parked right now.
@@ -105,9 +105,7 @@ export function sampleData(config: FloorConfig[], now: number): SampleData {
   const occupied = new Map<string, Slot["occupant"]>();
   visits.forEach((v, i) => {
     const bay = bayFor.get(v.user.id)!;
-    // the main gate takes most of the traffic
-    const gate = rand() < 0.62 ? GATES[0] : GATES[1];
-    const base = { gate, visitId: `V-${String(i + 1).padStart(4, "0")}`, nfcId: v.user.nfcId, userId: v.user.id, userName: v.user.name, slot: bay.code, floor: bay.floor, vehicle: bay.vehicle };
+    const base = { gate: GATE, visitId: `V-${String(i + 1).padStart(4, "0")}`, nfcId: v.user.nfcId, userId: v.user.id, userName: v.user.name, slot: bay.code, floor: bay.floor, vehicle: bay.vehicle };
     if (v.arrive > now) return;
     events.push({ ...base, at: v.arrive, event: "entry" });
     if (v.leave <= now) events.push({ ...base, at: v.leave, event: "exit" });

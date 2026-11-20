@@ -12,7 +12,7 @@ const rows = [
     label: "Gate access",
     title: "Tap once. The barrier lifts.",
     body: "High-frequency RFID reads your Augustinian card at the gate and actuates the barrier in under a second — no tickets, no window winding, no queue down General Luna.",
-    chips: ["RFID cards", "Sub-second", "4 gates"],
+    chips: ["RFID cards", "Sub-second", "1 gate"],
     demo: <GateTapDemo />,
   },
   {

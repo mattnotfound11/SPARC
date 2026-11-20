@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG, GATES, buildSlots } from "./seed";
+import { DEFAULT_CONFIG, GATE, buildSlots } from "./seed";
 import { sampleData } from "./sample";
 import { pickFreeSlot } from "./selectors";
 import type {
@@ -294,7 +294,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     return { ok: true };
   }
 
-  function scan(rawNfc: string, mode: ScanMode, gate: string = GATES[0]): ScanOutcome {
+  function scan(rawNfc: string, mode: ScanMode, gate: string = GATE): ScanOutcome {
     const at = Date.now();
     const nfcId = normalizeNfc(rawNfc);
     const user = state.users.find((u) => cardKey(u.nfcId) === cardKey(nfcId));
@@ -383,7 +383,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     scan,
     refresh,
     hydrate: (data) => set({ ...data, now: Date.now() }),
-    logVisitorEntry(hostNfcId, guestName, plate, gate = GATES[0]) {
+    logVisitorEntry(hostNfcId, guestName, plate, gate = GATE) {
       const at = Date.now();
       const host = state.users.find((u) => cardKey(u.nfcId) === cardKey(hostNfcId));
       const seq = state.nextLogSeq;
@@ -415,7 +415,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
         const since = at - 2.5 * 60 * 60 * 1000;
         const n = String(nextLogSeq).padStart(4, "0");
         slots = slots.map((s) => (s.code === bay.code ? { ...s, status: "occupied" as const, occupant: { userId: demo.id, name: demo.name, nfcId: demo.nfcId, since } } : s));
-        const entry: LogEntry = { id: `L-${n}`, visitId: `V-${n}`, at: since, event: "entry", nfcId: demo.nfcId, userId: demo.id, userName: demo.name, slot: bay.code, floor: bay.floor, vehicle: bay.vehicle, gate: GATES[0] };
+        const entry: LogEntry = { id: `L-${n}`, visitId: `V-${n}`, at: since, event: "entry", nfcId: demo.nfcId, userId: demo.id, userName: demo.name, slot: bay.code, floor: bay.floor, vehicle: bay.vehicle, gate: GATE };
         logs = [entry, ...logs].sort((a, b) => b.at - a.at);
         nextLogSeq++;
       }

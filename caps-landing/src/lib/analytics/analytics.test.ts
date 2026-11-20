@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { dailyFlow, deckStats, gateStats, hourlyEntries, logsIn, monthlyRows, months, violationWeeks, weekdayHour } from "./analytics";
-import type { FloorConfig, LogEntry } from "@/lib/sparc/types";
+import { dailyFlow, hourlyEntries, hourlyFlow, logsIn, monthChange, monthlyRows, months, violationWeeks, weekdayHour } from "./analytics";
+import type { LogEntry } from "@/lib/sparc/types";
 import type { Violation } from "@/lib/portal/types";
 
-const config: FloorConfig[] = [
-  { floor: 1, vehicle: "heavy", slots: 10 },
-  { floor: 2, vehicle: "light", slots: 10 },
-];
 const at = (m: number, d: number, h: number, min = 0) => new Date(2026, m, d, h, min).getTime();
 
 // Tuesday 17 Nov 2026, evening: 17 days of November have started
@@ -71,24 +67,6 @@ describe("weekdayHour", () => {
   });
 });
 
-describe("deckStats", () => {
-  const logs = [
-    ...visit("a", 1, at(10, 3, 8), at(10, 3, 10)),
-    ...visit("b", 1, at(10, 4, 8), at(10, 4, 9)),
-    ...visit("c", 2, at(10, 5, 8), at(10, 5, 8, 30)),
-    log("open", at(10, 6, 8), "entry", 2), // still inside
-  ];
-  const stats = deckStats(logs, config, nov, NOW);
-
-  it("counts entries per deck", () => {
-    expect(stats.map((s) => s.entries)).toEqual([2, 2]);
-  });
-
-  it("measures turnover as entries per bay per day", () => {
-    expect(stats[0].turnover).toBeCloseTo(2 / 10 / 17);
-  });
-});
-
 describe("dailyFlow", () => {
   it("counts entries and exits on their own local day, with zero days included, oldest first", () => {
     const logs = [...visit("a", 1, at(10, 3, 23), at(10, 4, 1)), ...visit("b", 2, at(10, 4, 8), at(10, 4, 9))];
@@ -146,12 +124,12 @@ describe("monthlyRows", () => {
   it("builds a CSV with every section and no empty-hour noise", () => {
     const logs = visit("a", 1, at(10, 3, 8), at(10, 3, 10));
     const heat = weekdayHour(logs, nov, NOW);
-    const rows = monthlyRows({ month: nov, heat, decks: deckStats(logs, config, nov, NOW), hourly: hourlyEntries(logs, nov, NOW), violations: violationWeeks([], NOW, 2), entries: 1, daily: dailyFlow(logs, nov, NOW) });
+    const rows = monthlyRows({ month: nov, heat, hourly: hourlyEntries(logs, nov, NOW), violations: violationWeeks([], NOW, 2), entries: 1, daily: dailyFlow(logs, nov, NOW) });
     const flat = rows.map((r) => r.join("|"));
     expect(flat[0]).toBe("SPARC monthly report|November 2026");
     expect(flat).toContain("Total entries|1");
     expect(flat.some((r) => r.startsWith("Busiest time|Tuesday 8 AM"))).toBe(true);
-    expect(flat.some((r) => r.startsWith("Level 1|1|"))).toBe(true);
+    expect(flat.some((r) => r.startsWith("Deck|") || r.startsWith("Level "))).toBe(false);
     expect(flat.some((r) => r.includes("Average stay"))).toBe(false);
     expect(flat).toContain("Day|Entries|Exits");
     expect(flat).toContain("3|1|1");
@@ -160,21 +138,32 @@ describe("monthlyRows", () => {
   });
 });
 
-describe("gateStats", () => {
-  const tap = (id: string, when: number, event: "entry" | "exit", gate?: string): LogEntry => ({ ...log(id, when, event, 1), gate });
+describe("hourlyFlow", () => {
+  it("averages entries and exits per day for each of the 24 hours", () => {
+    const logs = [...visit("a", 1, at(10, 3, 8), at(10, 3, 17)), ...visit("b", 2, at(10, 4, 8, 30), at(10, 4, 17, 10))];
+    const flow = hourlyFlow(logs, nov, NOW);
+    expect(flow).toHaveLength(24);
+    expect(flow[8]).toEqual({ hour: 8, entries: 2 / 17, exits: 0 });
+    expect(flow[17].exits).toBeCloseTo(2 / 17);
+    expect(flow[12]).toEqual({ hour: 12, entries: 0, exits: 0 });
+  });
+  it("is all zeros for an empty month", () => {
+    expect(hourlyFlow([], nov, NOW).every((h) => h.entries === 0 && h.exits === 0)).toBe(true);
+  });
+});
 
-  it("splits entries and exits by gate, finds each gate's busiest hour, and counts untagged taps apart", () => {
+describe("monthChange", () => {
+  const list = months(NOW);
+  it("compares entries per elapsed day with the previous month", () => {
+    // November: 17 elapsed days, 34 entries = 2 a day. October: 31 days, 31 entries = 1 a day.
     const logs = [
-      tap("a", at(10, 3, 8), "entry", "Main gate"),
-      tap("b", at(10, 4, 8), "entry", "Main gate"),
-      tap("c", at(10, 4, 17), "exit", "Main gate"),
-      tap("d", at(10, 3, 9), "entry", "Side gate"),
-      tap("e", at(10, 3, 10), "entry"),
+      ...Array.from({ length: 34 }, (_, i) => log(`n${i}`, at(10, 1 + (i % 17), 9), "entry", 1)),
+      ...Array.from({ length: 31 }, (_, i) => log(`o${i}`, at(9, 1 + i, 9), "entry", 1)),
     ];
-    const r = gateStats(logs, nov, NOW);
-    expect(r.unassigned).toBe(1);
-    expect(r.gates.map((g) => g.gate)).toEqual(["Main gate", "Side gate"]);
-    expect(r.gates[0]).toMatchObject({ entries: 2, exits: 1, peakHour: 8 });
-    expect(r.gates[1]).toMatchObject({ entries: 1, exits: 0, peakHour: 9 });
+    expect(monthChange(logs, list, 0, NOW)).toBeCloseTo(100);
+  });
+  it("is null when the previous month has no entries or there is none", () => {
+    expect(monthChange([log("n", at(10, 3, 9), "entry", 1)], list, 0, NOW)).toBeNull();
+    expect(monthChange([], list, list.length - 1, NOW)).toBeNull();
   });
 });
