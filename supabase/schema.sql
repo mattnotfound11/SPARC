@@ -353,6 +353,9 @@ begin
 end;
 $$;
 revoke execute on function public.claim_member_pass() from public, anon, authenticated;
+-- Supabase's auth service (supabase_auth_admin) is the role that fires this trigger when it saves a new
+-- user, so it must keep EXECUTE. Without this every sign-up fails with "Database error saving new user" (500).
+grant execute on function public.claim_member_pass() to supabase_auth_admin;
 
 drop trigger if exists claim_member_pass_on_confirm on auth.users;
 create trigger claim_member_pass_on_confirm
