@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CalendarRange, ChartColumn, Gavel, Inbox, LayoutGrid, LogOut, ScanLine, ScrollText, Ticket, Users } from "lucide-react";
@@ -65,6 +66,12 @@ export function ConsoleShell({
   const pathname = usePathname();
   const nav = role === "admin" ? NAV : NAV.filter((n) => !ADMIN_ONLY_PATHS.some((p) => n.href === p));
   const notice = useSyncNotice();
+  const tabs = useRef<HTMLElement>(null);
+
+  // The tab bar scrolls sideways on a phone; keep the current page's tab in view.
+  useEffect(() => {
+    tabs.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [pathname]);
 
   return (
     <ToastProvider>
@@ -136,9 +143,9 @@ export function ConsoleShell({
 
         {/* Tab bar — phone and tablet */}
         <nav
+          ref={tabs}
           aria-label="Console"
-          style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}
-          className="fixed inset-x-0 bottom-0 z-40 grid print:hidden border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 flex overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden print:hidden border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
         >
           {nav.map(({ href, short, icon: Icon }) => {
             const active = isActive(pathname, href);
@@ -147,7 +154,7 @@ export function ConsoleShell({
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-[3.5rem] flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold transition-colors ${
+                className={`flex min-h-[3.5rem] min-w-[4.5rem] flex-1 shrink-0 flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold transition-colors ${
                   active ? "text-gold" : "text-ink-muted hover:text-ink"
                 }`}
               >

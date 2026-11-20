@@ -55,7 +55,7 @@ export function SiteHeader() {
             </Link>
           ) : (
             <>
-              <Link href="/login" className="btn btn-ghost hidden px-4 py-2 text-sm min-[420px]:inline-flex">
+              <Link href="/login" className="btn btn-ghost hidden px-4 py-2 text-sm min-[380px]:inline-flex">
                 Log in
               </Link>
               <Link href="/signup" className="btn btn-gold px-4 py-2 text-sm">
@@ -91,13 +91,12 @@ export function SiteHeader() {
               </li>
             ))}
             {!staffIn && !memberIn && (
-              <li>
-                <Link
-                  href="/login"
-                  onClick={() => setOpen(false)}
-                  className="block rounded-lg px-3 py-3 text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink"
-                >
+              <li className="grid grid-cols-2 gap-2 px-1 py-3">
+                <Link href="/login" onClick={() => setOpen(false)} className="btn btn-ghost justify-center py-2.5 text-sm">
                   Log in
+                </Link>
+                <Link href="/signup" onClick={() => setOpen(false)} className="btn btn-gold justify-center py-2.5 text-sm">
+                  Sign up
                 </Link>
               </li>
             )}
