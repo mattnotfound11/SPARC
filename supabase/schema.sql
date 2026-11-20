@@ -33,7 +33,9 @@ grant execute on function public.is_admin() to anon, authenticated;
 -- ---------------------------------------------------------------------------
 create table if not exists public.users (
   id          text primary key,
-  -- Null until the parking office activates the pass and scans the card. The same card however it was typed ("1234-5678-9012" = "123456789012"): one card, one driver.
+  -- The card the member entered at sign-up (null on older records). The pass stays Pending until the parking office activates it.
+  nfc_id      text,
+  -- The same card however it was typed ("1234-5678-9012" = "123456789012"): one card, one driver.
   card_key    text generated always as (regexp_replace(upper(nfc_id), '[-:]', '', 'g')) stored unique,
   -- The university email the member signed up with (one account per email).
   email       text,
