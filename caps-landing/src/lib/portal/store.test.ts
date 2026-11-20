@@ -14,34 +14,34 @@ describe("vehicles", () => {
 
   it("makes the first vehicle active", () => {
     const s = make();
-    expect(s.addVehicle(CARD, { plate: "abc 1234", type: "light" })).toEqual({ ok: true });
+    expect(s.addVehicle(CARD, { plate: "abc 1234" })).toEqual({ ok: true });
     const v = s.get().vehicles[0];
     expect(v.plate).toBe("ABC 1234");
     expect(s.get().activeVehicle[CARD]).toBe(v.id);
   });
 
   it("rejects a bad plate", () => {
-    const r = make().addVehicle(CARD, { plate: "!", type: "light" });
+    const r = make().addVehicle(CARD, { plate: "!" });
     expect(r.ok).toBe(false);
   });
 
   it("allows up to 3 vehicles, then refuses", () => {
     const s = make();
-    for (const p of ["ABC 1111", "ABC 2222", "ABC 3333"]) expect(s.addVehicle(CARD, { plate: p, type: "light" }).ok).toBe(true);
-    const r = s.addVehicle(CARD, { plate: "ABC 4444", type: "light" });
+    for (const p of ["ABC 1111", "ABC 2222", "ABC 3333"]) expect(s.addVehicle(CARD, { plate: p }).ok).toBe(true);
+    const r = s.addVehicle(CARD, { plate: "ABC 4444" });
     expect(r).toEqual({ ok: false, error: "You can register up to 3 vehicles." });
   });
 
   it("refuses a duplicate plate", () => {
     const s = make();
-    s.addVehicle(CARD, { plate: "ABC 1234", type: "light" });
-    expect(s.addVehicle("999999999999", { plate: "abc 1234", type: "light" }).ok).toBe(false);
+    s.addVehicle(CARD, { plate: "ABC 1234" });
+    expect(s.addVehicle("999999999999", { plate: "abc 1234" }).ok).toBe(false);
   });
 
   it("switches the active vehicle", () => {
     const s = make();
-    s.addVehicle(CARD, { plate: "ABC 1111", type: "light" });
-    s.addVehicle(CARD, { plate: "ABC 2222", type: "heavy" });
+    s.addVehicle(CARD, { plate: "ABC 1111" });
+    s.addVehicle(CARD, { plate: "ABC 2222" });
     const second = s.get().vehicles[1];
     expect(s.setActive(CARD, second.id).ok).toBe(true);
     expect(s.get().activeVehicle[CARD]).toBe(second.id);
@@ -49,8 +49,8 @@ describe("vehicles", () => {
 
   it("falls back to another owned vehicle when the active one is removed", () => {
     const s = make();
-    s.addVehicle(CARD, { plate: "ABC 1111", type: "light" });
-    s.addVehicle(CARD, { plate: "ABC 2222", type: "light" });
+    s.addVehicle(CARD, { plate: "ABC 1111" });
+    s.addVehicle(CARD, { plate: "ABC 2222" });
     const [first, second] = s.get().vehicles;
     s.removeVehicle(CARD, first.id);
     expect(s.get().activeVehicle[CARD]).toBe(second.id);
@@ -60,7 +60,7 @@ describe("vehicles", () => {
 
   it("cannot touch another owner's vehicle", () => {
     const s = make();
-    s.addVehicle(CARD, { plate: "ABC 1111", type: "light" });
+    s.addVehicle(CARD, { plate: "ABC 1111" });
     const id = s.get().vehicles[0].id;
     expect(s.removeVehicle("999999999999", id).ok).toBe(false);
     expect(s.setActive("999999999999", id).ok).toBe(false);
@@ -72,7 +72,7 @@ describe("temporary vehicles", () => {
 
   it("is valid until the end of the day and becomes active", () => {
     const s = make();
-    s.addTemporary(CARD, { plate: "RNT 5555", type: "light" }, noon);
+    s.addTemporary(CARD, { plate: "RNT 5555" }, noon);
     const v = s.get().vehicles[0];
     expect(v.kind).toBe("temporary");
     expect(new Date(v.validUntil!).getHours()).toBe(23);
@@ -82,8 +82,8 @@ describe("temporary vehicles", () => {
 
   it("does not count toward the 3-vehicle limit", () => {
     const s = make();
-    for (const p of ["ABC 1111", "ABC 2222", "ABC 3333"]) s.addVehicle(CARD, { plate: p, type: "light" });
-    expect(s.addTemporary(CARD, { plate: "RNT 5555", type: "light" }, noon).ok).toBe(true);
+    for (const p of ["ABC 1111", "ABC 2222", "ABC 3333"]) s.addVehicle(CARD, { plate: p });
+    expect(s.addTemporary(CARD, { plate: "RNT 5555" }, noon).ok).toBe(true);
   });
 });
 
@@ -238,7 +238,7 @@ describe("demo account", () => {
 
 describe("seedDrivers", () => {
   const cards = Array.from({ length: 30 }, (_, i) => `4000000010${String(i).padStart(2, "0")}`);
-  const drivers = cards.map((card) => ({ card, type: "light" as const }));
+  const drivers = cards.map((card) => ({ card }));
 
   it("spreads violations, appeals and strikes, and leaves one card suspended", () => {
     const s = make();
@@ -266,11 +266,11 @@ describe("waitlist and event mode", () => {
 
   it("allows one waitlist request per card, and leaving clears it", () => {
     const s = make();
-    expect(s.joinWaitlist(CARD, "light", now).ok).toBe(true);
-    expect(s.joinWaitlist(CARD, "heavy", now).ok).toBe(false);
+    expect(s.joinWaitlist(CARD, now).ok).toBe(true);
+    expect(s.joinWaitlist(CARD, now).ok).toBe(false);
     s.leaveWaitlist(CARD);
     expect(s.get().waitlist).toEqual([]);
-    expect(s.joinWaitlist(CARD, "heavy", now).ok).toBe(true);
+    expect(s.joinWaitlist(CARD, now).ok).toBe(true);
   });
 
   it("plans an event for a day with closed floors and held bays, and cancels it", () => {
@@ -304,10 +304,10 @@ describe("temporary vehicle entries", () => {
 
   it("queues one review per vehicle per day, and only for a temporary vehicle", () => {
     const s = make();
-    s.addVehicle(CARD, { plate: "ABC 1234", type: "light" });
+    s.addVehicle(CARD, { plate: "ABC 1234" });
     s.flagTemporaryEntry(CARD, now);
     expect(s.get().violations).toHaveLength(0);
-    s.addTemporary(CARD, { plate: "RNT 7788", type: "light" }, now);
+    s.addTemporary(CARD, { plate: "RNT 7788" }, now);
     s.flagTemporaryEntry(CARD, now);
     s.flagTemporaryEntry(CARD, now + 1000);
     const flags = s.get().violations;

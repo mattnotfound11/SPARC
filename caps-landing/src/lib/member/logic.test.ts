@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { LogEntry } from "@/lib/sparc/types";
-import { buildVisits, homeFor, passState, SUGGESTION_MAX, validateSignup, validateSuggestion } from "./logic";
+import { buildVisits, classifySignInError, homeFor, parseEmailLink, passState, SUGGESTION_MAX, validateSignup, validateSuggestion } from "./logic";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-11-20T10:00:00").getTime();
 
 const log = (o: Partial<LogEntry> & Pick<LogEntry, "id" | "event" | "at">): LogEntry => ({
-  visitId: null, nfcId: "1", userId: "u1", userName: "A", slot: "1A", floor: 1, vehicle: "light", ...o,
+  visitId: null, nfcId: "1", userId: "u1", userName: "A", slot: "1A", floor: 1, ...o,
 });
 
 describe("passState", () => {
+  it("is pending when no pass has been activated yet (expiry 0)", () => {
+    expect(passState(0, NOW)).toEqual({ kind: "pending", daysLeft: 0 });
+  });
   it("is expired at or past the expiry time", () => {
     expect(passState(NOW, NOW)).toEqual({ kind: "expired", daysLeft: 0 });
     expect(passState(NOW - DAY, NOW).kind).toBe("expired");
@@ -82,8 +85,40 @@ describe("validateSignup", () => {
     expect(validateSignup({ ...ok, studentId: "" }).studentId).toBeTruthy();
     expect(validateSignup({ ...ok, role: "visitor" }).role).toBeTruthy();
   });
+  it("rejects plus-aliases, since name+1@ and name+2@ reach one mailbox", () => {
+    expect(validateSignup({ ...ok, email: "ana+2@usa.edu.ph" }).email).toBeTruthy();
+    expect(validateSignup({ ...ok, email: "ana.reyes@usa.edu.ph" }).email).toBeUndefined();
+  });
   it("needs an 8+ character password that matches its confirmation", () => {
     expect(validateSignup({ ...ok, password: "short", confirm: "short" }).password).toBeTruthy();
     expect(validateSignup({ ...ok, confirm: "different1" }).confirm).toBeTruthy();
+  });
+});
+
+describe("parseEmailLink", () => {
+  it("recognises a confirmed sign-up link", () => {
+    expect(parseEmailLink("#access_token=abc&refresh_token=def&expires_in=3600&token_type=bearer&type=signup")).toBe("confirmed");
+    expect(parseEmailLink("#access_token=abc&type=email")).toBe("confirmed");
+  });
+  it("recognises an expired or already used link", () => {
+    expect(parseEmailLink("#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired")).toBe("expired");
+    expect(parseEmailLink("#error=access_denied&error_description=expired")).toBe("expired");
+  });
+  it("ignores everything else", () => {
+    expect(parseEmailLink("")).toBeNull();
+    expect(parseEmailLink("#section")).toBeNull();
+    expect(parseEmailLink("#access_token=abc&type=recovery")).toBeNull();
+  });
+});
+
+describe("classifySignInError", () => {
+  it("tells an unconfirmed email apart from a wrong password", () => {
+    expect(classifySignInError({ status: 400, code: "email_not_confirmed" })).toBe("unconfirmed");
+    expect(classifySignInError({ status: 400, code: "invalid_credentials" })).toBe("wrong");
+    expect(classifySignInError({ status: 422 })).toBe("wrong");
+  });
+  it("treats a missing status or a server error as offline", () => {
+    expect(classifySignInError({})).toBe("offline");
+    expect(classifySignInError({ status: 502 })).toBe("offline");
   });
 });

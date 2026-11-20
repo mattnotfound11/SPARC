@@ -12,6 +12,7 @@ import { cardKey } from "@/lib/sparc/store";
 import { buildingTotals, floorStats, timeAgo } from "@/lib/sparc/selectors";
 import type { ScanMode, ScanOutcome } from "@/lib/sparc/types";
 import { Count, EmptyState, PageHeader, Panel, PanelHeader } from "./ui";
+import { FloorPicker } from "./FloorPicker";
 import { ScanResultCard } from "./ScanResultCard";
 
 const SUMMARY: Record<ScanOutcome["status"], string> = {
@@ -21,6 +22,7 @@ const SUMMARY: Record<ScanOutcome["status"], string> = {
   "not-inside": "Not inside",
   expired: "Pass expired",
   "no-pass": "Invalid monthly pass",
+  "needs-floor": "Choose a floor",
   full: "No free slot",
   unregistered: "Unregistered card",
 };
@@ -41,18 +43,32 @@ export function ScanView() {
   const modeLabel = mode === "entry" ? "Entry" : "Exit";
   const [manual, setManual] = useState("");
   const [copied, setCopied] = useState(false);
+  // A valid card waiting for the facilitator to choose the floor; nothing is booked until they do.
+  const [awaiting, setAwaiting] = useState<{ card: string; name: string; walkIn: boolean } | null>(null);
   const onIOS = useIsIOS();
   const shortcutUrl = typeof window === "undefined" ? "" : `${window.location.origin}/admin/scan?mode=${mode}&nfc=`;
 
   // A car that came in on a temporary vehicle is queued for an admin to check
   const tap = useCallback(
     (serial: string) => {
+      setAwaiting(null);
       const out = store.scan(serial, mode);
+      if (out.status === "needs-floor") {
+        setAwaiting({ card: serial, name: out.user.name, walkIn: out.walkIn === true });
+        return out;
+      }
       if (mode === "entry" && out.status === "entered") portal.flagTemporaryEntry(cardKey(out.user.nfcId));
       return out;
     },
     [store, mode],
   );
+
+  function chooseFloor(floor: number) {
+    if (!awaiting) return;
+    const out = store.scan(awaiting.card, "entry", { floor, walkIn: awaiting.walkIn });
+    setAwaiting(null);
+    if (out.status === "entered") portal.flagTemporaryEntry(cardKey(out.user.nfcId));
+  }
   const onScan = useCallback((serial: string) => void tap(serial), [tap]);
   const reader = useNfcReader(onScan);
 
@@ -77,7 +93,7 @@ export function ScanView() {
 
   return (
     <div className="space-y-5 lg:space-y-6">
-      <PageHeader title="Entry / Exit" description="Tap a driver's card to record a vehicle entering or leaving." />
+      <PageHeader title="Entry / Exit" description="Tap a member's card. At entry you then choose which floor the car goes to." />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
         <Panel aria-labelledby="scan-title" className="p-4 sm:p-5">
@@ -94,7 +110,10 @@ export function ScanView() {
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  onClick={() => setMode(id)}
+                  onClick={() => {
+                    setMode(id);
+                    setAwaiting(null);
+                  }}
                   className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border text-[0.9375rem] font-semibold transition-colors ${
                     active ? on : "border-transparent text-ink-muted hover:text-ink"
                   }`}
@@ -189,8 +208,14 @@ export function ScanView() {
           )}
 
           <div className="mt-5" aria-live="polite">
-            {latest ? (
-              <ScanResultCard outcome={latest.outcome} now={now} />
+            {awaiting ? (
+              <FloorPicker name={awaiting.name} walkIn={awaiting.walkIn} stats={stats} onPick={chooseFloor} onCancel={() => setAwaiting(null)} />
+            ) : latest ? (
+              <ScanResultCard
+                outcome={latest.outcome}
+                now={now}
+                onWalkIn={mode === "entry" ? (card) => setAwaiting({ card, name: "Walk-in", walkIn: true }) : undefined}
+              />
             ) : (
               <EmptyState title="Waiting for a card">The result of each tap shows here.</EmptyState>
             )}

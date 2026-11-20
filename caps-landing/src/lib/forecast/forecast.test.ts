@@ -3,8 +3,8 @@ import { buildProfile, clock, forecastDecks, hasHistory, sampleHistory, statusFo
 import type { FloorConfig, LogEntry } from "@/lib/sparc/types";
 
 const config: FloorConfig[] = [
-  { floor: 1, vehicle: "heavy", slots: 4 },
-  { floor: 2, vehicle: "light", slots: 4 },
+  { floor: 1, slots: 4 },
+  { floor: 2, slots: 4 },
 ];
 
 // Monday 16 Nov 2026 is "now"; past Mondays are 9 Nov, 2 Nov ...
@@ -12,7 +12,7 @@ const at = (y: number, m: number, d: number, h: number, min = 0) => new Date(y, 
 const NOW = at(2026, 10, 16, 7, 0);
 
 function entry(floor: number, when: number, event: "entry" | "exit", id: string): LogEntry {
-  return { id, visitId: id, at: when, event, nfcId: "", userId: null, userName: null, slot: null, floor, vehicle: null };
+  return { id, visitId: id, at: when, event, nfcId: "", userId: null, userName: null, slot: null, floor };
 }
 
 /** `cars` cars arrive on `floor` at `h:min` on the given day and stay until `outH`. */
@@ -114,7 +114,7 @@ describe("sampleHistory", () => {
   });
 
   it("gives the lower deck more traffic on a weekday", () => {
-    const logs = sampleHistory([{ floor: 1, vehicle: "heavy", slots: 20 }, { floor: 2, vehicle: "heavy", slots: 20 }], NOW, 14);
+    const logs = sampleHistory([{ floor: 1, slots: 20 }, { floor: 2, slots: 20 }], NOW, 14);
     const weekdayEntries = (floor: number) => logs.filter((l) => l.event === "entry" && l.floor === floor && ![0, 6].includes(new Date(l.at).getDay())).length;
     expect(weekdayEntries(1)).toBeGreaterThan(weekdayEntries(2));
   });

@@ -1,7 +1,6 @@
 import { STRIKE_LIMIT, standingFor } from "./strikes";
 import { TYPE_LABEL } from "./labels";
 import type { PortalState } from "./types";
-import type { VehicleClass } from "@/lib/sparc/types";
 
 export type Notice = {
   id: string;
@@ -20,7 +19,8 @@ const MAX_NOTICES = 30;
  */
 /** What the gate side knows about this driver. All of it is optional: a card the gate doesn't know has none. */
 export type GateContext = {
-  free: Record<VehicleClass, number>;
+  /** Free bays in the whole building right now. */
+  free: number;
   /** When the monthly pass ends. */
   expiresAt?: number;
   /** When the car in the building came in. */
@@ -87,12 +87,12 @@ export function noticesFor(state: PortalState, card: string, gate: GateContext, 
   }
 
   for (const w of (state.waitlist ?? []).filter((x) => x.ownerCard === card)) {
-    if (free[w.vehicle] > 0) {
+    if (free > 0) {
       out.push({
         id: `wait-${w.id}`,
         at: w.createdAt,
         title: "A bay is free",
-        body: `${free[w.vehicle]} ${w.vehicle === "heavy" ? "heavy vehicle" : "light vehicle"} bay${free[w.vehicle] === 1 ? " is" : "s are"} open now.`,
+        body: `${free} bay${free === 1 ? " is" : "s are"} open now.`,
         tone: "live",
       });
     }

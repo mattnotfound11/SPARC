@@ -20,7 +20,7 @@ import {
   type Change,
 } from "./sync";
 
-const ANA: UserInput = { name: "Ana Reyes", studentId: "2022-00456", nfcId: "04:A1:B2:C3", role: "student", vehicle: "light", active: true };
+const ANA: UserInput = { name: "Ana Reyes", studentId: "2022-00456", nfcId: "04:A1:B2:C3", role: "student", active: true };
 
 /** A store the way the console creates it with a database: collision-free ids, no browser storage. */
 function seeded() {
@@ -39,7 +39,7 @@ const noGate = <T extends { gate?: string }>(l: T): T => {
 describe("row mapping", () => {
   it("round-trips users, slots and logs", () => {
     const store = seeded();
-    store.scan("04:A1:B2:C3", "entry");
+    store.scan("04:A1:B2:C3", "entry", { floor: 3 });
     const s = store.getState();
     expect(userFromRow(userToRow(s.users[0]))).toEqual(s.users[0]);
     const taken = s.slots.find((x) => x.status === "occupied")!;
@@ -61,7 +61,7 @@ describe("diffState and tapArgs", () => {
   it("an entry tap becomes one record_tap call with the slot as it was before", () => {
     const store = seeded();
     const before = store.getState();
-    store.scan("04:A1:B2:C3", "entry");
+    store.scan("04:A1:B2:C3", "entry", { floor: 3 });
     const d = diffState(before, store.getState());
     expect(d.slotChanges).toHaveLength(1);
     expect(d.newLogs).toHaveLength(1);
@@ -75,7 +75,7 @@ describe("diffState and tapArgs", () => {
 
   it("an exit tap tells the database who it expects in the slot", () => {
     const store = seeded();
-    store.scan("04:A1:B2:C3", "entry");
+    store.scan("04:A1:B2:C3", "entry", { floor: 3 });
     const before = store.getState();
     const userId = before.users[0].id;
     store.scan("04:A1:B2:C3", "exit");
@@ -87,7 +87,7 @@ describe("diffState and tapArgs", () => {
   it("a refused tap is a scan row only", () => {
     const store = seeded();
     const before = store.getState();
-    store.scan("99:88:77:66", "entry");
+    store.scan("99:88:77:66", "entry", { floor: 3 });
     const args = tapArgs(diffState(before, store.getState()));
     expect(args.p_scan.nfc_id).toBe("99:88:77:66");
     expect(args.p_log).toBeNull();
@@ -105,7 +105,7 @@ describe("diffState and tapArgs", () => {
 describe("hydrate", () => {
   it("replaces the synced tables, and the next tap builds on them", () => {
     const a = seeded();
-    a.scan("04:A1:B2:C3", "entry");
+    a.scan("04:A1:B2:C3", "entry", { floor: 3 });
     const b = createSparcStore(undefined, undefined, { newId: uniqueId });
     b.hydrate(a.getState());
     expect(b.getState().users).toEqual(a.getState().users);
@@ -123,7 +123,7 @@ describe("applyChange", () => {
     const a = seeded();
     const before = a.getState();
     let data = { users: before.users, slots: before.slots, logs: before.logs, scans: before.scans };
-    a.scan("04:A1:B2:C3", "entry");
+    a.scan("04:A1:B2:C3", "entry", { floor: 3 });
     const s = a.getState();
     const taken = s.slots.find((x) => x.status === "occupied")!;
     const changes: Change[] = [
@@ -180,8 +180,8 @@ describe("ids with a shared database", () => {
   it("two devices never produce the same ids", () => {
     const a = seeded();
     const b = seeded();
-    a.scan("04:A1:B2:C3", "entry");
-    b.scan("04:A1:B2:C3", "entry");
+    a.scan("04:A1:B2:C3", "entry", { floor: 3 });
+    b.scan("04:A1:B2:C3", "entry", { floor: 3 });
     expect(a.getState().logs[0].id).not.toBe(b.getState().logs[0].id);
     expect(a.getState().scans[0].id).not.toBe(b.getState().scans[0].id);
     expect(a.getState().users[0].id).not.toBe(b.getState().users[0].id);

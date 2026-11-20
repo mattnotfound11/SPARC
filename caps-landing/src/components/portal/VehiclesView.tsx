@@ -1,29 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Car, CarFront, Check, Plus, Trash2, Truck } from "lucide-react";
+import { Car, CarFront, Check, Plus, Trash2 } from "lucide-react";
 import { Badge, EmptyState, Field, PageHeader, Panel, PanelHeader, useToast } from "@/components/console/ui";
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { portal, normalizePlate } from "@/lib/portal/store";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { MAX_VEHICLES, type Vehicle } from "@/lib/portal/types";
-import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
-import type { VehicleClass } from "@/lib/sparc/types";
-
-function TypeIcon({ type }: { type: VehicleClass }) {
-  const Icon = type === "heavy" ? Truck : CarFront;
-  return <Icon className="size-5" aria-hidden />;
-}
 
 function VehicleForm({ card, temporary, onDone }: { card: string; temporary: boolean; onDone: () => void }) {
   const toast = useToast();
   const [plate, setPlate] = useState("");
-  const [type, setType] = useState<VehicleClass>("light");
   const [error, setError] = useState<string | null>(null);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const input = { plate, type };
+    const input = { plate };
     const result = temporary ? portal.addTemporary(card, input) : portal.addVehicle(card, input);
     if (!result.ok) {
       setError(result.error);
@@ -35,7 +27,7 @@ function VehicleForm({ card, temporary, onDone }: { card: string; temporary: boo
 
   return (
     <form onSubmit={submit} noValidate className="border-t border-line px-4 py-4 sm:px-5">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4">
         <Field label="Plate number" htmlFor="v-plate" error={error ?? undefined}>
           <input
             id="v-plate"
@@ -51,12 +43,6 @@ function VehicleForm({ card, temporary, onDone }: { card: string; temporary: boo
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "v-plate-error" : undefined}
           />
-        </Field>
-        <Field label="Vehicle type" htmlFor="v-type">
-          <select id="v-type" className="c-input w-full" value={type} onChange={(e) => setType(e.target.value as VehicleClass)}>
-            <option value="light">{VEHICLE_LABEL.light}</option>
-            <option value="heavy">{VEHICLE_LABEL.heavy}</option>
-          </select>
         </Field>
       </div>
       {temporary && (
@@ -95,7 +81,7 @@ export function VehiclesView({ card }: { card: string }) {
     return (
       <li key={v.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3.5 last:border-b-0 sm:px-5">
         <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${active ? "bg-gold/15 text-gold" : "bg-white/[0.05] text-ink-soft"}`}>
-          <TypeIcon type={v.type} />
+          <CarFront className="size-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-2 font-mono text-[0.9375rem] font-semibold text-ink">
@@ -108,10 +94,7 @@ export function VehiclesView({ card }: { card: string }) {
             )}
             {v.kind === "temporary" && <Badge tone="crimson">Today only</Badge>}
           </p>
-          <p className="text-sm text-ink-muted">
-            {VEHICLE_LABEL[v.type]}
-            {v.kind === "temporary" && " · entry flagged for review"}
-          </p>
+          <p className="text-sm text-ink-muted">{v.kind === "temporary" ? "Entry flagged for review" : "Registered vehicle"}</p>
         </div>
         <div className="flex items-center gap-1.5">
           {!active && (

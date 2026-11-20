@@ -2,7 +2,6 @@
 
 import { availabilityTone, type FloorStat } from "@/lib/sparc/selectors";
 import { Badge, Count } from "./ui";
-import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
 
 const bar = { crimson: "bg-crimson", gold: "bg-gold", live: "bg-live" } as const;
 
@@ -27,7 +26,6 @@ export function FloorList({
             <div className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-2">
                 <span className="font-display text-[0.9375rem] font-semibold text-ink">Floor {f.floor}</span>
-                <span className="hidden text-xs text-ink-muted min-[420px]:inline">{VEHICLE_LABEL[f.vehicle]}</span>
               </span>
               {f.free === 0 ? (
                 <Badge tone="crimson">Full</Badge>

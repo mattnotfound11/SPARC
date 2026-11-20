@@ -6,7 +6,7 @@ const steps = [
   {
     n: "01",
     title: "Register",
-    body: "Create your SPARC account with your USA email, then add your plate and vehicle type to pair them with your ID.",
+    body: "Create your SPARC account with your USA email and confirm it from your inbox. The parking office then activates your monthly pass.",
   },
   {
     n: "02",

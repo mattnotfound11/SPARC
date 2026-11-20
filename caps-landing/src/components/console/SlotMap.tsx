@@ -5,8 +5,6 @@ import { Car } from "lucide-react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import type { Slot, SlotStatus } from "@/lib/sparc/types";
-import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
-import { VehicleBadge } from "./ui";
 
 gsap.registerPlugin(useGSAP);
 
@@ -74,7 +72,6 @@ export function SlotMap({
 }) {
   const root = useRef<HTMLDivElement>(null);
   const mine = slots.filter((s) => s.floor === floor);
-  const vehicle = mine[0]?.vehicle ?? "light";
   const counts = {
     free: mine.filter((s) => s.status === "free").length,
     occupied: mine.filter((s) => s.status === "occupied").length,
@@ -105,7 +102,6 @@ export function SlotMap({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex items-center gap-2.5">
           <h3 className="font-display text-lg font-semibold text-ink">Floor {floor}</h3>
-          <VehicleBadge vehicle={vehicle} />
         </div>
         <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-ink-muted" aria-label="Legend">
           {(["free", "occupied"] as const).map((s) => (
@@ -128,7 +124,7 @@ export function SlotMap({
         <div data-gate className="mx-auto mb-1 w-4/5 origin-center">
           <div className="h-3 rounded-t-[50%] border-t-2 border-gold/55" />
         </div>
-        <p className="mb-5 text-center text-xs font-medium text-ink-faint">Gate and kiosk · {VEHICLE_LABEL[vehicle]} floor</p>
+        <p className="mb-5 text-center text-xs font-medium text-ink-faint">Gate and kiosk</p>
 
         <div className="space-y-2.5">
           {chunk(mine, ROW).map((row, r) => (

@@ -7,7 +7,6 @@ const input = (nfcId: string): UserInput => ({
   studentId: "",
   nfcId,
   role: "student",
-  vehicle: "light",
   active: true,
 });
 
@@ -16,7 +15,6 @@ const existing = (nfcId: string): RegisteredUser => ({
   nfcId,
   name: "Other",
   role: "student",
-  vehicle: "light",
   active: true,
   createdAt: 0,
   expiresAt: 1,
@@ -141,8 +139,9 @@ describe("event holds", () => {
       const stats = floorStats(config, slots, noon);
       expect(stats.find((f) => f.floor === 3)).toMatchObject({ free: 0, held: 22 });
       expect(stats.find((f) => f.floor === 4)).toMatchObject({ free: 18, held: 4 });
-      // light vehicles skip the closed floor 3 and go to floor 4
-      expect(pickFreeSlot(config, slots, "light", noon)?.floor).toBe(4);
+      // a closed floor offers no bay, an open one does
+      expect(pickFreeSlot(config, slots, 3, noon)).toBeUndefined();
+      expect(pickFreeSlot(config, slots, 4, noon)?.floor).toBe(4);
       // another day: nothing is held
       const other = new Date(2026, 10, 19, 12).getTime();
       expect(floorStats(config, slots, other).every((f) => f.held === 0)).toBe(true);

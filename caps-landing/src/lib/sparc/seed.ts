@@ -4,11 +4,11 @@ import type { FloorConfig, Slot } from "./types";
 
 // 11 rotary towers x 2 pallets per level = 22 slots on every floor, 110 in all.
 export const DEFAULT_CONFIG: FloorConfig[] = [
-  { floor: 1, vehicle: "heavy", slots: 22 },
-  { floor: 2, vehicle: "heavy", slots: 22 },
-  { floor: 3, vehicle: "light", slots: 22 },
-  { floor: 4, vehicle: "light", slots: 22 },
-  { floor: 5, vehicle: "light", slots: 22 },
+  { floor: 1, slots: 22 },
+  { floor: 2, slots: 22 },
+  { floor: 3, slots: 22 },
+  { floor: 4, slots: 22 },
+  { floor: 5, slots: 22 },
 ];
 
 /** The one entrance and exit of the mechanical parking building; every tap is logged against it. */
@@ -22,12 +22,11 @@ export function slotCode(floor: number, index: number) {
 }
 
 export function buildSlots(config: FloorConfig[]): Slot[] {
-  return config.flatMap(({ floor, vehicle, slots }) =>
+  return config.flatMap(({ floor, slots }) =>
     Array.from({ length: slots }, (_, i) => ({
       code: slotCode(floor, i + 1),
       floor,
       index: i + 1,
-      vehicle,
       status: "free" as const,
     })),
   );

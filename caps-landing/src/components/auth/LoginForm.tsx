@@ -1,33 +1,77 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
 import { AuthTabs } from "./AuthTabs";
 import { FormNotice } from "./FormNotice";
-import { GoogleIcon } from "./GoogleIcon";
-import { homeFor } from "@/lib/member/logic";
+import { homeFor, parseEmailLink } from "@/lib/member/logic";
 import { DEMO_MEMBER, DEMO_PASSWORD } from "@/lib/mockSession";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { mockAllowed, signInAccount, useMemberSession } from "@/lib/session";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { mockAllowed, resendConfirmation, signInAccount, useMemberSession, type SignInFailure } from "@/lib/session";
 import { PasswordField, TextField } from "./fields";
 
-type Status = "idle" | "submitting" | "unavailable";
+type Status = "idle" | "submitting";
+
+/**
+ * What the email link that brought the student here said. Read once when the page loads, before the
+ * auth library clears the address fragment, and not during the server render (there is no address then).
+ */
+const EMAIL_LINK = typeof window === "undefined" ? null : parseEmailLink(window.location.hash);
+
+const subscribeNever = () => () => {};
+
+/** How long a student waits before asking for the confirmation email again. */
+const RESEND_WAIT_SECONDS = 60;
 
 export function LoginForm() {
   const root = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const member = useMemberSession();
   const [status, setStatus] = useState<Status>("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<SignInFailure | null>(null);
+  // False while the page is server-rendered and while it hydrates, so the banner never mismatches the HTML.
+  const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
+  const [linkShown, setLinkShown] = useState(true);
+  const link = mounted && linkShown ? EMAIL_LINK : null;
+  const [lastEmail, setLastEmail] = useState("");
+  const [wait, setWait] = useState(0);
+  const [resendNote, setResendNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const error = failure?.error ?? null;
   useAuthMotion(root);
 
-  // Already signed in as a member: go straight to the dashboard (not mid sign-in, so errors stay put).
+  // Arrived from the confirmation email: show the result, and drop the session the link started so the
+  // student signs in themselves. The address fragment is cleaned either way.
   useEffect(() => {
-    if (member.status === "in" && status !== "submitting") router.replace("/member");
+    if (!EMAIL_LINK) return;
+    const db = getSupabase();
+    // getSession waits until the library has finished reading the link, so the sign-out can't race it.
+    const finish = () => window.history.replaceState(null, "", window.location.pathname);
+    if (EMAIL_LINK === "confirmed" && db) void db.auth.getSession().then(() => db.auth.signOut({ scope: "local" })).finally(finish);
+    else finish();
+  }, []);
+
+  // Already signed in as a member: go straight to the dashboard (not mid sign-in, so errors stay put,
+  // and not when they just confirmed their email, so the sign-in step is the one they see).
+  useEffect(() => {
+    if (member.status === "in" && status !== "submitting" && !EMAIL_LINK) router.replace("/member");
   }, [member.status, status, router]);
+
+  // Counts the resend wait down.
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = window.setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [wait]);
+
+  async function resend() {
+    setResendNote(null);
+    setWait(RESEND_WAIT_SECONDS);
+    const problem = await resendConfirmation(lastEmail);
+    setResendNote(problem ? { ok: false, text: problem } : { ok: true, text: `Sent to ${lastEmail.trim().toLowerCase()}. Check spam if you don't see it.` });
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,15 +79,18 @@ export function LoginForm() {
     const email = String(data.get("identifier") ?? "");
     const password = String(data.get("password") ?? "");
     if (!email.trim() || !password) {
-      setError("Enter your institutional email and password.");
+      setFailure({ error: "Enter your institutional email and password." });
       return;
     }
-    setError(null);
+    setFailure(null);
+    setResendNote(null);
+    setLinkShown(false);
+    setLastEmail(email);
     setStatus("submitting");
     const result = await signInAccount(email, password);
     if ("error" in result) {
       setStatus("idle");
-      setError(result.error);
+      setFailure(result);
     } else {
       router.replace(homeFor(result.type));
     }
@@ -88,28 +135,41 @@ export function LoginForm() {
           </a>
         </div>
 
-        <button
-          type="button"
-          data-anim
-          onClick={() => setStatus("unavailable")}
-          className="mb-3 flex h-[3.25rem] w-full items-center justify-center gap-3 rounded-lg border border-line-strong bg-surface-raised text-base font-semibold text-ink transition-colors hover:border-gold/50"
-        >
-          <GoogleIcon className="size-5" />
-          Continue with Google
-        </button>
+        {link === "confirmed" && (
+          <div role="status" className="mb-3">
+            <FormNotice>Email confirmed. Sign in with your email and password to continue.</FormNotice>
+          </div>
+        )}
+
+        {link === "expired" && (
+          <div role="alert" className="mb-3">
+            <FormNotice>
+              That confirmation link has expired or was already used. If you confirmed before, just sign in. If not, sign in below and we&apos;ll
+              offer to send a new one.
+            </FormNotice>
+          </div>
+        )}
 
         {error && (
           <div role="alert" className="mb-3">
             <FormNotice>{error}</FormNotice>
-          </div>
-        )}
-
-        {status === "unavailable" && (
-          <div className="mb-3">
-            <FormNotice>
-              Sign-in isn&apos;t live yet — the SPARC account service hasn&apos;t been connected to this
-              portal. Your details were not sent anywhere.
-            </FormNotice>
+            {failure?.kind === "unconfirmed" && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <button
+                  type="button"
+                  onClick={resend}
+                  disabled={wait > 0}
+                  className="font-semibold text-ink underline underline-offset-4 transition-colors enabled:hover:text-gold disabled:cursor-not-allowed disabled:text-ink-muted disabled:no-underline"
+                >
+                  {wait > 0 ? `Send again in ${wait}s` : "Send the confirmation email again"}
+                </button>
+              </div>
+            )}
+            {resendNote && (
+              <p role="status" className={`mt-2 text-sm ${resendNote.ok ? "text-live" : "text-crimson"}`}>
+                {resendNote.text}
+              </p>
+            )}
           </div>
         )}
 

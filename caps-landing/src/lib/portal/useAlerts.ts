@@ -4,7 +4,6 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
 import { floorStats } from "@/lib/sparc/selectors";
 import { cardKey, type SparcState } from "@/lib/sparc/store";
-import type { VehicleClass } from "@/lib/sparc/types";
 import { noticesFor, type GateContext } from "./notifications";
 import { usePortalState } from "./usePortal";
 
@@ -16,11 +15,9 @@ export function useSparcStateOrNull(): SparcState | null {
   return useSyncExternalStore(store ? store.subscribe : none, store ? store.getState : () => null, () => null);
 }
 
-/** Free bays per vehicle class right now. */
-export function freeBays(slots: SparcState["slots"] | undefined): Record<VehicleClass, number> {
-  const free = { light: 0, heavy: 0 };
-  for (const s of slots ?? []) if (s.status === "free") free[s.vehicle]++;
-  return free;
+/** Free bays in the whole building right now. */
+export function freeBays(slots: SparcState["slots"] | undefined): number {
+  return (slots ?? []).filter((s) => s.status === "free").length;
 }
 
 /** The registered driver behind a campus card, and the bay they are parked in, if any. */
@@ -67,7 +64,7 @@ export function useAlerts(card: string) {
   const sparc = useSparcStateOrNull();
   const seen = useSyncExternalStore(subscribeSeen, () => readSeen(card), () => 0);
   const gate = useMemo<GateContext>(() => {
-    if (!sparc) return { free: { light: 0, heavy: 0 } };
+    if (!sparc) return { free: 0 };
     const user = sparc.users.find((u) => cardKey(u.nfcId) === card);
     const slot = user ? sparc.slots.find((s) => s.occupant?.userId === user.id) : undefined;
     return {

@@ -34,7 +34,7 @@ export function RegisterPhone() {
           {[
             { icon: User, label: "Full name", value: "Dexter M. Alvarez", done: true },
             { icon: Mail, label: "University email", value: "d.alvarez@usa.edu.ph", done: true },
-            { icon: Car, label: "Vehicle", value: "4-Wheel (Car/SUV)", done: false },
+            { icon: Car, label: "Student ID", value: "2024-10037", done: false },
           ].map(({ icon: Icon, label, value, done }) => (
             <div key={label} className="rounded-2xl border border-line-strong bg-field px-4 py-3.5">
               <p className="text-[12px] text-ink-muted">{label}</p>

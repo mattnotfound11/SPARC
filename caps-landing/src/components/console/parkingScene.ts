@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import gsap from "gsap";
-import type { FloorConfig, Slot, SlotStatus, VehicleClass } from "@/lib/sparc/types";
+import type { FloorConfig, Slot, SlotStatus } from "@/lib/sparc/types";
 
 export type ParkingTarget = { kind: "floor"; floor: number } | { kind: "slot"; code: string };
 
@@ -67,7 +67,10 @@ type FloorModel = {
 
 type Extra = { group: THREE.Group; tracked: Tracked[]; anim: { lift: number; fade: number } };
 
-function carGeometry(vehicle: VehicleClass) {
+/** The two car models the scenes can draw. Every parked car is drawn as the regular one now; there is no vehicle size. */
+type CarClass = "heavy" | "light";
+
+function carGeometry(vehicle: CarClass) {
   const suv = vehicle === "heavy";
   const L = suv ? 4.75 : 4.4;
   const W = suv ? 1.95 : 1.8;
@@ -195,7 +198,7 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
   // OrbitControls sets "none"; pan-y lets a vertical swipe on a phone still scroll the page.
   canvas.style.touchAction = "pan-y";
 
-  const carGeometries: Record<VehicleClass, THREE.BufferGeometry> = { light: carGeometry("light"), heavy: carGeometry("heavy") };
+  const carGeometries: Record<CarClass, THREE.BufferGeometry> = { light: carGeometry("light"), heavy: carGeometry("heavy") };
   const frame = frameGeometry();
   const hoverFrame = new THREE.Mesh(frame, new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.85 }));
   const selectFrame = new THREE.Mesh(frame, new THREE.MeshBasicMaterial({ color: "#ffc424" }));
@@ -613,7 +616,7 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
     model.texture.needsUpdate = true;
   }
 
-  function placeCars(model: FloorModel, vehicle: VehicleClass) {
+  function placeCars(model: FloorModel, vehicle: CarClass) {
     if (model.cars) {
       model.group.remove(model.cars);
       model.cars.dispose();
@@ -819,12 +822,12 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
     }
     for (const model of models) {
       const mine = slots.filter((s) => s.floor === model.floor);
-      const key = mine.map((s) => `${s.code}:${s.status}:${s.vehicle}`).join();
+      const key = mine.map((s) => `${s.code}:${s.status}`).join();
       if (key === model.key) continue;
       model.key = key;
       model.byIndex = new Map(mine.map((s) => [s.index, s]));
       paint(model);
-      placeCars(model, sorted.find((f) => f.floor === model.floor)?.vehicle ?? "light");
+      placeCars(model, "light");
     }
     if (rebuilt) {
       goTo(view, false);

@@ -1,5 +1,5 @@
 import { MAX_VEHICLES, type Appeal, type EventMode, type PortalState, type Vehicle, type VisitorPass, type Violation, type WaitEntry } from "./types";
-import type { ActionResult, VehicleClass } from "@/lib/sparc/types";
+import type { ActionResult } from "@/lib/sparc/types";
 
 /*
  * Driver portal data layer. Browser-local for now (no backend connected). Everything the portal
@@ -68,8 +68,8 @@ function startOfDay(ms: number) {
 export type PortalStore = {
   get: () => PortalState;
   subscribe: (fn: () => void) => () => void;
-  addVehicle: (ownerCard: string, input: { plate: string; type: VehicleClass }) => ActionResult;
-  addTemporary: (ownerCard: string, input: { plate: string; type: VehicleClass }, now?: number) => ActionResult;
+  addVehicle: (ownerCard: string, input: { plate: string }) => ActionResult;
+  addTemporary: (ownerCard: string, input: { plate: string }, now?: number) => ActionResult;
   removeVehicle: (ownerCard: string, id: string) => ActionResult;
   setActive: (ownerCard: string, id: string) => ActionResult;
   appeal: (violationId: string, note: string, now?: number) => ActionResult;
@@ -82,7 +82,7 @@ export type PortalStore = {
   seedSample: (ownerCard: string, now?: number) => void;
   /** Demo only: fills the demo account with vehicles, violations, an appeal and visitor passes. Safe to call twice. */
   /** The driver asks to be told when a bay of this class is free. One request per card. */
-  joinWaitlist: (ownerCard: string, vehicle: VehicleClass, now?: number) => ActionResult;
+  joinWaitlist: (ownerCard: string, now?: number) => ActionResult;
   leaveWaitlist: (ownerCard: string) => void;
   /** The marshal plans an event: a day, floors to close and bays to hold. Null turns it off. */
   setEvent: (input: EventInput | null, now?: number) => ActionResult;
@@ -92,7 +92,7 @@ export type PortalStore = {
   flagTemporaryEntry: (ownerCard: string, now?: number) => void;
   seedDemo: (now?: number) => void;
   /** Demo only: gives the admin sample drivers a vehicle each, violations, appeals, strikes and a few visitor passes. Safe to call twice. */
-  seedDrivers: (drivers: { card: string; type: VehicleClass }[], now?: number) => void;
+  seedDrivers: (drivers: { card: string }[], now?: number) => void;
 };
 
 export function createPortalStore(storage: () => PortalState = load, write: (s: PortalState) => void = save): PortalStore {
@@ -117,27 +117,26 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
-    addVehicle(ownerCard, { plate, type }) {
+    addVehicle(ownerCard, { plate }) {
       const owned = state.vehicles.filter((v) => v.ownerCard === ownerCard && v.kind === "owned");
       if (owned.length >= MAX_VEHICLES) return { ok: false, error: `You can register up to ${MAX_VEHICLES} vehicles.` };
       const bad = validatePlate(plate);
       if (bad) return { ok: false, error: bad };
       const p = normalizePlate(plate);
       if (state.vehicles.some((v) => v.plate === p && v.kind === "owned")) return { ok: false, error: "That plate is already registered." };
-      const vehicle: Vehicle = { id: idFor("veh"), ownerCard, plate: p, type, kind: "owned", createdAt: Date.now() };
+      const vehicle: Vehicle = { id: idFor("veh"), ownerCard, plate: p, kind: "owned", createdAt: Date.now() };
       const activeVehicle = { ...state.activeVehicle };
       if (!activeVehicle[ownerCard]) activeVehicle[ownerCard] = vehicle.id;
       set({ ...state, vehicles: [...state.vehicles, vehicle], activeVehicle });
       return { ok: true };
     },
-    addTemporary(ownerCard, { plate, type }, now = Date.now()) {
+    addTemporary(ownerCard, { plate }, now = Date.now()) {
       const bad = validatePlate(plate);
       if (bad) return { ok: false, error: bad };
       const vehicle: Vehicle = {
         id: idFor("tmp"),
         ownerCard,
         plate: normalizePlate(plate),
-        type,
         kind: "temporary",
         validUntil: endOfToday(now),
         createdAt: now,
@@ -271,7 +270,6 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
         id: idFor("veh"),
         ownerCard: d.card,
         plate: `SMP ${1000 + i * 37}`, // the plate the violations above carry
-        type: d.type,
         kind: "owned" as const,
         createdAt: now - 45 * day,
       }));
@@ -308,10 +306,10 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
         passes: [...state.passes, ...newPasses],
       });
     },
-    joinWaitlist(ownerCard, vehicle, now = Date.now()) {
+    joinWaitlist(ownerCard, now = Date.now()) {
       const list = state.waitlist ?? [];
       if (list.some((w) => w.ownerCard === ownerCard)) return { ok: false, error: "You are already on the waitlist." };
-      const entry: WaitEntry = { id: idFor("wait"), ownerCard, vehicle, createdAt: now };
+      const entry: WaitEntry = { id: idFor("wait"), ownerCard, createdAt: now };
       set({ ...state, waitlist: [...list, entry] });
       return { ok: true };
     },
@@ -350,8 +348,8 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
     seedDemo(now = Date.now()) {
       const ownerCard = DEMO_CARD;
       const day = 24 * 60 * 60 * 1000;
-      const car: Vehicle = { id: idFor("veh"), ownerCard, plate: "DEM 1234", type: "light", kind: "owned", createdAt: now - 60 * day };
-      const truck: Vehicle = { id: idFor("veh"), ownerCard, plate: "TRK 5678", type: "heavy", kind: "owned", createdAt: now - 30 * day };
+      const car: Vehicle = { id: idFor("veh"), ownerCard, plate: "DEM 1234", kind: "owned", createdAt: now - 60 * day };
+      const truck: Vehicle = { id: idFor("veh"), ownerCard, plate: "TRK 5678", kind: "owned", createdAt: now - 30 * day };
       const plate = car.plate;
       const appealed: Violation = { id: idFor("vio"), ownerCard, type: "overnight", at: now - 1 * day, plate, status: "appealed" };
       const violations: Violation[] = [

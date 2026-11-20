@@ -1,17 +1,11 @@
-import type { FloorConfig, LogEntry, RegisteredUser, Slot, VehicleClass } from "./types";
+import type { FloorConfig, LogEntry, RegisteredUser, Slot } from "./types";
 import type { SparcState } from "./store";
 import { DAYS_OF_HISTORY, startOfDay } from "./seed";
 import { holdsFor } from "@/lib/portal/event";
 import { portal } from "@/lib/portal/store";
 
-export const VEHICLE_LABEL: Record<VehicleClass, string> = {
-  heavy: "SUV / Van",
-  light: "Light vehicle",
-};
-
 export type FloorStat = {
   floor: number;
-  vehicle: VehicleClass;
   total: number;
   /** Free bays after event holds: a closed floor offers none, a reserved floor offers fewer. */
   free: number;
@@ -29,7 +23,6 @@ export function floorStats(config: FloorConfig[], slots: Slot[], now: number = D
     const held = !holds ? 0 : holds.closed.includes(f.floor) ? free : Math.min(holds.reserved, free);
     return {
       floor: f.floor,
-      vehicle: f.vehicle,
       total: mine.length,
       free: free - held,
       occupied,
@@ -38,15 +31,13 @@ export function floorStats(config: FloorConfig[], slots: Slot[], now: number = D
   });
 }
 
-/** The bay the gate gives the next car of this class, leaving out floors and bays an event is holding. */
-export function pickFreeSlot(config: FloorConfig[], slots: Slot[], vehicle: VehicleClass, now: number = Date.now()): Slot | undefined {
+/** The first free bay on the floor the facilitator chose, leaving out a floor or bays an event is holding. */
+export function pickFreeSlot(config: FloorConfig[], slots: Slot[], floor: number, now: number = Date.now()): Slot | undefined {
+  if (!config.some((f) => f.floor === floor)) return undefined;
   const holds = holdsFor(portal.get().event, now);
-  for (const f of config.filter((c) => c.vehicle === vehicle)) {
-    if (holds?.closed.includes(f.floor)) continue;
-    const free = slots.filter((s) => s.floor === f.floor && s.status === "free");
-    if (free.length > (holds?.reserved ?? 0)) return free[0];
-  }
-  return undefined;
+  if (holds?.closed.includes(floor)) return undefined;
+  const free = slots.filter((s) => s.floor === floor && s.status === "free");
+  return free.length > (holds?.reserved ?? 0) ? free[0] : undefined;
 }
 
 export function buildingTotals(stats: FloorStat[]) {
@@ -193,9 +184,14 @@ export function formatDate(ms: number) {
   return new Date(ms).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 }
 
-/** A monthly pass that has run past its expiry date. */
+/** A member who signed up but whose pass the parking office hasn't activated yet. */
+export function isPending(user: RegisteredUser) {
+  return user.expiresAt === 0;
+}
+
+/** A monthly pass that has run past its expiry date. A pending member never had one, so isn't expired. */
 export function isExpired(user: RegisteredUser, now: number) {
-  return user.expiresAt <= now;
+  return !isPending(user) && user.expiresAt <= now;
 }
 
 /** Expired, or due to lapse within the given number of days. */
@@ -236,11 +232,12 @@ export function matchesLog(l: LogEntry, query: string) {
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const EXPIRING_DAYS = 5;
 
-export type PassStatus = { state: "active" | "expiring" | "expired" | "suspended"; daysLeft: number };
+export type PassStatus = { state: "pending" | "active" | "expiring" | "expired" | "suspended"; daysLeft: number };
 
 /** What the scanner shows about a driver's monthly pass. */
 export function passStatus(user: RegisteredUser, now: number): PassStatus {
   const daysLeft = Math.max(0, Math.ceil((user.expiresAt - now) / DAY_MS));
+  if (isPending(user)) return { state: "pending", daysLeft: 0 };
   if (!user.active) return { state: "suspended", daysLeft };
   if (user.expiresAt <= now) return { state: "expired", daysLeft: 0 };
   return { state: daysLeft <= EXPIRING_DAYS ? "expiring" : "active", daysLeft };

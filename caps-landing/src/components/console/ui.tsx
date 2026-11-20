@@ -3,8 +3,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { CheckCircle2, CircleAlert, X } from "lucide-react";
 import { useCountTo } from "@/hooks/useConsoleMotion";
-import type { VehicleClass } from "@/lib/sparc/types";
-import { VEHICLE_LABEL } from "@/lib/sparc/selectors";
 
 export function PageHeader({
   title,
@@ -90,10 +88,6 @@ export function Badge({
       {children}
     </span>
   );
-}
-
-export function VehicleBadge({ vehicle }: { vehicle: VehicleClass }) {
-  return <Badge>{VEHICLE_LABEL[vehicle]}</Badge>;
 }
 
 export function EmptyState({

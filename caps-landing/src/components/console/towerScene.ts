@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import gsap from "gsap";
-import type { FloorConfig, Slot, SlotStatus, VehicleClass } from "@/lib/sparc/types";
+import type { FloorConfig, Slot, SlotStatus } from "@/lib/sparc/types";
 
 /*
  * Mechanical (rotary) parking towers. Each tower is a lattice mast with car pallets
@@ -57,7 +57,6 @@ type Fadeable = { material: THREE.Material & { opacity: number }; base: number }
 
 type Level = {
   floor: number;
-  vehicle: VehicleClass;
   y: number;
   group: THREE.Group;
   pallets: THREE.InstancedMesh;
@@ -158,7 +157,10 @@ function palletGeometry() {
   return merged;
 }
 
-function carGeometry(vehicle: VehicleClass) {
+/** The two car models the scenes can draw. Every parked car is drawn as the regular one now; there is no vehicle size. */
+type CarClass = "heavy" | "light";
+
+function carGeometry(vehicle: CarClass) {
   const suv = vehicle === "heavy";
   const L = suv ? 4.75 : 4.4;
   const W = suv ? 1.95 : 1.8;
@@ -288,7 +290,7 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
 
   const palletGeo = palletGeometry();
   const lampGeo = bar(0.9, 0.09, 0.09, 0, 0.3, PALLET_L / 2 - 0.05);
-  const carGeos: Record<VehicleClass, THREE.BufferGeometry> = { light: carGeometry("light"), heavy: carGeometry("heavy") };
+  const carGeos: Record<CarClass, THREE.BufferGeometry> = { light: carGeometry("light"), heavy: carGeometry("heavy") };
   const ring = ringGeometry();
   const hoverRing = new THREE.Mesh(ring, new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.85 }));
   const selectRing = new THREE.Mesh(ring, new THREE.MeshBasicMaterial({ color: "#ffc424" }));
@@ -423,7 +425,7 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
 
     const pallets = new THREE.InstancedMesh(palletGeo, fadeable(fade, new THREE.MeshStandardMaterial({ color: "#ffffff", metalness: 0.3, roughness: 0.55 })), count);
     const lamps = new THREE.InstancedMesh(lampGeo, fadeable(fade, new THREE.MeshBasicMaterial({ color: "#ffffff" })), count);
-    const cars = new THREE.InstancedMesh(carGeos[config.vehicle], fadeable(fade, new THREE.MeshStandardMaterial({ color: "#ffffff", vertexColors: true, metalness: 0.4, roughness: 0.42 })), count);
+    const cars = new THREE.InstancedMesh(carGeos.light, fadeable(fade, new THREE.MeshStandardMaterial({ color: "#ffffff", vertexColors: true, metalness: 0.4, roughness: 0.42 })), count);
     for (const mesh of [pallets, cars]) {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -459,7 +461,6 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
     scene.add(group);
     return {
       floor: config.floor,
-      vehicle: config.vehicle,
       y,
       group,
       pallets,
@@ -510,7 +511,7 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
 
       const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(slot.code, LABEL[slot.status]), transparent: true, depthTest: false }));
       label.scale.set(1.5, 0.68, 1);
-      label.position.set(x, level.y + (level.vehicle === "heavy" ? 2.35 : 2.05), z + (rotY ? -1.4 : 1.4));
+      label.position.set(x, level.y + 2.05, z + (rotY ? -1.4 : 1.4));
       label.renderOrder = 2;
       level.labels.add(label);
     }
@@ -709,7 +710,7 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
 
   function setData(config: FloorConfig[], slots: Slot[]) {
     const sorted = [...config].sort((a, b) => a.floor - b.floor);
-    const shape = sorted.map((f) => `${f.floor}:${f.slots}:${f.vehicle}`).join();
+    const shape = sorted.map((f) => `${f.floor}:${f.slots}`).join();
     const rebuilt = shape !== structureKey;
     if (rebuilt) {
       structureKey = shape;

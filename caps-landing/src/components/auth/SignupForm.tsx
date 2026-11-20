@@ -1,16 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle, MailCheck } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
 import { MEMBER_EMAIL_DOMAIN, MIN_PASSWORD, validateSignup, type SignupErrors } from "@/lib/member/logic";
-import { signUpMember } from "@/lib/session";
+import { resendConfirmation, signUpMember } from "@/lib/session";
 import { AuthTabs } from "./AuthTabs";
 import { FormNotice } from "./FormNotice";
 import { PasswordField, SelectField, TextField } from "./fields";
 
 type Status = "idle" | "submitting" | "sent";
+
+/** How long a student waits before asking for the confirmation email again. */
+const RESEND_WAIT_SECONDS = 60;
 
 const ID_LABEL = { student: "Student ID", personnel: "Employee ID" } as const;
 
@@ -29,7 +32,24 @@ export function SignupForm() {
   const [errors, setErrors] = useState<SignupErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState("");
+  const [exists, setExists] = useState(false);
+  const [wait, setWait] = useState(RESEND_WAIT_SECONDS);
+  const [resendNote, setResendNote] = useState<{ ok: boolean; text: string } | null>(null);
   useAuthMotion(root);
+
+  // Counts the resend wait down once the "Check your email" screen is showing.
+  useEffect(() => {
+    if (status !== "sent" || wait <= 0) return;
+    const t = window.setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [status, wait]);
+
+  async function resend() {
+    setResendNote(null);
+    setWait(RESEND_WAIT_SECONDS);
+    const problem = await resendConfirmation(sentTo);
+    setResendNote(problem ? { ok: false, text: problem } : { ok: true, text: `Sent again to ${sentTo}. Check spam if you don't see it.` });
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,6 +65,7 @@ export function SignupForm() {
     const found = validateSignup(input);
     setErrors(found);
     setFailure(null);
+    setExists(false);
     if (Object.keys(found).length) {
       event.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
       return;
@@ -54,8 +75,13 @@ export function SignupForm() {
     if ("error" in result) {
       setStatus("idle");
       setFailure(result.error);
+    } else if ("exists" in result) {
+      setStatus("idle");
+      setExists(true);
     } else {
       setSentTo(input.email.trim().toLowerCase());
+      setWait(RESEND_WAIT_SECONDS);
+      setResendNote(null);
       setStatus("sent");
     }
   }
@@ -72,9 +98,34 @@ export function SignupForm() {
           account, then sign in.
         </p>
         <p data-anim className="mt-3 text-sm text-ink-muted">
-          Your parking pass is linked once you confirm, if your name and ID match your registration with the parking office. No email after a
-          few minutes? Check spam, or ask the parking office to link your account.
+          Clicking it confirms the address is yours. Then sign in on the next page. The parking office activates your monthly pass and your card
+          after that, and your pass page shows it as pending until then.
         </p>
+        <div data-anim className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <button
+            type="button"
+            onClick={resend}
+            disabled={wait > 0}
+            className="font-semibold text-ink underline underline-offset-4 transition-colors enabled:hover:text-gold disabled:cursor-not-allowed disabled:text-ink-muted disabled:no-underline"
+          >
+            {wait > 0 ? `Resend email in ${wait}s` : "Resend email"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStatus("idle");
+              setResendNote(null);
+            }}
+            className="text-ink-muted underline underline-offset-4 transition-colors hover:text-ink"
+          >
+            Wrong address? Start over
+          </button>
+        </div>
+        {resendNote && (
+          <p role="status" className={`mt-3 text-sm ${resendNote.ok ? "text-live" : "text-crimson"}`}>
+            {resendNote.text}
+          </p>
+        )}
         <Link
           data-anim
           href="/login"
@@ -162,6 +213,18 @@ export function SignupForm() {
             <FieldError id="su-confirm-err" message={errors.confirm} />
           </div>
         </div>
+
+        {exists && (
+          <div role="alert" className="mb-3">
+            <FormNotice>
+              That email already has an account.{" "}
+              <Link href="/login" className="font-semibold text-ink underline underline-offset-2">
+                Log in instead
+              </Link>
+              . If you never confirmed it, log in and we&apos;ll offer to send the email again.
+            </FormNotice>
+          </div>
+        )}
 
         {failure && (
           <div role="alert" className="mb-3">

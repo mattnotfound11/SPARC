@@ -10,7 +10,7 @@ const NOW = at(10, 17, 20);
 const nov = months(NOW)[0];
 
 function log(id: string, when: number, event: "entry" | "exit", floor: number): LogEntry {
-  return { id: `${id}-${event}`, visitId: id, at: when, event, nfcId: "", userId: null, userName: null, slot: null, floor, vehicle: null };
+  return { id: `${id}-${event}`, visitId: id, at: when, event, nfcId: "", userId: null, userName: null, slot: null, floor };
 }
 const visit = (id: string, floor: number, from: number, to: number) => [log(id, from, "entry", floor), log(id, to, "exit", floor)];
 

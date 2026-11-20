@@ -5,7 +5,7 @@ import type { PortalState, Violation } from "./types";
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date(2026, 10, 16, 10).getTime();
 const CARD = "123456789012";
-const free = { light: 0, heavy: 0 };
+const free = 5;
 const empty = (): PortalState => ({ vehicles: [], activeVehicle: {}, violations: [], appeals: [], passes: [] });
 const v = (id: string, status: Violation["status"], daysAgo: number, decided?: number): Violation => ({
   id,
@@ -45,10 +45,10 @@ describe("noticesFor", () => {
     const s: PortalState = {
       ...empty(),
       passes: [{ id: "p", code: "C", hostCard: CARD, guestName: "Maria", plate: "ABC 1234", date: now, purpose: "x", createdAt: now - DAY, usedAt: now - 1000 }],
-      waitlist: [{ id: "w", ownerCard: CARD, vehicle: "light", createdAt: now - 2000 }],
+      waitlist: [{ id: "w", ownerCard: CARD, createdAt: now - 2000 }],
     };
-    expect(noticesFor(s, CARD, { free: { light: 0, heavy: 3 } }, now).map((n) => n.title)).toEqual(["Maria arrived"]);
-    expect(noticesFor(s, CARD, { free: { light: 2, heavy: 0 } }, now).map((n) => n.title)).toContain("A bay is free");
+    expect(noticesFor(s, CARD, { free: 0 }, now).map((n) => n.title)).toEqual(["Maria arrived"]);
+    expect(noticesFor(s, CARD, { free: 2 }, now).map((n) => n.title)).toContain("A bay is free");
   });
 
   it("warns about a pass ending soon, a long stay and full levels", () => {

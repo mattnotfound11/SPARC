@@ -5,7 +5,7 @@ import { ArrowLeftFromLine, ArrowRightToLine, Download, Search } from "lucide-re
 import { useEnter } from "@/hooks/useConsoleMotion";
 import { downloadCsv } from "@/lib/sparc/csv";
 import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
-import { VEHICLE_LABEL, dayRanges, formatDateTime, matchesLog, timeAgo } from "@/lib/sparc/selectors";
+import { dayRanges, formatDateTime, matchesLog, timeAgo } from "@/lib/sparc/selectors";
 import type { LogEntry, LogEvent, UserRole } from "@/lib/sparc/types";
 import { Badge, EmptyState, PageHeader, Panel, useToast } from "./ui";
 
@@ -78,7 +78,7 @@ export function LogsView() {
 
   function exportRows() {
     downloadCsv(`sparc-audit-log-${new Date().toISOString().slice(0, 10)}.csv`, [
-      ["Time", "Event", "Driver", "Student ID", "Role", "Slot", "Vehicle"],
+      ["Time", "Event", "Driver", "Student ID", "Role", "Floor", "Slot"],
       ...rows.map((l) => {
         const role = roleOf(l);
         return [
@@ -87,8 +87,8 @@ export function LogsView() {
           l.userName ?? "Unregistered",
           l.nfcId,
           role ? ROLE_LABEL[role] : "",
+          l.floor ?? "",
           l.slot,
-          l.vehicle ? VEHICLE_LABEL[l.vehicle] : "",
         ];
       }),
     ]);
@@ -104,7 +104,7 @@ export function LogsView() {
     <div ref={root} className="space-y-5 lg:space-y-6">
       <PageHeader
         title="Audit log"
-        description="Every scanned NFC tap at the gate: the driver's name, student ID, role, and vehicle type, logged for every entry and exit."
+        description="Every scanned NFC tap at the gate: the driver's name, student ID, role, floor and bay, logged for every entry and exit."
         actions={
           <button type="button" className="c-btn" onClick={exportRows} disabled={rows.length === 0}>
             <Download className="size-4" aria-hidden />
@@ -186,7 +186,6 @@ export function LogsView() {
                         <span className="font-mono">{l.slot}</span>
                       </>
                     )}
-                    {l.vehicle && ` · ${VEHICLE_LABEL[l.vehicle]}`}
                   </p>
                 </li>
               ))}
@@ -203,8 +202,8 @@ export function LogsView() {
                     <th>Driver</th>
                     <th>Student ID</th>
                     <th>Role</th>
+                    <th>Floor</th>
                     <th>Slot</th>
-                    <th>Vehicle</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -224,8 +223,8 @@ export function LogsView() {
                         </td>
                         <td className="font-mono text-[0.8125rem]">{l.nfcId}</td>
                         <td>{role ? ROLE_LABEL[role] : "—"}</td>
+                        <td className="num">{l.floor ?? "—"}</td>
                         <td className="font-mono text-[0.8125rem]">{l.slot ?? "—"}</td>
-                        <td>{l.vehicle ? VEHICLE_LABEL[l.vehicle] : "—"}</td>
                       </tr>
                     );
                   })}
