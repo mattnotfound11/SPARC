@@ -122,19 +122,6 @@ function LiveBody() {
       <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
         <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${pct}%`, transition: "width 0.9s cubic-bezier(0.16, 1, 0.3, 1)" }} />
       </div>
-      <ul className="mt-5 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3 xl:grid-cols-5" aria-label="Free slots by level">
-        {levels.map((l) => (
-          <li key={l.floor}>
-            <p className="flex items-baseline justify-between text-sm">
-              <span className="text-ink-muted">Level {l.floor}</span>
-              <span className="num font-semibold text-ink">{l.free}<span className="font-normal text-ink-faint"> / {l.total}</span></span>
-            </p>
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
-              <div className="h-full rounded-full bg-live" style={{ width: `${l.total ? (l.free / l.total) * 100 : 0}%` }} />
-            </div>
-          </li>
-        ))}
-      </ul>
     </>
   );
 }
