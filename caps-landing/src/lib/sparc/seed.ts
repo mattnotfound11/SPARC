@@ -11,8 +11,8 @@ export const DEFAULT_CONFIG: FloorConfig[] = [
   { floor: 5, vehicle: "light", slots: 22 },
 ];
 
-/** The building's gates. The scanner records which one a tap came through. */
-export const GATES = ["Main gate", "Side gate"] as const;
+/** The one entrance and exit of the mechanical parking building; every tap is logged against it. */
+export const GATE = "Entrance / Exit";
 
 export const MAX_SLOTS_PER_FLOOR = 60;
 export const DAYS_OF_HISTORY = 7;

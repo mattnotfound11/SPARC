@@ -8,7 +8,6 @@ import { useIsIOS } from "@/lib/nfc/platform";
 import { portal } from "@/lib/portal/store";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { useNow, useSparcState, useSparcStore } from "@/lib/sparc/SparcProvider";
-import { GATES } from "@/lib/sparc/seed";
 import { cardKey } from "@/lib/sparc/store";
 import { buildingTotals, floorStats, timeAgo } from "@/lib/sparc/selectors";
 import type { ScanMode, ScanOutcome } from "@/lib/sparc/types";
@@ -41,8 +40,6 @@ export function ScanView() {
   const [mode, setMode] = useState<ScanMode>(() => (params.get("mode") === "exit" ? "exit" : "entry"));
   const modeLabel = mode === "entry" ? "Entry" : "Exit";
   const [manual, setManual] = useState("");
-  // Which gate this device is stationed at, so each tap is logged against it
-  const [gate, setGate] = useState<string>(GATES[0]);
   const [copied, setCopied] = useState(false);
   const onIOS = useIsIOS();
   const shortcutUrl = typeof window === "undefined" ? "" : `${window.location.origin}/admin/scan?mode=${mode}&nfc=`;
@@ -50,11 +47,11 @@ export function ScanView() {
   // A car that came in on a temporary vehicle is queued for an admin to check
   const tap = useCallback(
     (serial: string) => {
-      const out = store.scan(serial, mode, gate);
+      const out = store.scan(serial, mode);
       if (mode === "entry" && out.status === "entered") portal.flagTemporaryEntry(cardKey(out.user.nfcId));
       return out;
     },
-    [store, mode, gate],
+    [store, mode],
   );
   const onScan = useCallback((serial: string) => void tap(serial), [tap]);
   const reader = useNfcReader(onScan);
@@ -108,18 +105,6 @@ export function ScanView() {
               );
             })}
           </div>
-          <div className="mt-4 flex max-w-md flex-wrap items-center gap-3">
-            <label htmlFor="scan-gate" className="text-sm font-semibold text-ink">
-              This device is at
-            </label>
-            <select id="scan-gate" className="c-input" value={gate} onChange={(e) => setGate(e.target.value)}>
-              {GATES.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <p className={`mt-2 text-sm font-semibold ${mode === "entry" ? "text-live" : "text-gold"}`}>
             Scanning for {modeLabel.toUpperCase()}: {mode === "entry" ? "taps let vehicles in." : "taps check vehicles out."}
@@ -153,7 +138,7 @@ export function ScanView() {
               </p>
               <p className="mt-1 text-ink-muted">
                 Safari can&apos;t read NFC. A Shortcut can: add <span className="text-ink">Scan NFC Tag</span>, then{" "}
-                <span className="text-ink">Open URLs</span> with the card&apos;s Identifier appended to this {modeLabel.toLowerCase()} link (switch Entry/Exit above for the other gate) —
+                <span className="text-ink">Open URLs</span> with the card&apos;s Identifier appended to this {modeLabel.toLowerCase()} link (switch Entry/Exit above for the other direction) —
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <code className="min-w-0 flex-1 break-all rounded-lg border border-line-strong bg-canvas/60 px-2.5 py-1.5 font-mono text-xs text-ink-soft">

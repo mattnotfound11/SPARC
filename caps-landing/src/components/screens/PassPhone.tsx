@@ -3,9 +3,9 @@ import { SparcSeal } from "@/components/brand/SparcSeal";
 import { HomeBar, StatusBar } from "./PhoneChrome";
 
 const history = [
-  { time: "Today · 07:42", gate: "Gate 1", status: "Entered" },
-  { time: "Yesterday · 18:10", gate: "Gate 2", status: "Exited" },
-  { time: "Yesterday · 07:38", gate: "Gate 1", status: "Entered" },
+  { time: "Today · 07:42", gate: "Entrance", status: "Entered" },
+  { time: "Yesterday · 18:10", gate: "Exit", status: "Exited" },
+  { time: "Yesterday · 07:38", gate: "Entrance", status: "Entered" },
 ];
 
 /** The digital gate pass, after registration is approved. */

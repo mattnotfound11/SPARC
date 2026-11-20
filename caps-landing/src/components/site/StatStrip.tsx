@@ -1,7 +1,7 @@
 const stats = [
   "0.41s average tap-to-lift",
   "350 bays counted live",
-  "4 gates on one dashboard",
+  "Entry and exit on one dashboard",
   "Zero paper entry slips",
   "1,284 entries logged today",
   "100% plate-matched records",
