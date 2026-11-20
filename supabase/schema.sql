@@ -305,13 +305,56 @@ begin
   select role into v_role from public.users where id = p_user_id;
   if v_role is null then return 'That registered user does not exist.'; end if;
   if v_role = 'visitor' then return 'Visitors cannot have a member login.'; end if;
-  if exists (select 1 from public.members where registered_user_id = p_user_id and user_id <> v_auth) then
-    return 'That registered user is already linked to another login.';
-  end if;
-  delete from public.members where user_id = v_auth;
+  -- An administrator's choice wins: it replaces any earlier link of this login or of this record
+  -- (for example a wrong self sign-up claim).
+  delete from public.members where user_id = v_auth or registered_user_id = p_user_id;
   insert into public.members (user_id, registered_user_id) values (v_auth, p_user_id);
   return 'ok';
 end;
 $$;
 revoke execute on function public.link_member(text, text) from public;
 grant execute on function public.link_member(text, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Member self sign-up. The site's sign-up form calls auth.signUp with the person's name and
+-- student/employee ID in the account metadata. Once they CONFIRM their email, this links the new
+-- account to the registered record whose ID and name match. It links only when: the email ends in
+-- @usa.edu.ph, the record is a student or personnel with an active card, and it isn't linked already.
+-- No match = the account stays unlinked (sign-in explains it; an admin can link it from Users).
+-- Requires Authentication -> Providers -> Email -> "Confirm email" ON and sign-ups allowed.
+-- ---------------------------------------------------------------------------
+create or replace function public.claim_member_pass()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_sid  text := upper(trim(coalesce(new.raw_user_meta_data ->> 'student_id', '')));
+  v_name text := lower(regexp_replace(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), '\s+', ' ', 'g'));
+  v_user text;
+begin
+  if new.email_confirmed_at is null or v_sid = '' or v_name = '' then return new; end if;
+  if lower(coalesce(new.email, '')) not like '%@usa.edu.ph' then return new; end if;
+  if exists (select 1 from public.members where user_id = new.id) then return new; end if;
+
+  select id into v_user
+  from public.users
+  where upper(trim(student_id)) = v_sid
+    and lower(regexp_replace(trim(name), '\s+', ' ', 'g')) = v_name
+    and role in ('student', 'personnel')
+    and active
+    and not exists (select 1 from public.members m where m.registered_user_id = public.users.id);
+
+  if v_user is not null then
+    insert into public.members (user_id, registered_user_id) values (new.id, v_user) on conflict do nothing;
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function public.claim_member_pass() from public, anon, authenticated;
+
+drop trigger if exists claim_member_pass_on_confirm on auth.users;
+create trigger claim_member_pass_on_confirm
+  after insert or update of email_confirmed_at on auth.users
+  for each row execute function public.claim_member_pass();

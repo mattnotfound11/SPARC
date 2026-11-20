@@ -2,31 +2,88 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, MailCheck } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
+import { MEMBER_EMAIL_DOMAIN, MIN_PASSWORD, validateSignup, type SignupErrors } from "@/lib/member/logic";
+import { signUpMember } from "@/lib/session";
 import { AuthTabs } from "./AuthTabs";
 import { FormNotice } from "./FormNotice";
 import { PasswordField, SelectField, TextField } from "./fields";
 
-type Status = "idle" | "submitting" | "unavailable";
+type Status = "idle" | "submitting" | "sent";
+
+const ID_LABEL = { student: "Student ID", personnel: "Employee ID" } as const;
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  return message ? (
+    <p id={id} role="alert" className="-mt-2.5 mb-4 text-sm text-crimson">
+      {message}
+    </p>
+  ) : null;
+}
 
 export function SignupForm() {
   const root = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("idle");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [confirmTouched, setConfirmTouched] = useState(false);
+  const [role, setRole] = useState<keyof typeof ID_LABEL>("student");
+  const [errors, setErrors] = useState<SignupErrors>({});
+  const [failure, setFailure] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState("");
   useAuthMotion(root);
 
-  const mismatch = confirmTouched && confirm.length > 0 && confirm !== password;
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setConfirmTouched(true);
-    if (confirm !== password) return;
+    const data = new FormData(event.currentTarget);
+    const input = {
+      name: String(data.get("fullName") ?? ""),
+      email: String(data.get("email") ?? ""),
+      role,
+      studentId: String(data.get("studentId") ?? ""),
+      password: String(data.get("password") ?? ""),
+      confirm: String(data.get("confirmPassword") ?? ""),
+    };
+    const found = validateSignup(input);
+    setErrors(found);
+    setFailure(null);
+    if (Object.keys(found).length) {
+      event.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      return;
+    }
     setStatus("submitting");
-    // No registration service is connected yet; say so instead of pretending it worked.
-    window.setTimeout(() => setStatus("unavailable"), 800);
+    const result = await signUpMember(input);
+    if ("error" in result) {
+      setStatus("idle");
+      setFailure(result.error);
+    } else {
+      setSentTo(input.email.trim().toLowerCase());
+      setStatus("sent");
+    }
+  }
+
+  if (status === "sent") {
+    return (
+      <div ref={root} className="flex flex-1 flex-col lg:flex-none">
+        <MailCheck data-anim aria-hidden className="mt-[1.125rem] size-10 text-gold lg:mt-0" strokeWidth={1.75} />
+        <h1 data-anim className="mt-4 font-display text-[1.875rem] leading-[1.1] font-bold tracking-[-0.02em] text-ink lg:text-[2.125rem]">
+          Check your email
+        </h1>
+        <p data-anim className="mt-3 text-ink-muted">
+          We sent a confirmation link to <span className="font-semibold text-ink">{sentTo}</span>. Open it to finish creating your
+          account, then sign in.
+        </p>
+        <p data-anim className="mt-3 text-sm text-ink-muted">
+          Your parking pass is linked once you confirm, if your name and ID match your registration with the parking office. No email after a
+          few minutes? Check spam, or ask the parking office to link your account.
+        </p>
+        <Link
+          data-anim
+          href="/login"
+          className="mt-6 flex h-[3.375rem] w-full items-center justify-center rounded-lg bg-gold text-[1.0625rem] font-bold text-on-gold transition-colors hover:bg-gold-bright"
+        >
+          Go to sign in
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -35,96 +92,80 @@ export function SignupForm() {
         Create account
       </h1>
       <p data-anim className="mt-2 mb-[1.375rem] text-ink-muted">
-        Register for campus parking access &amp; digital RFID pass
+        For students and personnel with a registered monthly parking pass
       </p>
 
       <AuthTabs active="signup" />
 
-      <form onSubmit={handleSubmit} className="mt-[1.375rem] flex flex-1 flex-col lg:flex-none">
-        <TextField label="Full name" name="fullName" autoComplete="name" placeholder="Full Name" required />
+      <form onSubmit={handleSubmit} noValidate className="mt-[1.375rem] flex flex-1 flex-col lg:flex-none">
+        <TextField
+          label="Full name"
+          name="fullName"
+          autoComplete="name"
+          placeholder="As registered with the parking office"
+          aria-invalid={errors.name ? true : undefined}
+          aria-describedby={errors.name ? "su-name-err" : undefined}
+        />
+        <FieldError id="su-name-err" message={errors.name} />
+
         <TextField
           label="University email"
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="University Email"
-          required
+          placeholder={`you${MEMBER_EMAIL_DOMAIN}`}
+          aria-invalid={errors.email ? true : undefined}
+          aria-describedby={errors.email ? "su-email-err" : undefined}
         />
+        <FieldError id="su-email-err" message={errors.email} />
 
         <div className="sm:grid sm:grid-cols-2 sm:gap-x-4">
-          <SelectField label="Campus role" name="role" defaultValue="student">
+          <SelectField label="Campus role" name="role" value={role} onChange={(e) => setRole(e.target.value as keyof typeof ID_LABEL)}>
             <option value="student">Student</option>
             <option value="personnel">Personnel</option>
-            <option value="visitor">Visitor</option>
           </SelectField>
-          <SelectField label="Vehicle type" name="vehicleType" defaultValue="4-wheel">
-            <option value="4-wheel">4-Wheel (Car/SUV)</option>
-            <option value="2-wheel">2-Wheel (Motor)</option>
-          </SelectField>
+          <div>
+            <TextField
+              label={ID_LABEL[role]}
+              name="studentId"
+              autoComplete="off"
+              autoCapitalize="characters"
+              placeholder="2024-10037"
+              aria-invalid={errors.studentId ? true : undefined}
+              aria-describedby={errors.studentId ? "su-id-err" : undefined}
+            />
+            <FieldError id="su-id-err" message={errors.studentId} />
+          </div>
         </div>
 
-        <TextField
-          label="Plate no. / MV file"
-          name="plate"
-          autoComplete="off"
-          autoCapitalize="characters"
-          placeholder="ABC 1234"
-          className="uppercase placeholder:normal-case"
-          required
-        />
-
         <div className="sm:grid sm:grid-cols-2 sm:gap-x-4">
-          <PasswordField
-            label="Password"
-            name="password"
-            autoComplete="new-password"
-            placeholder="Password"
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div>
+            <PasswordField
+              label="Password"
+              name="password"
+              autoComplete="new-password"
+              placeholder={`At least ${MIN_PASSWORD} characters`}
+              aria-invalid={errors.password ? true : undefined}
+              aria-describedby={errors.password ? "su-pw-err" : undefined}
+            />
+            <FieldError id="su-pw-err" message={errors.password} />
+          </div>
           <div>
             <PasswordField
               label="Confirm password"
               name="confirmPassword"
               autoComplete="new-password"
-              placeholder="Confirm Password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              onBlur={() => setConfirmTouched(true)}
-              aria-invalid={mismatch || undefined}
-              aria-describedby={mismatch ? "signup-confirm-error" : undefined}
-              required
+              placeholder="Confirm password"
+              aria-invalid={errors.confirm ? true : undefined}
+              aria-describedby={errors.confirm ? "su-confirm-err" : undefined}
             />
-            {mismatch && (
-              <p id="signup-confirm-error" className="-mt-2.5 mb-4 text-sm text-crimson">
-                Passwords don&apos;t match — re-enter the same password.
-              </p>
-            )}
+            <FieldError id="su-confirm-err" message={errors.confirm} />
           </div>
         </div>
 
-        <label data-anim className="mb-4 flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink-soft">
-          <input type="checkbox" name="agree" required className="mt-0.5 size-5 shrink-0 cursor-pointer accent-gold" />
-          <span>
-            I agree to the{" "}
-            <a href="#" className="font-medium text-ink underline underline-offset-2 hover:text-gold">
-              University Parking Regulations
-            </a>{" "}
-            and{" "}
-            <a href="#" className="font-medium text-ink underline underline-offset-2 hover:text-gold">
-              Privacy Policy
-            </a>
-          </span>
-        </label>
-
-        {status === "unavailable" && (
-          <div className="mb-3">
-            <FormNotice>
-              Registration isn&apos;t live yet — the SPARC account service hasn&apos;t been connected to
-              this portal. Nothing was submitted.
-            </FormNotice>
+        {failure && (
+          <div role="alert" className="mb-3">
+            <FormNotice>{failure}</FormNotice>
           </div>
         )}
 
@@ -143,7 +184,7 @@ export function SignupForm() {
                 Creating account…
               </>
             ) : (
-              "Create account & register vehicle"
+              "Create account"
             )}
           </button>
         </div>

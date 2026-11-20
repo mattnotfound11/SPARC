@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LogEntry } from "@/lib/sparc/types";
-import { buildVisits, homeFor, passState, SUGGESTION_MAX, validateSuggestion } from "./logic";
+import { buildVisits, homeFor, passState, SUGGESTION_MAX, validateSignup, validateSuggestion } from "./logic";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-11-20T10:00:00").getTime();
@@ -66,5 +66,24 @@ describe("homeFor", () => {
     expect(homeFor("admin")).toBe("/admin");
     expect(homeFor("facilitator")).toBe("/admin");
     expect(homeFor("member")).toBe("/member");
+  });
+});
+
+describe("validateSignup", () => {
+  const ok = { name: "Ana Reyes", email: "ana@usa.edu.ph", role: "student", studentId: "2024-10037", password: "longenough1", confirm: "longenough1" };
+  it("accepts a complete university sign-up", () => expect(validateSignup(ok)).toEqual({}));
+  it("requires a usa.edu.ph email, ignoring case and spaces", () => {
+    expect(validateSignup({ ...ok, email: "ana@gmail.com" }).email).toBeTruthy();
+    expect(validateSignup({ ...ok, email: "  ANA@USA.EDU.PH " }).email).toBeUndefined();
+    expect(validateSignup({ ...ok, email: "ana@usa.edu.ph.evil.com" }).email).toBeTruthy();
+  });
+  it("requires name, ID and a student or personnel role", () => {
+    expect(validateSignup({ ...ok, name: "  " }).name).toBeTruthy();
+    expect(validateSignup({ ...ok, studentId: "" }).studentId).toBeTruthy();
+    expect(validateSignup({ ...ok, role: "visitor" }).role).toBeTruthy();
+  });
+  it("needs an 8+ character password that matches its confirmation", () => {
+    expect(validateSignup({ ...ok, password: "short", confirm: "short" }).password).toBeTruthy();
+    expect(validateSignup({ ...ok, confirm: "different1" }).confirm).toBeTruthy();
   });
 });

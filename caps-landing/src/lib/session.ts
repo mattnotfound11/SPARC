@@ -103,6 +103,32 @@ export async function signInAccount(email: string, password: string): Promise<{ 
   return { type: data };
 }
 
+export type SignupResult = { error: string } | { ok: true };
+
+/**
+ * Member self sign-up. Creates the login and emails a confirmation link; the database links it to the
+ * matching registered record only after the email is confirmed (see claim_member_pass in schema.sql).
+ * Always reports the same success whether or not the email or ID exists, so it can't be used to probe.
+ */
+export async function signUpMember(input: { name: string; email: string; role: string; studentId: string; password: string }): Promise<SignupResult> {
+  const db = getSupabase();
+  if (!db) return { error: "Sign-up needs the shared database, which isn't connected in this build. In development, use the demo member login instead." };
+  const { error } = await db.auth.signUp({
+    email: input.email.trim().toLowerCase(),
+    password: input.password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/login`,
+      data: { full_name: input.name.trim().replace(/\s+/g, " "), student_id: input.studentId.trim().toUpperCase().replace(/\s+/g, "-"), campus_role: input.role },
+    },
+  });
+  if (error) {
+    if (error.status === 429) return { error: "Too many attempts. Wait a few minutes and try again." };
+    if (error.status === 422 || /password/i.test(error.message)) return { error: "That password was rejected. Use a longer, less common password." };
+    return { error: "Couldn't create the account. Check your connection and try again." };
+  }
+  return { ok: true };
+}
+
 export type MemberSession = mock.MemberSession;
 
 /** The signed-in Member, if any (a staff account is not a member). */
