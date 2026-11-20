@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LiveSlotCount } from "@/components/site/LiveSlotCount";
+import { usePortalState } from "@/lib/portal/usePortal";
+import { useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
+import { useSharedAvailability } from "@/lib/sparc/useShared";
+import { availabilityTone, buildingTotals, floorStats } from "@/lib/sparc/selectors";
 import { Badge, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "@/components/console/ui";
 import { ID_LABEL, ROLE_LABEL } from "@/components/console/UserPanel";
 import { listMySuggestions, loadMemberData, sendSuggestion, type MemberData, type Suggestion } from "@/lib/member/data";
@@ -25,36 +28,127 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function PassPanel({ data, now }: { data: MemberData; now: number }) {
-  const state = passState(data.user.expiresAt, now);
-  if (state.kind === "pending") {
-    return (
-      <Panel aria-labelledby="pass-h">
-        <PanelHeader id="pass-h" title="Semester pass" aside={<Badge tone={PASS_TONE.pending}>{PASS_LABEL.pending}</Badge>} />
-        <div className="px-4 pb-5 sm:px-5">
-          <p className="display text-[1.5rem] text-ink">Waiting for the parking office</p>
-          <p className="mt-1 text-sm text-ink-muted">
-            Your account is registered. The parking office activates your semester pass and gives you your card. Until then the gate won&apos;t let you in.
-            Your name appears on their list of members waiting for a pass.
-          </p>
-        </div>
-      </Panel>
-    );
-  }
-  const headline =
-    state.kind === "expired" ? "Your pass has expired" : state.daysLeft === 1 ? "Expires within a day" : `${state.daysLeft} days left`;
+const LIVE_TONE = {
+  live: { bar: "bg-live", text: "text-live", label: "Plenty of space" },
+  gold: { bar: "bg-gold", text: "text-gold", label: "Filling up, arrive early" },
+  crimson: { bar: "bg-crimson", text: "text-crimson", label: "Almost full" },
+} as const;
+
+function Tile({ label, aside, children }: { label: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Panel aria-labelledby="pass-h">
-      <PanelHeader id="pass-h" title="Semester pass" aside={<Badge tone={PASS_TONE[state.kind]}>{PASS_LABEL[state.kind]}</Badge>} />
-      <div className="px-4 pb-5 sm:px-5">
-        <p className="display text-[1.75rem] text-ink">{headline}</p>
-        <p className="mt-1 text-sm text-ink-muted">
-          {state.kind === "expired" ? "Expired" : "Valid until"} {day(data.user.expiresAt)}, {time(data.user.expiresAt)}.
-          {state.kind !== "active" && " See the parking office to renew."}
-        </p>
-        {!data.user.active && <p className="mt-2 text-sm text-crimson">This pass is currently deactivated. Contact the parking office.</p>}
+    <section aria-label={label} className="flex min-h-[8.5rem] flex-col rounded-2xl border border-line bg-surface/40 p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">{label}</h2>
+        {aside}
       </div>
-    </Panel>
+      <div className="mt-3 flex flex-1 flex-col">{children}</div>
+    </section>
+  );
+}
+
+const BIG = "num font-display text-[2.5rem] leading-none font-semibold tracking-tight text-ink";
+
+function PassTile({ data, now }: { data: MemberData; now: number }) {
+  const state = passState(data.user.expiresAt, now);
+  const pending = state.kind === "pending";
+  const expired = state.kind === "expired";
+  return (
+    <Tile label="Semester pass" aside={<Badge tone={PASS_TONE[state.kind]}>{PASS_LABEL[state.kind]}</Badge>}>
+      {pending ? (
+        <>
+          <p className="display text-[1.5rem] leading-tight text-ink">Pending</p>
+          <p className="mt-auto pt-2 text-xs text-ink-muted">Waiting for the parking office to activate it.</p>
+        </>
+      ) : (
+        <>
+          <p className="flex items-baseline gap-2">
+            <span className={BIG}>{expired ? "Expired" : state.daysLeft}</span>
+            {!expired && <span className="text-sm text-ink-muted">{state.daysLeft === 1 ? "day left" : "days left"}</span>}
+          </p>
+          <p className="mt-auto pt-2 text-xs text-ink-muted">
+            {expired ? "Expired" : "Valid until"} {day(data.user.expiresAt)}
+            {state.kind !== "active" && ". See the parking office to renew."}
+          </p>
+          {!data.user.active && <p className="mt-1 text-xs text-crimson">Deactivated. Contact the parking office.</p>}
+        </>
+      )}
+    </Tile>
+  );
+}
+
+function LiveBody() {
+  const state = useSparcState();
+  usePortalState();
+  const shared = useSharedAvailability();
+  const { free, total } = shared ?? buildingTotals(floorStats(state.config, state.slots));
+  const tone = free === 0 ? { ...LIVE_TONE.crimson, label: "Parking full" } : LIVE_TONE[availabilityTone(free, total)];
+  const pct = total > 0 ? Math.round((free / total) * 100) : 0;
+  return (
+    <>
+      <p className="flex items-baseline gap-2">
+        <span className={BIG}>{free}</span>
+        <span className="text-sm text-ink-faint">/ {total} free</span>
+      </p>
+      <div className="mt-auto pt-3">
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
+          <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${pct}%` }} />
+        </div>
+        <p className={`mt-1.5 text-xs font-semibold ${tone.text}`}>{tone.label}</p>
+      </div>
+    </>
+  );
+}
+
+function LiveTile() {
+  const store = useSparcStoreOrNull();
+  return (
+    <Tile
+      label="Live parking"
+      aside={<span className="dot-pulse size-1.5 rounded-full bg-live" aria-hidden />}
+    >
+      {store ? <LiveBody /> : <p className="text-ink-faint">Checking the lot…</p>}
+    </Tile>
+  );
+}
+
+function VisitTiles({ data, now }: { data: MemberData; now: number }) {
+  const visits = useMemo(() => buildVisits(data.logs), [data.logs]);
+  const monthStart = new Date(now);
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const thisMonth = visits.filter((v) => (v.entryAt ?? v.exitAt ?? 0) >= monthStart.getTime()).length;
+  const latest = visits[0];
+  const parked = !!latest && latest.entryAt !== null && latest.exitAt === null;
+  return (
+    <>
+      <Tile label="Visits">
+        <p className="flex items-baseline gap-2">
+          <span className={BIG}>{thisMonth}</span>
+          <span className="text-sm text-ink-muted">this month</span>
+        </p>
+        <p className="mt-auto pt-2 text-xs text-ink-muted">{visits.length} in total</p>
+      </Tile>
+      <Tile label="Status" aside={parked ? <Badge tone="live">Parked now</Badge> : undefined}>
+        {parked ? (
+          <>
+            <p className="display text-[1.5rem] leading-tight text-ink">
+              Level {latest.floor ?? "—"}
+            </p>
+            <p className="mt-auto pt-2 text-xs text-ink-muted">Slot {latest.slot ?? "—"}, in at {time(latest.entryAt!)}</p>
+          </>
+        ) : latest ? (
+          <>
+            <p className="display text-[1.5rem] leading-tight text-ink">Not parked</p>
+            <p className="mt-auto pt-2 text-xs text-ink-muted">Last visit {day(latest.entryAt ?? latest.exitAt ?? 0)}</p>
+          </>
+        ) : (
+          <>
+            <p className="display text-[1.5rem] leading-tight text-ink">No visits yet</p>
+            <p className="mt-auto pt-2 text-xs text-ink-muted">Tap your card at the gate.</p>
+          </>
+        )}
+      </Tile>
+    </>
   );
 }
 
@@ -222,16 +316,19 @@ export function MemberView() {
   const data = state.data;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title={`Hello, ${data.user.name.split(" ")[0]}`} description="Your semester pass, your parking, and the lot right now." />
-      <div className="grid gap-6 md:grid-cols-2">
-        <div data-enter><PassPanel data={data} now={now} /></div>
-        <div data-enter className="flex items-start justify-center rounded-2xl border border-line bg-surface/40 pb-10"><LiveSlotCount /></div>
+      <div data-enter className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <PassTile data={data} now={now} />
+        <LiveTile />
+        <VisitTiles data={data} now={now} />
       </div>
-      <div data-enter><HistoryPanel data={data} /></div>
-      <div data-enter className="grid gap-6 md:grid-cols-2">
-        <ProfilePanel data={data} />
-        <SuggestionsPanel />
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div data-enter className="lg:col-span-2"><HistoryPanel data={data} /></div>
+        <div data-enter className="space-y-4">
+          <ProfilePanel data={data} />
+          <SuggestionsPanel />
+        </div>
       </div>
     </div>
   );
