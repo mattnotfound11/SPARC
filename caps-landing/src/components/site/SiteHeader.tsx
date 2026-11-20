@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Menu, X } from "lucide-react";
+import { LayoutDashboard, Menu, UserRound, X } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
-import { useAdminSession } from "@/lib/session";
+import { useAdminSession, useMemberSession } from "@/lib/session";
 
 const links = [
   { href: "#how-it-works", label: "How it works" },
@@ -17,7 +17,9 @@ const links = [
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const session = useAdminSession();
-  const signedIn = session.status === "in" && !session.open;
+  const staffIn = session.status === "in" && !session.open;
+  const member = useMemberSession();
+  const memberIn = member.status === "in";
 
   return (
     <header className="header-shell sticky top-0 z-50 h-[var(--header-h)] border-b border-line/0 bg-canvas/60 backdrop-blur-xl">
@@ -41,15 +43,25 @@ export function SiteHeader() {
         </ul>
 
         <div className="flex items-center gap-2">
-          {signedIn ? (
+          {staffIn ? (
             <Link href="/admin" className="btn btn-ghost px-4 py-2 text-sm">
               <LayoutDashboard className="size-4" aria-hidden />
               Dashboard
             </Link>
-          ) : (
-            <Link href="/admin/login" className="btn btn-gold px-4 py-2 text-sm">
-              Sign in
+          ) : memberIn ? (
+            <Link href="/member" className="btn btn-gold px-4 py-2 text-sm">
+              <UserRound className="size-4" aria-hidden />
+              My pass
             </Link>
+          ) : (
+            <>
+              <Link href="/login" className="btn btn-ghost hidden px-4 py-2 text-sm min-[420px]:inline-flex">
+                Log in
+              </Link>
+              <Link href="/signup" className="btn btn-gold px-4 py-2 text-sm">
+                Sign up
+              </Link>
+            </>
           )}
           <button
             type="button"
@@ -78,6 +90,28 @@ export function SiteHeader() {
                 </a>
               </li>
             ))}
+            {!staffIn && !memberIn && (
+              <li>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="block rounded-lg px-3 py-3 text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink"
+                >
+                  Log in
+                </Link>
+              </li>
+            )}
+            {!staffIn && (
+              <li>
+                <Link
+                  href="/admin/login"
+                  onClick={() => setOpen(false)}
+                  className="block rounded-lg px-3 py-3 text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink"
+                >
+                  Staff sign in
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
       )}
