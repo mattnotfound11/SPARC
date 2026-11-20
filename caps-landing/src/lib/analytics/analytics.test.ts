@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deckStats, formatStay, gateStats, hourlyEntries, logsIn, monthlyRows, months, violationWeeks, weekdayHour } from "./analytics";
+import { dailyFlow, deckStats, gateStats, hourlyEntries, logsIn, monthlyRows, months, violationWeeks, weekdayHour } from "./analytics";
 import type { FloorConfig, LogEntry } from "@/lib/sparc/types";
 import type { Violation } from "@/lib/portal/types";
 
@@ -73,10 +73,10 @@ describe("weekdayHour", () => {
 
 describe("deckStats", () => {
   const logs = [
-    ...visit("a", 1, at(10, 3, 8), at(10, 3, 10)), // 120 min
-    ...visit("b", 1, at(10, 4, 8), at(10, 4, 9)), // 60 min
-    ...visit("c", 2, at(10, 5, 8), at(10, 5, 8, 30)), // 30 min
-    log("open", at(10, 6, 8), "entry", 2), // still inside: no stay yet
+    ...visit("a", 1, at(10, 3, 8), at(10, 3, 10)),
+    ...visit("b", 1, at(10, 4, 8), at(10, 4, 9)),
+    ...visit("c", 2, at(10, 5, 8), at(10, 5, 8, 30)),
+    log("open", at(10, 6, 8), "entry", 2), // still inside
   ];
   const stats = deckStats(logs, config, nov, NOW);
 
@@ -84,17 +84,28 @@ describe("deckStats", () => {
     expect(stats.map((s) => s.entries)).toEqual([2, 2]);
   });
 
-  it("averages the paired stay and leaves out cars still inside", () => {
-    expect(stats[0].avgStayMin).toBe(90);
-    expect(stats[1].avgStayMin).toBe(30);
-  });
-
   it("measures turnover as entries per bay per day", () => {
     expect(stats[0].turnover).toBeCloseTo(2 / 10 / 17);
   });
+});
 
-  it("reports no stay for a deck with no finished visits", () => {
-    expect(deckStats([log("z", at(10, 3, 8), "entry", 1)], config, nov, NOW)[0].avgStayMin).toBeNull();
+describe("dailyFlow", () => {
+  it("counts entries and exits on their own local day, with zero days included, oldest first", () => {
+    const logs = [...visit("a", 1, at(10, 3, 23), at(10, 4, 1)), ...visit("b", 2, at(10, 4, 8), at(10, 4, 9))];
+    const days = dailyFlow(logs, nov, NOW);
+    expect(days[0]).toMatchObject({ label: "1", entries: 0, exits: 0 });
+    expect(days[2]).toMatchObject({ label: "3", entries: 1, exits: 0 });
+    expect(days[3]).toMatchObject({ label: "4", entries: 1, exits: 2 });
+    expect(days[2].start).toBe(at(10, 3, 0));
+  });
+  it("stops at today for the current month and ignores other months", () => {
+    const days = dailyFlow([...visit("x", 1, at(9, 30, 8), at(9, 30, 9))], nov, NOW);
+    expect(days).toHaveLength(17);
+    expect(days.every((d) => d.entries === 0 && d.exits === 0)).toBe(true);
+  });
+  it("covers a whole past month", () => {
+    const oct = months(NOW)[1];
+    expect(dailyFlow([], oct, NOW)).toHaveLength(31);
   });
 });
 
@@ -131,23 +142,19 @@ describe("violationWeeks", () => {
   });
 });
 
-describe("formatStay and monthlyRows", () => {
-  it("formats stays", () => {
-    expect(formatStay(null)).toBe("n/a");
-    expect(formatStay(45)).toBe("45 min");
-    expect(formatStay(120)).toBe("2 h");
-    expect(formatStay(135)).toBe("2 h 15 min");
-  });
-
+describe("monthlyRows", () => {
   it("builds a CSV with every section and no empty-hour noise", () => {
     const logs = visit("a", 1, at(10, 3, 8), at(10, 3, 10));
     const heat = weekdayHour(logs, nov, NOW);
-    const rows = monthlyRows({ month: nov, heat, decks: deckStats(logs, config, nov, NOW), hourly: hourlyEntries(logs, nov, NOW), violations: violationWeeks([], NOW, 2), entries: 1 });
+    const rows = monthlyRows({ month: nov, heat, decks: deckStats(logs, config, nov, NOW), hourly: hourlyEntries(logs, nov, NOW), violations: violationWeeks([], NOW, 2), entries: 1, daily: dailyFlow(logs, nov, NOW) });
     const flat = rows.map((r) => r.join("|"));
     expect(flat[0]).toBe("SPARC monthly report|November 2026");
     expect(flat).toContain("Total entries|1");
     expect(flat.some((r) => r.startsWith("Busiest time|Tuesday 8 AM"))).toBe(true);
-    expect(flat.some((r) => r.startsWith("Level 1|1|120"))).toBe(true);
+    expect(flat.some((r) => r.startsWith("Level 1|1|"))).toBe(true);
+    expect(flat.some((r) => r.includes("Average stay"))).toBe(false);
+    expect(flat).toContain("Day|Entries|Exits");
+    expect(flat).toContain("3|1|1");
     expect(flat.filter((r) => r.startsWith("8 AM|"))).toHaveLength(1);
     expect(flat.some((r) => r.startsWith("Monday|"))).toBe(true);
   });

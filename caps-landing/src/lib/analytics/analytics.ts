@@ -75,8 +75,6 @@ export function weekdayHour(logs: LogEntry[], m: Month, now: number): Heatmap {
 export type DeckStat = {
   floor: number;
   entries: number;
-  /** Minutes, from entries paired with their exits; null if no visit has finished. */
-  avgStayMin: number | null;
   /** Entries per bay per day: how many times each bay was used on an average day. */
   turnover: number;
 };
@@ -84,21 +82,11 @@ export type DeckStat = {
 export function deckStats(logs: LogEntry[], config: FloorConfig[], m: Month, now: number): DeckStat[] {
   const inMonth = logsIn(logs, m);
   const days = elapsedDays(m, now);
-  const entryAt = new Map<string, number>();
-  for (const l of inMonth) if (l.event === "entry" && l.visitId) entryAt.set(l.visitId, l.at);
-
   return config.map(({ floor, slots }) => {
     const entries = inMonth.filter((l) => l.event === "entry" && l.floor === floor).length;
-    const stays: number[] = [];
-    for (const l of inMonth) {
-      if (l.event !== "exit" || l.floor !== floor || !l.visitId) continue;
-      const start = entryAt.get(l.visitId);
-      if (start !== undefined && l.at >= start) stays.push((l.at - start) / 60_000);
-    }
     return {
       floor,
       entries,
-      avgStayMin: stays.length ? stays.reduce((a, b) => a + b, 0) / stays.length : null,
       turnover: days && slots ? entries / slots / days : 0,
     };
   });
@@ -110,6 +98,25 @@ export function hourlyEntries(logs: LogEntry[], m: Month, now: number): number[]
   const sums = new Array<number>(24).fill(0);
   for (const l of logsIn(logs, m)) if (l.event === "entry") sums[new Date(l.at).getHours()]++;
   return sums.map((v) => (days ? v / days : 0));
+}
+
+export type DayFlow = { start: number; label: string; entries: number; exits: number };
+
+/** Entries and exits on each day of the month that has started, oldest first (zero days included). */
+export function dailyFlow(logs: LogEntry[], m: Month, now: number): DayFlow[] {
+  const days = elapsedDays(m, now);
+  const out: DayFlow[] = Array.from({ length: days }, (_, i) => {
+    const d = new Date(m.start);
+    d.setDate(d.getDate() + i);
+    return { start: d.getTime(), label: String(d.getDate()), entries: 0, exits: 0 };
+  });
+  for (const l of logsIn(logs, m)) {
+    const day = out.findLast((d) => d.start <= l.at);
+    if (!day || l.at >= day.start + DAY + DAY / 24) continue;
+    if (l.event === "entry") day.entries++;
+    else day.exits++;
+  }
+  return out;
 }
 
 export type WeekBucket = { start: number; label: string; counts: Record<ViolationType, number>; total: number };
@@ -170,22 +177,14 @@ export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
 /** Monday first, the way the campus week reads. */
 export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-export function formatStay(minutes: number | null) {
-  if (minutes === null) return "n/a";
-  const m = Math.round(minutes);
-  if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60);
-  return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
-}
-
 export function hourLabel(hour: number) {
   const h = hour % 12 === 0 ? 12 : hour % 12;
   return `${h} ${hour < 12 ? "AM" : "PM"}`;
 }
 
-/** The monthly report as CSV rows: summary, busiest times, decks, violations. */
-export function monthlyRows(args: { month: Month; heat: Heatmap; decks: DeckStat[]; hourly: number[]; violations: WeekBucket[]; entries: number; gates?: GateStat[] }): (string | number)[][] {
-  const { month, heat, decks, hourly, violations, entries, gates = [] } = args;
+/** The monthly report as CSV rows: summary, daily flow, busiest times, decks, gates, violations. */
+export function monthlyRows(args: { month: Month; heat: Heatmap; decks: DeckStat[]; hourly: number[]; violations: WeekBucket[]; entries: number; gates?: GateStat[]; daily?: DayFlow[] }): (string | number)[][] {
+  const { month, heat, decks, hourly, violations, entries, gates = [], daily = [] } = args;
   const peak = heat.peak ? `${WEEKDAYS[heat.peak.weekday]} ${hourLabel(heat.peak.hour)} (${heat.peak.average.toFixed(1)} entries on average)` : "n/a";
   const rows: (string | number)[][] = [
     ["SPARC monthly report", month.label],
@@ -193,8 +192,11 @@ export function monthlyRows(args: { month: Month; heat: Heatmap; decks: DeckStat
     ["Total entries", entries],
     ["Busiest time", peak],
     [],
-    ["Deck", "Entries", "Average stay (min)", "Bay turnover (entries per bay per day)"],
-    ...decks.map((d) => [`Level ${d.floor}`, d.entries, d.avgStayMin === null ? "" : Math.round(d.avgStayMin), Number(d.turnover.toFixed(2))]),
+    ["Day", "Entries", "Exits"],
+    ...daily.map((d) => [d.label, d.entries, d.exits]),
+    [],
+    ["Deck", "Entries", "Bay turnover (entries per bay per day)"],
+    ...decks.map((d) => [`Level ${d.floor}`, d.entries, Number(d.turnover.toFixed(2))]),
     [],
     ["Gate", "Entries", "Exits", "Busiest hour"],
     ...gates.map((g) => [g.gate, g.entries, g.exits, g.peakHour === null ? "" : hourLabel(g.peakHour)]),

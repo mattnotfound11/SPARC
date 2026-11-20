@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { AnalyticsView } from "@/components/console/AnalyticsView";
+import { AnalyticsRedirect } from "@/components/console/AnalyticsRedirect";
 
-export const metadata: Metadata = { title: "Analytics · Admin" };
+export const metadata: Metadata = { title: "Reports · Admin" };
 
+/** Analytics was merged into Reports; old links and bookmarks keep working. */
 export default function AnalyticsPage() {
-  return <AnalyticsView />;
+  return <AnalyticsRedirect />;
 }
