@@ -99,7 +99,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
 
           {/* Top bar — phone and tablet */}
           <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-canvas/90 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
-            <Link href="/" className="brand-mark flex items-center gap-2.5 rounded-lg" aria-label="SPARC home">
+            <Link href="/" className="brand-mark flex min-h-11 items-center gap-2.5 rounded-lg" aria-label="SPARC home">
               <SparcSeal size={30} className="size-[1.875rem]" />
               <SparcWordmark className="text-lg text-ink" />
               <span className="text-xs text-ink-muted">Member</span>
@@ -108,7 +108,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={handleSignOut}
               aria-label="Sign out"
-              className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:text-ink"
+              className="grid size-11 place-items-center rounded-lg text-ink-muted transition-colors hover:text-ink"
             >
               <LogOut className="size-[1.125rem]" aria-hidden />
             </button>
@@ -131,7 +131,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
                   key={href}
                   href={href}
                   aria-current={active ? "page" : undefined}
-                  className={`flex min-h-[3.5rem] flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold transition-colors ${
+                  className={`flex min-h-[3.5rem] flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors ${
                     active ? "text-gold" : "text-ink-muted hover:text-ink"
                   }`}
                 >
