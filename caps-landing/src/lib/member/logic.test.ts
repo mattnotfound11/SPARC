@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LogEntry } from "@/lib/sparc/types";
-import { buildVisits, classifySignInError, homeFor, parseEmailLink, passState, SUGGESTION_MAX, validateSignup, validateSuggestion } from "./logic";
+import { buildVisits, classifySignInError, groupVisitsByDay, homeFor, memberNotices, parseEmailLink, passState, SUGGESTION_MAX, validateSignup, validateSuggestion } from "./logic";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-11-20T10:00:00").getTime();
@@ -125,5 +125,33 @@ describe("classifySignInError", () => {
   it("treats a missing status or a server error as offline", () => {
     expect(classifySignInError({})).toBe("offline");
     expect(classifySignInError({ status: 502 })).toBe("offline");
+  });
+});
+
+describe("groupVisitsByDay", () => {
+  it("groups visits by the day they started, newest day first", () => {
+    const at = (d: string) => new Date(d).getTime();
+    const visit = (entryAt: number) => ({ visitId: null, entryAt, exitAt: null, floor: 1, slot: "A1" });
+    const days = groupVisitsByDay([visit(at("2026-11-20T09:00:00")), visit(at("2026-11-20T15:00:00")), visit(at("2026-11-18T08:00:00"))]);
+    expect(days.map((d) => d.visits.length)).toEqual([2, 1]);
+    expect(days[0].dayStart).toBeGreaterThan(days[1].dayStart);
+  });
+});
+
+describe("memberNotices", () => {
+  const user = { expiresAt: NOW + 30 * DAY, active: true, createdAt: NOW - 40 * DAY };
+  const open = { visitId: "v1", entryAt: NOW - 3600_000, exitAt: null, floor: 2, slot: "B4" };
+  it("is quiet for an active pass with no visits", () => {
+    expect(memberNotices(user, [], NOW)).toEqual([]);
+  });
+  it("warns about a pending, expiring, expired or deactivated pass", () => {
+    expect(memberNotices({ ...user, expiresAt: 0 }, [], NOW)[0].id).toBe("pending");
+    expect(memberNotices({ ...user, expiresAt: NOW + 3 * DAY }, [], NOW)[0].title).toBe("Your pass ends in 3 days");
+    expect(memberNotices({ ...user, expiresAt: NOW - DAY }, [], NOW)[0].id).toBe("expired");
+    expect(memberNotices({ ...user, active: false }, [], NOW)[0].id).toBe("deactivated");
+  });
+  it("says where the member is parked while a visit is open", () => {
+    const [n] = memberNotices(user, [open], NOW);
+    expect(n).toMatchObject({ tone: "live", body: "Level 2, slot B4." });
   });
 });

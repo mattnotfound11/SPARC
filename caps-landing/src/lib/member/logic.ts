@@ -52,6 +52,42 @@ export function buildVisits(logs: LogEntry[]): Visit[] {
   return visits.sort((a, b) => (b.entryAt ?? b.exitAt ?? 0) - (a.entryAt ?? a.exitAt ?? 0));
 }
 
+/** Visits grouped by the local day they started, newest day first. */
+export function groupVisitsByDay(visits: Visit[]): { dayStart: number; visits: Visit[] }[] {
+  const days = new Map<number, Visit[]>();
+  for (const v of visits) {
+    const d = new Date(v.entryAt ?? v.exitAt ?? 0);
+    d.setHours(0, 0, 0, 0);
+    const key = d.getTime();
+    days.set(key, [...(days.get(key) ?? []), v]);
+  }
+  return [...days.entries()].sort((a, b) => b[0] - a[0]).map(([dayStart, list]) => ({ dayStart, visits: list }));
+}
+
+export type MemberNotice = { id: string; at: number; title: string; body: string; tone: "live" | "gold" | "crimson" | "neutral" };
+
+/** What the member should know right now, worked out from their pass and visits. Nothing is stored. Newest first. */
+export function memberNotices(user: { expiresAt: number; active: boolean; createdAt: number }, visits: Visit[], now: number): MemberNotice[] {
+  const out: MemberNotice[] = [];
+  const pass = passState(user.expiresAt, now);
+  if (pass.kind === "pending") {
+    out.push({ id: "pending", at: user.createdAt, tone: "gold", title: "Your pass is waiting for the parking office", body: "The office activates your semester pass and gives you your card. The gate will not let you in until then." });
+  } else if (!user.active) {
+    out.push({ id: "deactivated", at: now, tone: "crimson", title: "Your pass is deactivated", body: "Contact the parking office to have it switched back on." });
+  } else if (pass.kind === "expired") {
+    out.push({ id: "expired", at: user.expiresAt, tone: "crimson", title: "Your pass has expired", body: "See the parking office to renew it." });
+  } else if (pass.kind === "expiring") {
+    out.push({ id: "expiring", at: now, tone: "gold", title: `Your pass ends in ${pass.daysLeft} ${pass.daysLeft === 1 ? "day" : "days"}`, body: "Renew it at the parking office to keep parking." });
+  }
+  const latest = visits[0];
+  if (latest?.entryAt != null && latest.exitAt == null) {
+    out.push({ id: `in-${latest.entryAt}`, at: latest.entryAt, tone: "live", title: "You are parked", body: `Level ${latest.floor ?? "?"}, slot ${latest.slot ?? "?"}.` });
+  } else if (latest?.exitAt != null) {
+    out.push({ id: `out-${latest.exitAt}`, at: latest.exitAt, tone: "neutral", title: "You left the building", body: "Thanks for parking with SPARC." });
+  }
+  return out.sort((a, b) => b.at - a.at);
+}
+
 export const SUGGESTION_CATEGORIES = ["Parking", "Safety", "Pass or billing", "Other"] as const;
 export type SuggestionCategory = (typeof SUGGESTION_CATEGORIES)[number];
 export const SUGGESTION_MAX = 1000;

@@ -1,17 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
 import { useSharedAvailability } from "@/lib/sparc/useShared";
 import { availabilityTone, buildingTotals, floorStats } from "@/lib/sparc/selectors";
+import { ParkingExplorer } from "@/components/console/ParkingExplorer";
+import { ParkingTowers } from "@/components/console/ParkingTowers";
 import { Badge, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "@/components/console/ui";
 import { ID_LABEL, ROLE_LABEL } from "@/components/console/UserPanel";
+import { useEnter } from "@/hooks/useConsoleMotion";
 import { listMySuggestions, loadMemberData, sendSuggestion, type MemberData, type Suggestion } from "@/lib/member/data";
-import { buildVisits, passState, SUGGESTION_CATEGORIES, SUGGESTION_MAX } from "@/lib/member/logic";
+import { buildVisits, groupVisitsByDay, memberNotices, passState, SUGGESTION_CATEGORIES, SUGGESTION_MAX } from "@/lib/member/logic";
 
 const dateFmt = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" });
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+const dayLongFmt = new Intl.DateTimeFormat(undefined, { weekday: "long", year: "numeric", month: "short", day: "numeric" });
 const day = (t: number) => dateFmt.format(t);
 const time = (t: number) => timeFmt.format(t);
 
@@ -170,46 +174,76 @@ function ProfilePanel({ data }: { data: MemberData }) {
 }
 
 function HistoryPanel({ data }: { data: MemberData }) {
-  const visits = useMemo(() => buildVisits(data.logs), [data.logs]);
+  const days = useMemo(() => groupVisitsByDay(buildVisits(data.logs)), [data.logs]);
+  const total = days.reduce((n, d) => n + d.visits.length, 0);
   return (
     <Panel aria-labelledby="history-h">
-      <PanelHeader id="history-h" title="My parking history" aside={<span className="text-sm text-ink-muted">{visits.length} visits</span>} />
-      {visits.length === 0 ? (
+      <PanelHeader id="history-h" title="Entries and exits" aside={<span className="text-sm text-ink-muted">{total} visits</span>} />
+      {days.length === 0 ? (
         <EmptyState title="No parking yet">Your visits appear here after you tap your card at the gate.</EmptyState>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[34rem] text-left text-sm">
-            <thead className="text-xs text-ink-muted">
-              <tr>
-                <th className="px-4 py-2 font-medium sm:px-5">Date</th>
-                <th className="px-2 py-2 font-medium">In</th>
-                <th className="px-2 py-2 font-medium">Out</th>
-                <th className="px-2 py-2 font-medium">Floor</th>
-                <th className="px-4 py-2 font-medium sm:px-5">Slot</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visits.slice(0, 50).map((v, i) => {
-                const at = v.entryAt ?? v.exitAt ?? 0;
-                return (
-                  <tr key={v.visitId ?? `v${i}`} className="border-t border-line">
-                    <td className="px-4 py-2.5 text-ink sm:px-5">{day(at)}</td>
-                    <td className="num px-2 py-2.5">{v.entryAt ? time(v.entryAt) : "—"}</td>
-                    <td className="num px-2 py-2.5">{v.exitAt ? time(v.exitAt) : v.entryAt ? <Badge tone="live">Parked now</Badge> : "—"}</td>
-                    <td className="num px-2 py-2.5">{v.floor ?? "—"}</td>
-                    <td className="px-4 py-2.5 sm:px-5">{v.slot ?? "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div>
+          {days.slice(0, 60).map((d) => (
+            <div key={d.dayStart} className="border-t border-line first:border-t-0">
+              <h3 className="px-4 pt-3 text-xs font-semibold tracking-wide text-ink-muted uppercase sm:px-5">{dayLongFmt.format(d.dayStart)}</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[28rem] text-left text-sm">
+                  <thead className="text-xs text-ink-faint">
+                    <tr>
+                      <th className="px-4 py-1.5 font-medium sm:px-5">Entry</th>
+                      <th className="px-2 py-1.5 font-medium">Exit</th>
+                      <th className="px-2 py-1.5 font-medium">Level</th>
+                      <th className="px-4 py-1.5 font-medium sm:px-5">Slot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.visits.map((v, i) => (
+                      <tr key={v.visitId ?? `v${i}`} className="border-t border-line/60">
+                        <td className="num px-4 py-2.5 text-ink sm:px-5">{v.entryAt ? time(v.entryAt) : "—"}</td>
+                        <td className="num px-2 py-2.5">{v.exitAt ? time(v.exitAt) : v.entryAt ? <Badge tone="live">Parked now</Badge> : "—"}</td>
+                        <td className="num px-2 py-2.5">{v.floor ?? "—"}</td>
+                        <td className="px-4 py-2.5 sm:px-5">{v.slot ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </Panel>
   );
 }
 
-function SuggestionsPanel() {
+const NOTICE_DOT = { live: "bg-live", gold: "bg-gold", crimson: "bg-crimson", neutral: "bg-ink-faint" } as const;
+
+function NotificationsPanel({ data, now }: { data: MemberData; now: number }) {
+  const notices = useMemo(() => memberNotices(data.user, buildVisits(data.logs), now), [data, now]);
+  return (
+    <Panel aria-labelledby="notif-h">
+      <PanelHeader id="notif-h" title="Notifications" aside={<span className="text-sm text-ink-muted">{notices.length}</span>} />
+      {notices.length === 0 ? (
+        <EmptyState title="You are all caught up">Reminders about your pass and your parking show up here.</EmptyState>
+      ) : (
+        <ul>
+          {notices.map((n) => (
+            <li key={n.id} className="flex gap-3 border-t border-line px-4 py-3.5 first:border-t-0 sm:px-5">
+              <span className={`mt-1.5 size-2 shrink-0 rounded-full ${NOTICE_DOT[n.tone]}`} aria-hidden />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink">{n.title}</p>
+                <p className="mt-0.5 text-sm text-ink-muted">{n.body}</p>
+                <p className="mt-1 text-xs text-ink-faint">{day(n.at)}, {time(n.at)}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+function SupportForm() {
   const toast = useToast();
   const [category, setCategory] = useState<string>(SUGGESTION_CATEGORIES[0]);
   const [message, setMessage] = useState("");
@@ -230,16 +264,16 @@ function SuggestionsPanel() {
     setError(failure);
     if (!failure) {
       setMessage("");
-      toast("Thanks, your suggestion was sent to the parking office.");
+      toast("Sent. The parking office will see your message.");
       refresh();
     }
   }
 
   return (
     <Panel aria-labelledby="suggest-h">
-      <PanelHeader id="suggest-h" title="Suggestions and recommendations" />
+      <PanelHeader id="suggest-h" title="Message the parking office" />
       <form onSubmit={submit} noValidate className="space-y-3 px-4 pb-5 sm:px-5">
-        <p className="text-sm text-ink-muted">Tell the parking office what would make parking better. Messages go one way: staff read them but don&apos;t reply here.</p>
+        <p className="text-sm text-ink-muted">Ask about your pass, your card or the building, or tell the office what would make parking better. The office reads every message. Replies are handled in person at the parking office.</p>
         <div>
           <label htmlFor="sg-cat" className="mb-1.5 block text-sm font-semibold text-ink">Category</label>
           <select id="sg-cat" className="c-input w-full" value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -249,7 +283,7 @@ function SuggestionsPanel() {
           </select>
         </div>
         <div>
-          <label htmlFor="sg-msg" className="mb-1.5 block text-sm font-semibold text-ink">Your suggestion</label>
+          <label htmlFor="sg-msg" className="mb-1.5 block text-sm font-semibold text-ink">Your message</label>
           <textarea
             id="sg-msg"
             className="c-input min-h-28 w-full"
@@ -263,12 +297,12 @@ function SuggestionsPanel() {
         </div>
         {error && <p id="sg-err" role="alert" className="text-sm text-crimson">{error}</p>}
         <button type="submit" className="c-btn c-btn-gold" disabled={busy}>
-          {busy ? "Sending…" : "Send suggestion"}
+          {busy ? "Sending…" : "Send message"}
         </button>
       </form>
       {sent && sent.length > 0 && (
         <div className="border-t border-line">
-          <h3 className="px-4 pt-3 text-sm font-semibold text-ink sm:px-5">Sent by you</h3>
+          <h3 className="px-4 pt-3 text-sm font-semibold text-ink sm:px-5">Your earlier messages</h3>
           <ul>
             {sent.map((s) => (
               <li key={s.id} className="border-t border-line px-4 py-3 text-sm first:border-t-0 sm:px-5">
@@ -286,11 +320,12 @@ function SuggestionsPanel() {
   );
 }
 
-/** The member dashboard: pass, profile, live count, own parking history, suggestions. */
-export function MemberView() {
-  const [state, setState] = useState<{ data: MemberData | null } | "loading" | "error">("loading");
-  const [now] = useState(() => Date.now());
 
+type Loaded = { data: MemberData | null } | "loading" | "error";
+
+/** Loads the signed-in member's record once per page. */
+function useMemberData(): Loaded {
+  const [state, setState] = useState<Loaded>("loading");
   useEffect(() => {
     let alive = true;
     loadMemberData().then(
@@ -301,8 +336,16 @@ export function MemberView() {
       alive = false;
     };
   }, []);
+  return state;
+}
 
-  if (state === "loading") return <p className="text-ink-muted" role="status">Loading your pass…</p>;
+/** Handles loading, errors and "not linked yet" so each page only deals with a loaded member. */
+function MemberPage({ render }: { render: (data: MemberData, now: number) => React.ReactNode }) {
+  const state = useMemberData();
+  const [now] = useState(() => Date.now());
+  const root = useRef<HTMLDivElement>(null);
+  useEnter(root);
+  if (state === "loading") return <p className="text-ink-muted" role="status">Loading…</p>;
   if (state === "error")
     return <p role="alert" className="text-crimson">Couldn&apos;t load your account. Check your connection and refresh.</p>;
   if (!state.data)
@@ -313,23 +356,77 @@ export function MemberView() {
         </EmptyState>
       </Panel>
     );
-  const data = state.data;
+  return <div ref={root} className="space-y-5 lg:space-y-6">{render(state.data, now)}</div>;
+}
 
+/** Live status: your pass, the live count, and the 3D building. */
+export function MemberHome() {
   return (
-    <div className="space-y-4">
-      <PageHeader title={`Hello, ${data.user.name.split(" ")[0]}`} description="Your semester pass, your parking, and the lot right now." />
-      <div data-enter className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <PassTile data={data} now={now} />
-        <LiveTile />
-        <VisitTiles data={data} now={now} />
-      </div>
-      <div className="grid items-start gap-4 lg:grid-cols-3">
-        <div data-enter className="lg:col-span-2"><HistoryPanel data={data} /></div>
-        <div data-enter className="space-y-4">
-          <ProfilePanel data={data} />
-          <SuggestionsPanel />
-        </div>
-      </div>
-    </div>
+    <MemberPage
+      render={(data, now) => (
+        <>
+          <PageHeader title={`Hello, ${data.user.name.split(" ")[0]}`} description="Your semester pass and the building right now." />
+          <div data-enter className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <PassTile data={data} now={now} />
+            <LiveTile />
+            <VisitTiles data={data} now={now} />
+          </div>
+          <div data-enter><ParkingExplorer /></div>
+          <div data-enter><ParkingTowers /></div>
+        </>
+      )}
+    />
+  );
+}
+
+export function MemberProfile() {
+  return (
+    <MemberPage
+      render={(data) => (
+        <>
+          <PageHeader title="Profile" description="What the parking office has on file for you." />
+          <div data-enter className="max-w-2xl"><ProfilePanel data={data} /></div>
+        </>
+      )}
+    />
+  );
+}
+
+export function MemberHistory() {
+  return (
+    <MemberPage
+      render={(data) => (
+        <>
+          <PageHeader title="Parking history" description="The date and time of each entry and exit, day by day." />
+          <div data-enter><HistoryPanel data={data} /></div>
+        </>
+      )}
+    />
+  );
+}
+
+export function MemberNotifications() {
+  return (
+    <MemberPage
+      render={(data, now) => (
+        <>
+          <PageHeader title="Notifications" description="Reminders about your pass and your parking." />
+          <div data-enter className="max-w-2xl"><NotificationsPanel data={data} now={now} /></div>
+        </>
+      )}
+    />
+  );
+}
+
+export function MemberSupport() {
+  return (
+    <MemberPage
+      render={() => (
+        <>
+          <PageHeader title="Contact support" description="Reach the parking office." />
+          <div data-enter className="max-w-2xl"><SupportForm /></div>
+        </>
+      )}
+    />
   );
 }
