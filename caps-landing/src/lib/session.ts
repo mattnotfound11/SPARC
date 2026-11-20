@@ -109,7 +109,8 @@ export async function signInAccount(email: string, password: string): Promise<Si
   return { type: data };
 }
 
-export type SignupResult = { error: string } | { ok: true } | { exists: true };
+/** `signedIn` means the project doesn't ask for email confirmation, so the new member is already signed in. */
+export type SignupResult = { error: string } | { ok: true } | { signedIn: true } | { exists: true };
 
 /** A plain-language reason for a failed sign-up, with the service's own code in brackets so it can be looked up. */
 function signUpFailure(error: { status?: number; code?: string; name?: string; message?: string }): string {
@@ -149,6 +150,14 @@ export async function signUpMember(input: { name: string; email: string; role: s
   // With email confirmation on, an address that already has an account comes back as a user with no
   // identities (and no email is sent), so the student has to be told to log in instead.
   if (data.user && (data.user.identities?.length ?? 1) === 0) return { exists: true };
+  // With "Confirm email" switched off, Supabase signs the new member in straight away. Check their record
+  // was created (a duplicate ID or card makes none) instead of dropping them on a page that can't load.
+  if (data.session) {
+    const { data: kind } = await db.rpc("account_type");
+    if (kind === "member") return { signedIn: true };
+    await db.auth.signOut();
+    return { error: NOT_LINKED };
+  }
   return { ok: true };
 }
 

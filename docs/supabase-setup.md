@@ -153,6 +153,16 @@ nothing is guessed, and **Activate pass** and **Renew** refuse (with a link to t
 dates have been entered. Passes that are already activated keep the end date they were given when the dates
 are edited later.
 
+**Email confirmation on or off.** Sign-up works either way, so the switch can be flipped without a code
+change (**Authentication → Sign In / Providers → Email → Confirm email**).
+- **On (recommended for real students):** they get an email and must click the link, which proves the
+  address is theirs. It needs a working email provider (see Setup, step 4).
+- **Off (testing, or while no email provider is connected):** the account is created and signed in at once,
+  and the record is created immediately. Nothing proves the student owns the email address, so anyone can
+  register with an `@usa.edu.ph` address that isn't theirs. The Pending pass and the admin's check at
+  activation still stop anyone getting a pass they didn't avail, but turn confirmation back on before
+  launch.
+
 **Blocking duplicates and bulk accounts**
 
 - One account per email: Supabase refuses a second sign-up with the same email, and `+` aliases are
