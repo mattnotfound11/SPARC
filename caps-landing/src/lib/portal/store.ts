@@ -44,7 +44,7 @@ export const DEMO_CARD_LABEL = "1234-5678-9012";
 /** A pass for today, so the marshal scanner has something that works. */
 export const DEMO_PASS_CODE = "SPARC-V-DEMOGUEST";
 
-export type EventInput = { name: string; date: number; closedFloors: number[]; reservedPerFloor: number };
+export type EventInput = { name: string; date: number; reservedPerFloor: number };
 export type PassInput = { guestName: string; plate: string; date: number; purpose: string; guestEmail?: string };
 export type PassResult = { ok: true; pass: VisitorPass } | { ok: false; error: string };
 export type RedeemOutcome =
@@ -327,7 +327,7 @@ export function createPortalStore(storage: () => PortalState = load, write: (s: 
       if (date < startOfDay(now)) return { ok: false, error: "That date has already passed." };
       if (date > startOfDay(now) + PASS_HORIZON_DAYS * 24 * 60 * 60 * 1000) return { ok: false, error: `Events can be planned up to ${PASS_HORIZON_DAYS} days ahead.` };
       const reserved = Math.max(0, Math.floor(input.reservedPerFloor || 0));
-      const event: EventMode = { name, date, closedFloors: [...new Set(input.closedFloors)].sort((a, b) => a - b), reservedPerFloor: reserved };
+      const event: EventMode = { name, date, reservedPerFloor: reserved };
       set({ ...state, event });
       return { ok: true };
     },

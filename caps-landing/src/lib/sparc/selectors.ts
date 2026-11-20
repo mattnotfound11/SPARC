@@ -7,7 +7,7 @@ import { portal } from "@/lib/portal/store";
 export type FloorStat = {
   floor: number;
   total: number;
-  /** Free bays after event holds: a closed floor offers none, a reserved floor offers fewer. */
+  /** Free bays after event holds: on an event day some bays on every floor are held back. */
   free: number;
   occupied: number;
   /** Free bays an event is holding back. */
@@ -20,7 +20,7 @@ export function floorStats(config: FloorConfig[], slots: Slot[], now: number = D
     const mine = slots.filter((s) => s.floor === f.floor);
     const occupied = mine.filter((s) => s.status === "occupied").length;
     const free = mine.length - occupied;
-    const held = !holds ? 0 : holds.closed.includes(f.floor) ? free : Math.min(holds.reserved, free);
+    const held = !holds ? 0 : Math.min(holds.reserved, free);
     return {
       floor: f.floor,
       total: mine.length,
@@ -31,11 +31,10 @@ export function floorStats(config: FloorConfig[], slots: Slot[], now: number = D
   });
 }
 
-/** The first free bay on the floor the facilitator chose, leaving out a floor or bays an event is holding. */
+/** The first free bay on the floor the facilitator chose, leaving out bays an event is holding back. */
 export function pickFreeSlot(config: FloorConfig[], slots: Slot[], floor: number, now: number = Date.now()): Slot | undefined {
   if (!config.some((f) => f.floor === floor)) return undefined;
   const holds = holdsFor(portal.get().event, now);
-  if (holds?.closed.includes(floor)) return undefined;
   const free = slots.filter((s) => s.floor === floor && s.status === "free");
   return free.length > (holds?.reserved ?? 0) ? free[0] : undefined;
 }
