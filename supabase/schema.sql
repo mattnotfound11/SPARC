@@ -266,6 +266,20 @@ $$;
 revoke execute on function public.member_user_id() from public;
 grant execute on function public.member_user_id() to authenticated;
 
+-- The lot's map for the member dashboard: which bays are free or taken. No names, cards or times,
+-- so members can see the building without seeing who is parked in it.
+create or replace function public.member_slot_map()
+returns table (code text, floor int, idx int, status text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.code, s.floor, s.idx, s.status from public.slots s where public.member_user_id() is not null order by s.floor, s.idx;
+$$;
+revoke execute on function public.member_slot_map() from public;
+grant execute on function public.member_slot_map() to authenticated;
+
 -- What kind of account is signed in: 'admin', 'facilitator', 'member', or null.
 create or replace function public.account_type()
 returns text
