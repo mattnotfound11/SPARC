@@ -28,3 +28,13 @@ create policy "console can insert the count" on public.sparc_availability
 create policy "console can update the count" on public.sparc_availability
   for update to authenticated using (id = 'main' and public.is_staff()) with check (id = 'main' and public.is_staff());
 revoke insert, update on public.sparc_availability from anon;
+
+-- Members (see schema.sql): a signed-in member may read ONLY their own registered record and their
+-- own parking logs. They get nothing on slots or scans, and anon gets nothing here.
+drop policy if exists member_read_own on public.users;
+create policy member_read_own on public.users for select to authenticated
+  using (id = public.member_user_id());
+drop policy if exists member_read_own on public.logs;
+create policy member_read_own on public.logs for select to authenticated
+  using (user_id = public.member_user_id());
+revoke all on public.members, public.suggestions from anon;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartColumn, Gavel, LayoutGrid, LogOut, ScanLine, ScrollText, Ticket, TrendingUp, Users } from "lucide-react";
+import { ChartColumn, Gavel, Inbox, LayoutGrid, LogOut, ScanLine, ScrollText, Ticket, TrendingUp, Users } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { SparcGate, useSyncNotice } from "@/lib/sparc/SparcProvider";
@@ -17,6 +17,7 @@ const NAV = [
   { href: "/admin/logs", label: "Audit log", short: "Log", icon: ScrollText },
   { href: "/admin/reports", label: "Reports", short: "Reports", icon: ChartColumn },
   { href: "/admin/appeals", label: "Appeals", short: "Appeals", icon: Gavel },
+  { href: "/admin/suggestions", label: "Suggestions", short: "Ideas", icon: Inbox },
   { href: "/admin/analytics", label: "Analytics", short: "Trends", icon: TrendingUp },
 ] as const;
 

@@ -1,26 +1,52 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { useAuthMotion } from "@/hooks/useAuthMotion";
 import { AuthTabs } from "./AuthTabs";
 import { FormNotice } from "./FormNotice";
 import { GoogleIcon } from "./GoogleIcon";
+import { homeFor } from "@/lib/member/logic";
+import { DEMO_MEMBER, DEMO_PASSWORD } from "@/lib/mockSession";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { mockAllowed, signInAccount, useMemberSession } from "@/lib/session";
 import { PasswordField, TextField } from "./fields";
 
 type Status = "idle" | "submitting" | "unavailable";
 
 export function LoginForm() {
   const root = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const member = useMemberSession();
   const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
   useAuthMotion(root);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  // Already signed in as a member: go straight to the dashboard (not mid sign-in, so errors stay put).
+  useEffect(() => {
+    if (member.status === "in" && status !== "submitting") router.replace("/member");
+  }, [member.status, status, router]);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("identifier") ?? "");
+    const password = String(data.get("password") ?? "");
+    if (!email.trim() || !password) {
+      setError("Enter your institutional email and password.");
+      return;
+    }
+    setError(null);
     setStatus("submitting");
-    // No auth service is connected yet; surface that honestly instead of faking a login.
-    window.setTimeout(() => setStatus("unavailable"), 700);
+    const result = await signInAccount(email, password);
+    if ("error" in result) {
+      setStatus("idle");
+      setError(result.error);
+    } else {
+      router.replace(homeFor(result.type));
+    }
   }
 
   return (
@@ -34,22 +60,22 @@ export function LoginForm() {
 
       <AuthTabs active="login" />
 
-      <form onSubmit={handleSubmit} className="mt-[1.375rem] flex flex-1 flex-col lg:flex-none">
+      <form onSubmit={handleSubmit} noValidate className="mt-[1.375rem] flex flex-1 flex-col lg:flex-none">
         <TextField
-          label="Institutional email or ID"
+          label="Institutional email"
           name="identifier"
           type="text"
           inputMode="email"
           autoComplete="username"
           placeholder="student@usa.edu.ph"
-          required
+          aria-invalid={error ? true : undefined}
         />
         <PasswordField
           label="Password"
           name="password"
           autoComplete="current-password"
           placeholder="Enter your password"
-          required
+          aria-invalid={error ? true : undefined}
         />
 
         <div data-anim className="mb-4 flex items-center justify-between text-[0.9375rem]">
@@ -71,6 +97,12 @@ export function LoginForm() {
           <GoogleIcon className="size-5" />
           Continue with Google
         </button>
+
+        {error && (
+          <div role="alert" className="mb-3">
+            <FormNotice>{error}</FormNotice>
+          </div>
+        )}
 
         {status === "unavailable" && (
           <div className="mb-3">
@@ -101,6 +133,12 @@ export function LoginForm() {
           </button>
         </div>
       </form>
+
+      {!isSupabaseConfigured && mockAllowed && (
+        <p data-anim className="pt-3 text-center text-sm text-ink-muted">
+          Development demo member: <span className="font-mono">{DEMO_MEMBER.email}</span> / <span className="font-mono">{DEMO_PASSWORD}</span>
+        </p>
+      )}
 
       <p data-anim className="pt-4 text-center text-[0.9375rem] leading-[1.9] text-ink-muted">
         Don&apos;t have an account?{" "}

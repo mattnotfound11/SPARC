@@ -1,5 +1,6 @@
 "use client";
 
+import { MemberLoginLink } from "./MemberLoginLink";
 import { useEffect, useRef, useState } from "react";
 import { Nfc, RotateCw, X } from "lucide-react";
 import gsap from "gsap";
@@ -237,6 +238,8 @@ export function UserPanel({ mode, onClose }: { mode: PanelMode; onClose: () => v
                 </p>
               )}
             </div>
+
+            {liveEditing && liveEditing.role !== "visitor" && <MemberLoginLink userId={liveEditing.id} name={liveEditing.name} />}
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">

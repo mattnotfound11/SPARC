@@ -221,3 +221,97 @@ as $$
 $$;
 revoke execute on function public.is_staff() from public;
 grant execute on function public.is_staff() to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Members: registered students/personnel with a real login who see only their own pass, history
+-- and can send one-way suggestions. An administrator links a Supabase account to a registered user
+-- (Users page, or:  select public.link_member('someone@usa.edu.ph', '<users.id>');).
+-- Members' own-row reads on users/logs are added by supabase/lock-down.sql; until then the open
+-- "public mode" policies apply and member privacy is NOT enforced.
+-- ---------------------------------------------------------------------------
+create table if not exists public.members (
+  user_id            uuid primary key references auth.users (id) on delete cascade,
+  registered_user_id text not null unique references public.users (id) on delete cascade
+);
+alter table public.members enable row level security; -- no policies: read through the functions below
+
+create or replace function public.member_user_id()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select registered_user_id from public.members where user_id = auth.uid();
+$$;
+revoke execute on function public.member_user_id() from public;
+grant execute on function public.member_user_id() to authenticated;
+
+-- What kind of account is signed in: 'admin', 'facilitator', 'member', or null.
+create or replace function public.account_type()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.staff_role(), case when exists (select 1 from public.members where user_id = auth.uid()) then 'member' end);
+$$;
+revoke execute on function public.account_type() from public;
+grant execute on function public.account_type() to authenticated;
+
+create table if not exists public.suggestions (
+  id                 uuid primary key default gen_random_uuid(),
+  registered_user_id text not null references public.users (id) on delete cascade,
+  category           text not null check (category in ('Parking', 'Safety', 'Pass or billing', 'Other')),
+  message            text not null check (char_length(message) between 1 and 1000),
+  created_at         bigint not null,
+  status             text not null default 'new' check (status in ('new', 'read', 'resolved'))
+);
+create index if not exists suggestions_user_idx on public.suggestions (registered_user_id, created_at desc);
+alter table public.suggestions enable row level security;
+
+drop policy if exists member_insert on public.suggestions;
+create policy member_insert on public.suggestions for insert to authenticated
+  with check (
+    registered_user_id = public.member_user_id()
+    and status = 'new'
+    and (select count(*) from public.suggestions s
+         where s.registered_user_id = public.member_user_id()
+           and s.created_at > (extract(epoch from now()) * 1000)::bigint - 86400000) < 5
+  );
+drop policy if exists member_select on public.suggestions;
+create policy member_select on public.suggestions for select to authenticated
+  using (registered_user_id = public.member_user_id() or public.staff_role() = 'admin');
+drop policy if exists admin_update on public.suggestions;
+create policy admin_update on public.suggestions for update to authenticated
+  using (public.staff_role() = 'admin') with check (public.staff_role() = 'admin');
+revoke all on public.suggestions from anon;
+
+-- Admin-only: give a Supabase account (by email) the member view of one registered user.
+create or replace function public.link_member(p_email text, p_user_id text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_auth uuid;
+  v_role text;
+begin
+  if public.staff_role() is distinct from 'admin' then return 'Only administrators can link a member.'; end if;
+  select id into v_auth from auth.users where lower(email) = lower(trim(p_email));
+  if v_auth is null then return 'No account with that email. Create it in Supabase (Authentication -> Users) first.'; end if;
+  select role into v_role from public.users where id = p_user_id;
+  if v_role is null then return 'That registered user does not exist.'; end if;
+  if v_role = 'visitor' then return 'Visitors cannot have a member login.'; end if;
+  if exists (select 1 from public.members where registered_user_id = p_user_id and user_id <> v_auth) then
+    return 'That registered user is already linked to another login.';
+  end if;
+  delete from public.members where user_id = v_auth;
+  insert into public.members (user_id, registered_user_id) values (v_auth, p_user_id);
+  return 'ok';
+end;
+$$;
+revoke execute on function public.link_member(text, text) from public;
+grant execute on function public.link_member(text, text) to authenticated;
