@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, CircleCheck, Clock } from "lucide-react";
+import { CalendarDays, CircleAlert, CircleCheck, Clock, CreditCard, Hash, Mail } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { SparcGate, useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
@@ -23,15 +23,6 @@ const time = (t: number) => timeFmt.format(t);
 const PASS_TONE = { pending: "gold", active: "live", expiring: "gold", expired: "crimson" } as const;
 const PASS_LABEL = { pending: "Pending", active: "Active", expiring: "Expiring soon", expired: "Expired" } as const;
 const STATUS_LABEL = { new: "Sent", read: "Read", resolved: "Resolved" } as const;
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-t border-line px-4 py-2.5 text-sm first:border-t-0 sm:px-5">
-      <dt className="text-ink-muted">{label}</dt>
-      <dd className="text-right font-medium text-ink">{children}</dd>
-    </div>
-  );
-}
 
 const LIVE_TONE = {
   live: { bar: "bg-live", text: "text-live", label: "Plenty of space" },
@@ -188,20 +179,68 @@ function StatusTile({ data }: { data: MemberData }) {
   );
 }
 
-function ProfilePanel({ data }: { data: MemberData }) {
-  const u = data.user;
+function Field({ icon: Icon, label, children }: { icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>; label: string; children: React.ReactNode }) {
   return (
-    <Panel aria-labelledby="profile-h">
-      <PanelHeader id="profile-h" title="Details on file" />
-      <dl>
-        <Row label="Name">{u.name}</Row>
-        <Row label="Role">{ROLE_LABEL[u.role]}</Row>
-        <Row label={ID_LABEL[u.role]}>{u.studentId || "Not on file"}</Row>
-        {u.email && <Row label="Email">{u.email}</Row>}
-        {u.nfcId && <Row label="NFC card"><span className="font-mono">{u.nfcId}</span></Row>}
-        <Row label="Registered">{day(u.createdAt)}</Row>
-      </dl>
-    </Panel>
+    <div className="flex items-start gap-3">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-white/[0.03] text-gold">
+        <Icon className="size-[1.125rem]" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-xs font-semibold tracking-wide text-ink-muted uppercase">{label}</dt>
+        <dd className="mt-0.5 break-words text-[0.9375rem] font-medium text-ink">{children}</dd>
+      </div>
+    </div>
+  );
+}
+
+/** The member's own details: who they are, how to reach them, and the card the gate reads. */
+function ProfileView({ data, now }: { data: MemberData; now: number }) {
+  const u = data.user;
+  const pass = passState(u.expiresAt, now);
+  const initials = u.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      <section aria-labelledby="who-h" className="rounded-2xl border border-gold/25 bg-gradient-to-b from-gold/[0.10] to-surface/30 p-6 text-center sm:p-7 lg:text-left">
+        <span aria-hidden className="mx-auto grid size-[4.5rem] place-items-center rounded-full border border-gold/40 bg-gold/15 font-display text-2xl font-bold text-gold lg:mx-0">
+          {initials}
+        </span>
+        <h2 id="who-h" className="display mt-4 text-[1.625rem] leading-tight text-ink">{u.name}</h2>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+          <Badge>{ROLE_LABEL[u.role]}</Badge>
+          <Badge tone={PASS_TONE[pass.kind]}>Pass: {PASS_LABEL[pass.kind]}</Badge>
+        </div>
+        <p className="mt-5 text-sm text-ink-muted">Member since {day(u.createdAt)}</p>
+      </section>
+
+      <div className="space-y-4 lg:col-span-2">
+        <section aria-label="Contact and identity" className="rounded-2xl border border-line bg-surface/40 p-5 sm:p-6">
+          <dl className="grid gap-5 sm:grid-cols-2">
+            <Field icon={Hash} label={ID_LABEL[u.role]}>{u.studentId || "Not on file"}</Field>
+            <Field icon={Mail} label="Email">{u.email || "Not on file"}</Field>
+            <Field icon={CalendarDays} label="Pass valid until">
+              {pass.kind === "pending" ? "Not activated yet" : `${day(u.expiresAt)}, ${time(u.expiresAt)}`}
+            </Field>
+          </dl>
+        </section>
+
+        <section aria-label="Parking card" className="relative max-w-md overflow-hidden rounded-2xl border border-line-strong bg-gradient-to-br from-[#1a1d27] via-[#10131b] to-[#0b0d13] p-5 sm:p-6">
+          <span aria-hidden className="pointer-events-none absolute -top-16 -right-12 size-48 rounded-full bg-gold/[0.12] blur-2xl" />
+          <div className="relative flex items-center justify-between">
+            <p className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Parking card</p>
+            <CreditCard className="size-5 text-gold" aria-hidden />
+          </div>
+          {u.nfcId ? (
+            <p className="relative mt-8 font-mono text-[1.0625rem] tracking-wider text-ink">{u.nfcId}</p>
+          ) : (
+            <p className="relative mt-8 text-sm text-ink-muted">No card yet. The parking office gives you one when your pass is activated.</p>
+          )}
+          <p className="relative mt-5 flex items-end justify-between gap-3 text-sm">
+            <span className="font-medium text-ink">{u.name}</span>
+            <span className="text-xs text-ink-muted">Tap at the gate</span>
+          </p>
+        </section>
+      </div>
+    </div>
   );
 }
 
@@ -449,10 +488,10 @@ export function MemberHome() {
 export function MemberProfile() {
   return (
     <MemberPage
-      render={(data) => (
+      render={(data, now) => (
         <>
           <PageHeader title="Profile" description="What the parking office has on file for you." />
-          <div data-enter className="max-w-2xl"><ProfilePanel data={data} /></div>
+          <div data-enter><ProfileView data={data} now={now} /></div>
         </>
       )}
     />
