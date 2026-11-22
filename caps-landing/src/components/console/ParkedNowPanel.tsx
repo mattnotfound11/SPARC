@@ -11,7 +11,7 @@ import { ROLE_LABEL } from "./UserPanel";
  * Who is parked in the building right now: one row per occupied bay, longest stay first. Staff only
  * (the console), since it shows names and card numbers.
  */
-export function ParkedNowPanel() {
+export function ParkedNowPanel({ limit }: { limit?: number } = {}) {
   const state = useSparcState();
   const now = useNow(30000);
   const [query, setQuery] = useState("");
@@ -32,13 +32,15 @@ export function ParkedNowPanel() {
           label: role ? ROLE_LABEL[role] : "Walk-in",
         };
       })
-      .sort((a, b) => a.since - b.since);
-  }, [state.slots, state.users]);
+      // With a limit (the dashboard) show the newest arrivals; the full page lists longest stay first.
+      .sort((a, b) => (limit ? b.since - a.since : a.since - b.since));
+  }, [state.slots, state.users, limit]);
 
   const q = query.trim().toLowerCase();
-  const shown = q
+  const matched = q
     ? rows.filter((r) => [r.name, r.card, r.label].some((v) => v.toLowerCase().includes(q)))
     : rows;
+  const shown = limit ? matched.slice(0, limit) : matched;
 
   return (
     <Panel aria-labelledby="parked-title">
