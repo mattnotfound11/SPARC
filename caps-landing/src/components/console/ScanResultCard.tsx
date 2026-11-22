@@ -91,6 +91,7 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
   if (outcome.status !== "entered" && outcome.status !== "exited") return null;
 
   const walkIn = outcome.walkIn === true;
+  const visitor = !walkIn && user.role === "visitor";
   const pass = passStatus(user, now);
   const entered = outcome.status === "entered";
   const Icon = entered ? ArrowRightToLine : ArrowLeftFromLine;
@@ -103,10 +104,12 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
             {entered ? "Entered" : "Exited"} · slot <span className="font-mono">{outcome.slot}</span> · floor {outcome.floor}
           </p>
           <p className="mt-1 truncate font-display text-2xl font-semibold text-ink">{user.name}</p>
-          <p className="mt-0.5 text-sm text-ink-muted">{walkIn ? "Paid at the gate" : ROLE_LABEL[user.role]}</p>
+          <p className="mt-0.5 text-sm text-ink-muted">{walkIn ? "Paid at the gate" : visitor ? "Visitor card" : ROLE_LABEL[user.role]}</p>
         </div>
         {walkIn ? (
           <Badge tone="gold">Walk-in · receipt checked</Badge>
+        ) : visitor ? (
+          <Badge tone="gold">Visitor · confirmed</Badge>
         ) : (
           <Badge tone={pass.state === "active" ? "live" : "gold"}>
             {pass.state === "active"
@@ -115,7 +118,7 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
           </Badge>
         )}
       </div>
-      {!walkIn && <p className="mt-3 text-xs text-ink-muted">Pass valid until {formatDate(user.expiresAt)}</p>}
+      {!walkIn && !visitor && <p className="mt-3 text-xs text-ink-muted">Pass valid until {formatDate(user.expiresAt)}</p>}
     </div>
   );
 }

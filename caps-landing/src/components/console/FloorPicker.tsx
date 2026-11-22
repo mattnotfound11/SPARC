@@ -10,6 +10,7 @@ import type { FloorStat } from "@/lib/sparc/selectors";
 export function FloorPicker({
   name,
   walkIn = false,
+  visitor = false,
   stats,
   onPick,
   onCancel,
@@ -18,6 +19,8 @@ export function FloorPicker({
   name: string;
   /** A driver let in on a paid receipt rather than a semester pass. */
   walkIn?: boolean;
+  /** A pre-registered visitor card. */
+  visitor?: boolean;
   stats: FloorStat[];
   onPick: (floor: number) => void;
   onCancel: () => void;
@@ -30,10 +33,10 @@ export function FloorPicker({
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm font-semibold text-[#86efac]">
             <Check className="size-4" aria-hidden />
-            {walkIn ? "Receipt checked" : "Pass is valid"}
+            {walkIn ? "Receipt checked" : visitor ? "Visitor card confirmed" : "Pass is valid"}
           </p>
           <h3 id="floor-pick-title" className="mt-1 font-display text-xl font-semibold text-ink">
-            {walkIn ? "Which floor for the walk-in?" : `Which floor for ${name}?`}
+            {walkIn ? "Which floor for the walk-in?" : visitor ? "Which floor for the visitor?" : `Which floor for ${name}?`}
           </h3>
         </div>
         <button type="button" onClick={onCancel} aria-label="Cancel entry" className="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/[0.06] hover:text-ink">
