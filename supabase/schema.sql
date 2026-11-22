@@ -3,6 +3,9 @@
 -- Safe to run again: everything skips what already exists. Times are milliseconds since 1970 (bigint),
 -- the same numbers the app uses.
 --
+-- Rerunning this file never unlocks the database: once supabase/lock-down.sql has been run, it keeps
+-- the locked rules and only adds what is new (tables, columns, functions).
+--
 -- ACCESS MODE: PUBLIC (the team's current choice). Anyone holding the site's public key can read
 -- and change ALL the data below, including drivers' names and student IDs. That is fine for a demo
 -- with fake data and NOT fine for real students. When you're ready, run supabase/lock-down.sql to
@@ -105,7 +108,8 @@ select chr(64 + f) || i, f, i, case when f <= 2 then 'heavy' else 'light' end
 from generate_series(1, 5) as f, generate_series(1, 22) as i
 on conflict (code) do nothing;
 
--- Public mode: anyone can read and change the console data.
+-- Public mode: anyone can read and change the console data. If supabase/lock-down.sql has already been
+-- run (the users table has its admin_all policy), the database stays locked: staff only, nothing for anon.
 alter table public.users enable row level security;
 alter table public.slots enable row level security;
 alter table public.logs  enable row level security;
@@ -113,15 +117,30 @@ alter table public.scans enable row level security;
 alter table public.semesters enable row level security;
 
 do $$
-declare t text;
+declare
+  t text;
+  locked boolean := exists (select 1 from pg_policies
+                            where schemaname = 'public' and tablename = 'users' and policyname = 'admin_all');
 begin
   foreach t in array array['users', 'slots', 'logs', 'scans', 'semesters'] loop
-    execute format('drop policy if exists admin_all on public.%I', t);
     execute format('drop policy if exists public_all on public.%I', t);
-    execute format('create policy public_all on public.%I for all to anon, authenticated using (true) with check (true)', t);
+    if locked then
+      -- Keep it locked. A table added since the lock-down gets the same staff-only rule.
+      if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = t and policyname = 'admin_all') then
+        -- is_staff() is created further down; a database locked before it existed uses is_admin().
+        execute format(
+          'create policy admin_all on public.%1$I for all to authenticated using (%2$s) with check (%2$s)', t,
+          case when to_regprocedure('public.is_staff()') is null then 'public.is_admin()' else 'public.is_staff()' end);
+      end if;
+      execute format('revoke all on public.%I from anon', t);
+      execute format('grant select, insert, update, delete on public.%I to authenticated', t);
+    else
+      execute format('drop policy if exists admin_all on public.%I', t);
+      execute format('create policy public_all on public.%I for all to anon, authenticated using (true) with check (true)', t);
+      execute format('grant select, insert, update, delete on public.%I to anon, authenticated', t);
+    end if;
   end loop;
 end $$;
-grant select, insert, update, delete on public.users, public.slots, public.logs, public.scans, public.semesters to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- A gate tap, saved all at once: the slot change, the log row and the scan row either all
@@ -162,7 +181,13 @@ begin
 end;
 $$;
 revoke execute on function public.record_tap(jsonb, jsonb, jsonb, jsonb) from public;
-grant execute on function public.record_tap(jsonb, jsonb, jsonb, jsonb) to anon, authenticated;
+grant execute on function public.record_tap(jsonb, jsonb, jsonb, jsonb) to authenticated;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'users' and policyname = 'admin_all') then
+    grant execute on function public.record_tap(jsonb, jsonb, jsonb, jsonb) to anon; -- public mode only
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Public live count for the homepage (Matthew's table). Holds no driver data.
@@ -175,15 +200,24 @@ create table if not exists public.sparc_availability (
 );
 alter table public.sparc_availability enable row level security;
 drop policy if exists "anyone can read the count" on public.sparc_availability;
-drop policy if exists "console can insert the count" on public.sparc_availability;
-drop policy if exists "console can update the count" on public.sparc_availability;
 create policy "anyone can read the count" on public.sparc_availability
   for select to anon, authenticated using (true);
-create policy "console can insert the count" on public.sparc_availability
-  for insert to anon, authenticated with check (id = 'main');
-create policy "console can update the count" on public.sparc_availability
-  for update to anon, authenticated using (id = 'main') with check (id = 'main');
-grant select, insert, update on public.sparc_availability to anon, authenticated;
+grant select on public.sparc_availability to anon, authenticated;
+grant insert, update on public.sparc_availability to authenticated;
+-- Who may change the count: anyone in public mode; once locked, only staff (supabase/lock-down.sql set
+-- those rules, and rerunning this file leaves them alone).
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'users' and policyname = 'admin_all') then
+    drop policy if exists "console can insert the count" on public.sparc_availability;
+    drop policy if exists "console can update the count" on public.sparc_availability;
+    create policy "console can insert the count" on public.sparc_availability
+      for insert to anon, authenticated with check (id = 'main');
+    create policy "console can update the count" on public.sparc_availability
+      for update to anon, authenticated using (id = 'main') with check (id = 'main');
+    grant insert, update on public.sparc_availability to anon;
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Live updates: the console and the homepage subscribe to changes on these tables.
@@ -227,7 +261,13 @@ as $$
   end;
 $$;
 revoke execute on function public.staff_role() from public;
-grant execute on function public.staff_role() to anon, authenticated;
+grant execute on function public.staff_role() to authenticated;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'users' and policyname = 'admin_all') then
+    grant execute on function public.staff_role() to anon; -- public mode only
+  end if;
+end $$;
 
 create or replace function public.is_staff()
 returns boolean
@@ -239,7 +279,13 @@ as $$
   select public.staff_role() is not null;
 $$;
 revoke execute on function public.is_staff() from public;
-grant execute on function public.is_staff() to anon, authenticated;
+grant execute on function public.is_staff() to authenticated;
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'users' and policyname = 'admin_all') then
+    grant execute on function public.is_staff() to anon; -- public mode only
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Members: students and personnel register themselves on the site, confirm their email, and then see only
