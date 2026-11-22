@@ -102,9 +102,10 @@ Budget about 15 minutes.
 
 1. In Supabase: **Authentication → Users → Add user → Create new user**. Enter an email and
    password, and tick **Auto Confirm User**. Do this for each admin.
-   If the demo accounts `admin@usa.edu.ph` and `facilitator@usa.edu.ph` exist from testing, **change their
-   passwords** (Authentication → Users → the account → Send password recovery, or delete and recreate them):
-   `sparc-demo` is a known password. The site no longer prints it on the sign-in page in production builds.
+   The demo accounts `admin@usa.edu.ph` and `facilitator@usa.edu.ph` use the password `sparc-demo`, and the
+   staff sign-in page prints them so a panel can get in. That is fine for a demo. Before real students
+   register, **change those passwords** (Authentication → Users → the account) and set
+   `NEXT_PUBLIC_HIDE_STAFF_LOGINS=true` to hide the box.
 2. **SQL Editor** → run this with the real emails:
    ```sql
    insert into public.admins (user_id)
