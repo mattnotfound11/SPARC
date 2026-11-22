@@ -31,7 +31,8 @@ Budget about 15 minutes.
 
 1. In the left sidebar open **SQL Editor** and click **New query**.
 2. Open `supabase/schema.sql` from this repo, copy **all** of it, paste it in, and click **Run**.
-3. You should see **"Success. No rows returned."** It's safe to run again if you're unsure.
+3. You should see **"Success. No rows returned."** It's safe to run again if you're unsure, and it
+   never unlocks a database that has been locked down (see "Locking it down").
 4. Check it: **Table Editor** → `slots` should have **110 rows**.
 
 ## 3. Add Matthew and Alex to the project (owner)
@@ -125,6 +126,10 @@ on the admin list. The public homepage still shows the live count.
 
 **Order matters:** if you run the lock-down before step 4 is live, the console stops saving until you
 finish.
+
+**Updating the database later:** when someone adds tables to `schema.sql`, just run it again. On a
+locked database it keeps the lock: no public access is switched back on, and new console tables get
+the same staff-only rule. Running `lock-down.sql` again afterwards is harmless but not needed.
 
 ---
 
