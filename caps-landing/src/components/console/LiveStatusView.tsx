@@ -273,7 +273,7 @@ export function LiveStatusView() {
       </div>
 
       <div data-enter>
-        <ParkedNowPanel />
+        <ParkedNowPanel limit={10} />
       </div>
 
       <div data-enter>
