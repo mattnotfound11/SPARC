@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarRange, ChartColumn, Gavel, Inbox, LayoutGrid, LogOut, ScanLine, ScrollText, Ticket, Users } from "lucide-react";
+import { CalendarRange, ChartColumn, Car, Gavel, Inbox, LayoutGrid, LogOut, ScanLine, ScrollText, Ticket, Users } from "lucide-react";
 import { SparcSeal } from "@/components/brand/SparcSeal";
 import { SparcWordmark } from "@/components/brand/SparcWordmark";
 import { SparcGate, useSyncNotice } from "@/lib/sparc/SparcProvider";
@@ -12,6 +12,7 @@ import { ToastProvider } from "./ui";
 
 const NAV = [
   { href: "/admin", label: "Live status", short: "Live", icon: LayoutGrid },
+  { href: "/admin/inside", label: "Inside now", short: "Inside", icon: Car },
   { href: "/admin/scan", label: "Entry / Exit", short: "Scan", icon: ScanLine },
   { href: "/admin/pass", label: "Visitor pass", short: "Pass", icon: Ticket },
   { href: "/admin/users", label: "Users", short: "Users", icon: Users },
