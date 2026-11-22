@@ -102,6 +102,9 @@ Budget about 15 minutes.
 
 1. In Supabase: **Authentication → Users → Add user → Create new user**. Enter an email and
    password, and tick **Auto Confirm User**. Do this for each admin.
+   If the demo accounts `admin@usa.edu.ph` and `facilitator@usa.edu.ph` exist from testing, **change their
+   passwords** (Authentication → Users → the account → Send password recovery, or delete and recreate them):
+   `sparc-demo` is a known password. The site no longer prints it on the sign-in page in production builds.
 2. **SQL Editor** → run this with the real emails:
    ```sql
    insert into public.admins (user_id)
