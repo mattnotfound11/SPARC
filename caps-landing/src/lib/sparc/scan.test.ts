@@ -325,3 +325,29 @@ describe("recent scans", () => {
     expect(scans[0].at).toBeGreaterThanOrEqual(scans[49].at);
   });
 });
+
+describe("visitor cards", () => {
+  it("registers a card with the Visitor role and a default name", () => {
+    const s = createSparcStore(T0);
+    expect(s.addVisitorCard("0000-0000-0007").ok).toBe(true);
+    const card = s.getState().users.find((u) => u.role === "visitor" && u.nfcId === "0000-0000-0007");
+    expect(card).toMatchObject({ name: "Visitor 01", active: true });
+  });
+
+  it("refuses a card that already belongs to someone", () => {
+    const s = createSparcStore(T0);
+    expect(s.addVisitorCard("0000-0000-0007").ok).toBe(true);
+    expect(s.addVisitorCard("0000-0000-0007").ok).toBe(false);
+  });
+
+  it("lets a visitor card in and out with no semester pass, reporting the Visitor role", () => {
+    const s = createSparcStore(T0);
+    s.addVisitorCard("0000-0000-0007", "Visitor 07");
+    const first = s.scan("0000-0000-0007", "entry");
+    expect(first.status).toBe("needs-floor");
+    expect(first.status === "needs-floor" && first.user.role).toBe("visitor");
+    const entered = s.scan("0000-0000-0007", "entry", { floor: 1 });
+    expect(entered.status).toBe("entered");
+    expect(s.scan("0000-0000-0007", "exit").status).toBe("exited");
+  });
+});

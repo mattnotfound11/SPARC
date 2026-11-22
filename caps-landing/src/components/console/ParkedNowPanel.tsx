@@ -37,7 +37,7 @@ export function ParkedNowPanel() {
 
   const q = query.trim().toLowerCase();
   const shown = q
-    ? rows.filter((r) => [r.name, r.card, r.code, r.label, `level ${r.floor}`].some((v) => v.toLowerCase().includes(q)))
+    ? rows.filter((r) => [r.name, r.card, r.label].some((v) => v.toLowerCase().includes(q)))
     : rows;
 
   return (
@@ -59,7 +59,7 @@ export function ParkedNowPanel() {
                 id="parked-search"
                 type="search"
                 className="c-input min-h-11 w-full pl-9"
-                placeholder="Search name, card, level or slot"
+                placeholder="Search name, role or card"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -69,11 +69,10 @@ export function ParkedNowPanel() {
             <p className="px-4 pb-6 text-sm text-ink-muted sm:px-5">No one parked matches &ldquo;{query}&rdquo;.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[34rem] text-left text-sm">
+              <table className="w-full min-w-[28rem] text-left text-sm">
                 <thead className="text-xs text-ink-muted">
                   <tr>
                     <th className="px-4 py-2 font-medium sm:px-5">Driver</th>
-                    <th className="px-2 py-2 font-medium">Level / slot</th>
                     <th className="px-2 py-2 font-medium">In since</th>
                     <th className="px-4 py-2 font-medium sm:px-5">Card</th>
                   </tr>
@@ -85,7 +84,6 @@ export function ParkedNowPanel() {
                         <p className="font-medium text-ink">{r.name}</p>
                         <Badge className="mt-1">{r.label}</Badge>
                       </td>
-                      <td className="num px-2 py-2.5 text-ink">Level {r.floor} · {r.code}</td>
                       <td className="px-2 py-2.5">
                         <p className="num text-ink">{formatTime(r.since)}</p>
                         <p className="text-xs text-ink-muted">{formatDuration((now - r.since) / 60000)}</p>

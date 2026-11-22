@@ -14,6 +14,7 @@ import type { ScanMode, ScanOutcome } from "@/lib/sparc/types";
 import { Count, EmptyState, PageHeader, Panel, PanelHeader } from "./ui";
 import { FloorPicker } from "./FloorPicker";
 import { ScanResultCard } from "./ScanResultCard";
+import { VisitorCardsPanel } from "./VisitorCardsPanel";
 
 const SUMMARY: Record<ScanOutcome["status"], string> = {
   entered: "Entered",
@@ -44,7 +45,7 @@ export function ScanView() {
   const [manual, setManual] = useState("");
   const [copied, setCopied] = useState(false);
   // A valid card waiting for the facilitator to choose the floor; nothing is booked until they do.
-  const [awaiting, setAwaiting] = useState<{ card: string; name: string; walkIn: boolean } | null>(null);
+  const [awaiting, setAwaiting] = useState<{ card: string; name: string; walkIn: boolean; visitor: boolean } | null>(null);
   const onIOS = useIsIOS();
   const shortcutUrl = typeof window === "undefined" ? "" : `${window.location.origin}/admin/scan?mode=${mode}&nfc=`;
 
@@ -54,7 +55,7 @@ export function ScanView() {
       setAwaiting(null);
       const out = store.scan(serial, mode);
       if (out.status === "needs-floor") {
-        setAwaiting({ card: serial, name: out.user.name, walkIn: out.walkIn === true });
+        setAwaiting({ card: serial, name: out.user.name, walkIn: out.walkIn === true, visitor: out.walkIn !== true && out.user.role === "visitor" });
         return out;
       }
       if (mode === "entry" && out.status === "entered") portal.flagTemporaryEntry(cardKey(out.user.nfcId));
@@ -93,7 +94,7 @@ export function ScanView() {
 
   return (
     <div className="space-y-5 lg:space-y-6">
-      <PageHeader title="Entry / Exit" description="Tap a member's card. At entry you then choose which floor the car goes to." />
+      <PageHeader title="Entry / Exit" description="Tap a member's or visitor's card. At entry you then choose which floor the car goes to." />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
         <Panel aria-labelledby="scan-title" className="p-4 sm:p-5">
@@ -209,12 +210,12 @@ export function ScanView() {
 
           <div className="mt-5" aria-live="polite">
             {awaiting ? (
-              <FloorPicker name={awaiting.name} walkIn={awaiting.walkIn} stats={stats} onPick={chooseFloor} onCancel={() => setAwaiting(null)} />
+              <FloorPicker name={awaiting.name} walkIn={awaiting.walkIn} visitor={awaiting.visitor} stats={stats} onPick={chooseFloor} onCancel={() => setAwaiting(null)} />
             ) : latest ? (
               <ScanResultCard
                 outcome={latest.outcome}
                 now={now}
-                onWalkIn={mode === "entry" ? (card) => setAwaiting({ card, name: "Walk-in", walkIn: true }) : undefined}
+                onWalkIn={mode === "entry" ? (card) => setAwaiting({ card, name: "Walk-in", walkIn: true, visitor: false }) : undefined}
               />
             ) : (
               <EmptyState title="Waiting for a card">The result of each tap shows here.</EmptyState>
@@ -232,6 +233,8 @@ export function ScanView() {
           </p>
         </Panel>
       </div>
+
+      <VisitorCardsPanel />
 
       <Panel aria-labelledby="recent-title">
         <PanelHeader id="recent-title" title="Recent scans" />

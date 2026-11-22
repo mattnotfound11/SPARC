@@ -42,6 +42,8 @@ export type SparcStore = {
   removeUser: (id: string) => ActionResult;
   /** Renews a pass to `expiresAt`, the end of the semester it is for (the caller works that out from the semester dates). */
   renewUser: (id: string, expiresAt: number) => ActionResult;
+  /** Registers a visitor NFC card the office hands out. Its built-in role is Visitor, so a tap shows 'Visitor' and needs no semester pass. */
+  addVisitorCard: (nfcId: string, label?: string) => ActionResult;
   /** Starts a pending member's pass: gives them the card and runs the pass to `expiresAt`, the end of a semester. */
   activateUser: (id: string, nfcId: string, expiresAt: number) => ActionResult;
   /**
@@ -152,6 +154,8 @@ function demoExpiredUser(now: number): RegisteredUser {
 
 /** The bit of `localStorage` the store needs, so tests can pass a fake. */
 export type SparcStorage = Pick<Storage, "getItem" | "setItem">;
+
+const VISITOR_CARD_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
 export const STORAGE_KEY = "sparc:data:v1";
 
@@ -275,6 +279,26 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     return { ok: true };
   }
 
+  function addVisitorCard(rawNfc: string, label = ""): ActionResult {
+    const cardError = validateCard(rawNfc, state.users);
+    if (cardError) return { ok: false, error: cardError };
+    const at = Date.now();
+    const count = state.users.filter((u) => u.role === "visitor").length + 1;
+    const name = label.trim() || `Visitor ${String(count).padStart(2, "0")}`;
+    const card: RegisteredUser = {
+      id: newId?.("U") ?? `U-${String(state.nextUserSeq).padStart(3, "0")}`,
+      nfcId: normalizeNfc(rawNfc),
+      name,
+      role: "visitor",
+      active: true,
+      createdAt: at,
+      // A visitor card never lapses by date; this far-off end date only satisfies the table.
+      expiresAt: at + VISITOR_CARD_MS,
+    };
+    set({ users: [card, ...state.users], nextUserSeq: state.nextUserSeq + 1, now: at });
+    return { ok: true };
+  }
+
   function renewUser(id: string, expiresAt: number): ActionResult {
     const user = state.users.find((u) => u.id === id);
     if (!user) return { ok: false, error: "User not found." };
@@ -354,7 +378,8 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
 
     if (!isGuest) {
       if (!user.active || user.expiresAt === 0) return record({ status: "no-pass", user });
-      if (user.expiresAt <= at) return record({ status: "expired", user });
+      // A visitor card has no semester: it is good until the office switches it off.
+      if (user.role !== "visitor" && user.expiresAt <= at) return record({ status: "expired", user });
     }
 
     // The card is good. Which floor the car goes to is the facilitator's call, so ask before booking anything.
@@ -400,6 +425,7 @@ export function createSparcStore(now: number = Date.now(), storage?: SparcStorag
     updateUser,
     removeUser,
     renewUser,
+    addVisitorCard,
     activateUser,
     scan,
     refresh,
