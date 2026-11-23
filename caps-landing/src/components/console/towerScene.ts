@@ -452,7 +452,8 @@ export function createParkingScene(host: HTMLElement, events: ParkingSceneEvents
     labels.visible = false;
     group.add(labels);
 
-    const name = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(`Floor ${config.floor}`, { pill: "#141823", text: "#f5f6f8" }, 240, 72), transparent: true, depthWrite: false }));
+    const name = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(`Floor ${config.floor}`, { pill: "#141823", text: "#f5f6f8" }, 240, 72), transparent: true, depthWrite: false, depthTest: false }));
+    name.renderOrder = 3;
     name.scale.set(3.2, 0.96, 1);
     name.position.set(-span / 2 - 2, y + 0.9, MAST_HALF + 0.4);
     fadeable(fade, name.material);

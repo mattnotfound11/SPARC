@@ -104,7 +104,7 @@ export function ConsoleShell({
                 {adminName.charAt(0)}
               </span>
               <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-sm font-semibold text-ink">{adminName}</p>
+                <p className="text-sm font-semibold text-ink">{adminName}</p>
                 <p className="truncate text-xs text-ink-muted">{adminEmail}</p>
               </div>
               <SignOut className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/[0.05] hover:text-ink">

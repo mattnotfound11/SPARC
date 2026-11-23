@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemberSession } from "@/lib/session";
 import { CalendarDays, CircleAlert, CircleCheck, Clock, CreditCard, Hash, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePortalState } from "@/lib/portal/usePortal";
@@ -209,6 +210,8 @@ function SummaryRow({ label, value, tone }: { label: string; value: React.ReactN
 /** The member's own details: an identity card with a parking summary, and the read-only account details. */
 function ProfileView({ data, now }: { data: MemberData; now: number }) {
   const u = data.user;
+  const session = useMemberSession();
+  const authEmail = u.email || (session.status === "in" ? session.email : "");
   const pass = passState(u.expiresAt, now);
   const visits = useMemo(() => buildVisits(data.logs), [data.logs]);
   const monthStart = new Date(now);
@@ -224,7 +227,7 @@ function ProfileView({ data, now }: { data: MemberData; now: number }) {
           {initial}
         </span>
         <h2 id="who-h" className="display mt-4 text-center text-[1.5rem] leading-tight text-ink">{u.name}</h2>
-        <p className="mt-1 text-center text-sm break-all text-ink-muted">{u.email || "No email on file"}</p>
+        <p className="mt-1 text-center text-sm break-all text-ink-muted">{authEmail || "No email on file"}</p>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <Badge>{ROLE_LABEL[u.role]}</Badge>
           <Badge tone={PASS_TONE[pass.kind]}>Pass: {PASS_LABEL[pass.kind]}</Badge>
@@ -252,7 +255,7 @@ function ProfileView({ data, now }: { data: MemberData; now: number }) {
         </h2>
         <dl className="mt-5 grid gap-x-5 gap-y-5 sm:grid-cols-2">
           <Field icon={UserRound} label="Full name" hint="Your name is managed by the parking office and cannot be changed here.">{u.name}</Field>
-          <Field icon={Mail} label="Institutional email" hint="Your email is your sign-in and cannot be changed here.">{u.email || "Not on file"}</Field>
+          <Field icon={Mail} label="Institutional email" hint="Your email is your sign-in and cannot be changed here.">{authEmail || "Not on file"}</Field>
           <Field icon={Hash} label={ID_LABEL[u.role]}>{u.studentId || "Not on file"}</Field>
           <Field icon={ShieldCheck} label="Role">{ROLE_LABEL[u.role]}</Field>
           <Field icon={CalendarDays} label="Pass valid until">
@@ -296,35 +299,32 @@ function HistoryPanel({ data }: { data: MemberData }) {
       {days.length === 0 ? (
         <EmptyState title="No parking yet">Your visits appear here after you tap your card at the gate.</EmptyState>
       ) : (
-        <div>
+        <table className="w-full table-fixed text-left text-sm">
+          <colgroup><col className="w-[32%]" /><col className="w-[34%]" /><col className="w-[16%]" /><col className="w-[18%]" /></colgroup>
+          <thead className="text-xs text-ink-faint">
+            <tr className="border-t border-line">
+              <th className="px-4 py-2 font-medium sm:px-5">Entry</th>
+              <th className="px-2 py-2 font-medium">Exit</th>
+              <th className="px-2 py-2 font-medium">Level</th>
+              <th className="px-4 py-2 font-medium sm:px-5">Slot</th>
+            </tr>
+          </thead>
           {days.slice(0, 60).map((d) => (
-            <div key={d.dayStart} className="border-t border-line first:border-t-0">
-              <h3 className="px-4 pt-3 text-xs font-semibold tracking-wide text-ink-muted uppercase sm:px-5">{dayLongFmt.format(d.dayStart)}</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="text-xs text-ink-faint">
-                    <tr>
-                      <th className="px-4 py-1.5 font-medium sm:px-5">Entry</th>
-                      <th className="px-2 py-1.5 font-medium">Exit</th>
-                      <th className="px-2 py-1.5 font-medium">Level</th>
-                      <th className="px-4 py-1.5 font-medium sm:px-5">Slot</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.visits.map((v, i) => (
-                      <tr key={v.visitId ?? `v${i}`} className="border-t border-line/60">
-                        <td className="num px-4 py-2.5 text-ink sm:px-5">{v.entryAt ? time(v.entryAt) : "—"}</td>
-                        <td className="num px-2 py-2.5">{v.exitAt ? time(v.exitAt) : v.entryAt ? <Badge tone="live">Parked now</Badge> : "—"}</td>
-                        <td className="num px-2 py-2.5">{v.floor ?? "—"}</td>
-                        <td className="px-4 py-2.5 sm:px-5">{v.slot ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <tbody key={d.dayStart}>
+              <tr className="border-t border-line bg-white/[0.02]">
+                <th colSpan={4} className="px-4 py-2 text-xs font-semibold tracking-wide text-ink-muted uppercase sm:px-5">{dayLongFmt.format(d.dayStart)}</th>
+              </tr>
+              {d.visits.map((v, i) => (
+                <tr key={v.visitId ?? `v${i}`} className="border-t border-line/60">
+                  <td className="num px-4 py-2.5 text-ink sm:px-5">{v.entryAt ? time(v.entryAt) : "—"}</td>
+                  <td className="num px-2 py-2.5">{v.exitAt ? time(v.exitAt) : v.entryAt ? <Badge tone="live">Parked now</Badge> : "—"}</td>
+                  <td className="num px-2 py-2.5">{v.floor ?? "—"}</td>
+                  <td className="px-4 py-2.5 sm:px-5">{v.slot ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
           ))}
-        </div>
+        </table>
       )}
     </Panel>
   );
@@ -398,7 +398,7 @@ function SupportForm() {
                 role="radio"
                 aria-checked={category === c}
                 onClick={() => setCategory(c)}
-                className={`c-btn min-h-11 ${category === c ? "c-btn-gold" : ""}`}
+                className={`c-btn min-h-11 ${category === c ? "!border-gold/60 !bg-gold/10 !text-ink" : ""}`}
               >
                 {c}
               </button>
