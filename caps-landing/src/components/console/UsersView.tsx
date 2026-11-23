@@ -268,7 +268,7 @@ export function UsersView() {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="relative min-w-[14rem] flex-1">
+            <div className="relative min-w-0 flex-1 basis-48">
               <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
               <label htmlFor="user-search" className="sr-only">
                 Search members

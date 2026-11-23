@@ -43,7 +43,7 @@ export function VisitorCardsPanel() {
         title="Visitor cards"
         aside={<span className="text-sm text-ink-muted">{cards.length} registered</span>}
       />
-      <form onSubmit={add} noValidate className="grid gap-3 px-4 pb-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end sm:px-5">
+      <form onSubmit={add} noValidate className="grid grid-cols-1 gap-3 px-4 pb-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end sm:px-5">
         <div>
           <label htmlFor="vc-card" className="mb-1.5 block text-xs font-semibold text-ink-soft">Card number</label>
           <input

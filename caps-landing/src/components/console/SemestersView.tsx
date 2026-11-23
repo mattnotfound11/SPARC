@@ -116,7 +116,7 @@ export function SemestersView() {
             )}
             <ul className="divide-y divide-line border-t border-line">
               {rows.map((r) => (
-                <li key={r.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end sm:px-5">
+                <li key={r.id} className="grid grid-cols-1 gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end sm:px-5">
                   <div>
                     <label htmlFor={`name-${r.id}`} className="mb-1.5 block text-sm font-semibold text-ink">
                       Name
