@@ -71,7 +71,7 @@ export function ParkedNowPanel({ limit }: { limit?: number } = {}) {
             <p className="px-4 pb-6 text-sm text-ink-muted sm:px-5">No one parked matches &ldquo;{query}&rdquo;.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[28rem] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead className="text-xs text-ink-muted">
                   <tr>
                     <th className="px-4 py-2 font-medium sm:px-5">Driver</th>
@@ -90,7 +90,7 @@ export function ParkedNowPanel({ limit }: { limit?: number } = {}) {
                         <p className="num text-ink">{formatTime(r.since)}</p>
                         <p className="text-xs text-ink-muted">{formatDuration((now - r.since) / 60000)}</p>
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-ink-muted sm:px-5">{r.card}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs break-all text-ink-muted sm:px-5">{r.card}</td>
                     </tr>
                   ))}
                 </tbody>

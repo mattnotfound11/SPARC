@@ -99,8 +99,8 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
     <div className="rounded-xl border border-line-strong bg-white/[0.03] p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-sm font-semibold text-ink-soft">
-            <Icon className={`size-4 ${entered ? "text-live" : "text-ink-soft"}`} aria-hidden />
+          <p className="text-sm font-semibold text-ink-soft">
+            <Icon className={`mr-2 inline size-4 align-[-0.15em] ${entered ? "text-live" : "text-ink-soft"}`} aria-hidden />
             {entered ? "Entered" : "Exited"} · slot <span className="font-mono">{outcome.slot}</span> · floor {outcome.floor}
           </p>
           <p className="mt-1 truncate font-display text-2xl font-semibold text-ink">{user.name}</p>

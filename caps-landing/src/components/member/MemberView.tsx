@@ -301,7 +301,7 @@ function HistoryPanel({ data }: { data: MemberData }) {
             <div key={d.dayStart} className="border-t border-line first:border-t-0">
               <h3 className="px-4 pt-3 text-xs font-semibold tracking-wide text-ink-muted uppercase sm:px-5">{dayLongFmt.format(d.dayStart)}</h3>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[28rem] text-left text-sm">
+                <table className="w-full text-left text-sm">
                   <thead className="text-xs text-ink-faint">
                     <tr>
                       <th className="px-4 py-1.5 font-medium sm:px-5">Entry</th>
@@ -389,12 +389,21 @@ function SupportForm() {
       <form onSubmit={submit} noValidate className="space-y-3 px-4 pb-5 sm:px-5">
         <p className="text-sm text-ink-muted">Ask about your pass, your card or the building, or tell the office what would make parking better. The office reads every message. Replies are handled in person at the parking office.</p>
         <div>
-          <label htmlFor="sg-cat" className="mb-1.5 block text-sm font-semibold text-ink">Category</label>
-          <select id="sg-cat" className="c-input min-h-11 w-full" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <label id="sg-cat-l" className="mb-1.5 block text-sm font-semibold text-ink">Category</label>
+          <div role="radiogroup" aria-labelledby="sg-cat-l" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {SUGGESTION_CATEGORIES.map((c) => (
-              <option key={c}>{c}</option>
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={category === c}
+                onClick={() => setCategory(c)}
+                className={`c-btn min-h-11 ${category === c ? "c-btn-gold" : ""}`}
+              >
+                {c}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
         <div>
           <label htmlFor="sg-msg" className="mb-1.5 block text-sm font-semibold text-ink">Your message</label>

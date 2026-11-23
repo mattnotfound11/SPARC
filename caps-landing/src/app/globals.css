@@ -243,6 +243,9 @@ input:-webkit-autofill:focus {
     color: var(--color-ink);
     border-radius: 10px;
     height: 2.5rem;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     padding-inline: 0.75rem;
     font-size: 0.9375rem;
     transition:
