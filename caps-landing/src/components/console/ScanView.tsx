@@ -223,7 +223,7 @@ export function ScanView() {
           </div>
         </Panel>
 
-        <Panel aria-labelledby="count-title" className="p-4 sm:p-5">
+        <Panel aria-labelledby="count-title" className="self-start p-4 sm:p-5">
           <h2 id="count-title" className="font-display text-[1.0625rem] font-semibold tracking-[-0.01em] text-ink">
             Free slots
           </h2>

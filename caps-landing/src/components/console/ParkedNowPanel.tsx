@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Search } from "lucide-react";
 import { useNow, useSparcState } from "@/lib/sparc/SparcProvider";
 import { formatDuration, formatTime } from "@/lib/sparc/selectors";
@@ -32,9 +33,8 @@ export function ParkedNowPanel({ limit }: { limit?: number } = {}) {
           label: role ? ROLE_LABEL[role] : "Walk-in",
         };
       })
-      // With a limit (the dashboard) show the newest arrivals; the full page lists longest stay first.
-      .sort((a, b) => (limit ? b.since - a.since : a.since - b.since));
-  }, [state.slots, state.users, limit]);
+      .sort((a, b) => b.since - a.since);
+  }, [state.slots, state.users]);
 
   const q = query.trim().toLowerCase();
   const matched = q
@@ -71,7 +71,8 @@ export function ParkedNowPanel({ limit }: { limit?: number } = {}) {
             <p className="px-4 pb-6 text-sm text-ink-muted sm:px-5">No one parked matches &ldquo;{query}&rdquo;.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-sm md:table-fixed">
+                <colgroup className="hidden md:table-column-group"><col className="w-[40%]" /><col className="w-[30%]" /><col className="w-[30%]" /></colgroup>
                 <thead className="text-xs text-ink-muted">
                   <tr>
                     <th className="px-4 py-2 font-medium sm:px-5">Driver</th>
@@ -95,6 +96,12 @@ export function ParkedNowPanel({ limit }: { limit?: number } = {}) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {limit && matched.length > limit && (
+            <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm sm:px-5">
+              <p className="text-ink-muted">Showing the {limit} newest of {matched.length}</p>
+              <Link href="/admin/inside" className="font-semibold text-gold underline-offset-2 hover:underline">See all</Link>
             </div>
           )}
         </>

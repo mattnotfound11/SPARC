@@ -71,7 +71,7 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
   if (outcome.status === "already-inside")
     return (
       <Banner tone="gold" icon={CircleAlert} title="Already inside">
-        {user.name} is already in slot {outcome.slot} (floor {outcome.floor}). Switch to Exit scan to check them out.
+        {user.name} is already in slot {outcome.slot} (Level {outcome.floor}). Switch to Exit scan to check them out.
       </Banner>
     );
   if (outcome.status === "not-inside")
@@ -101,7 +101,7 @@ export function ScanResultCard({ outcome, now, onWalkIn }: { outcome: ScanOutcom
         <div className="min-w-0">
           <p className="text-sm font-semibold text-ink-soft">
             <Icon className={`mr-2 inline size-4 align-[-0.15em] ${entered ? "text-live" : "text-ink-soft"}`} aria-hidden />
-            {entered ? "Entered" : "Exited"} · slot <span className="font-mono">{outcome.slot}</span> · floor {outcome.floor}
+            {entered ? "Entered" : "Exited"} · slot <span className="font-mono">{outcome.slot}</span> · Level {outcome.floor}
           </p>
           <p className="mt-1 truncate font-display text-2xl font-semibold text-ink">{user.name}</p>
           <p className="mt-0.5 text-sm text-ink-muted">{walkIn ? "Paid at the gate" : visitor ? "Visitor card" : ROLE_LABEL[user.role]}</p>

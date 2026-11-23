@@ -165,11 +165,11 @@ export function AppealsView() {
                     {tab === "pending" ? (
                       <div className="flex flex-wrap items-center gap-2">
                         <button type="button" className="c-btn c-btn-sm" onClick={() => decide(v, "dismiss")}>
-                          <X className="size-3.5" aria-hidden />
+                          <Check className="size-3.5" aria-hidden />
                           {v.status === "appealed" ? "Uphold appeal" : "Dismiss flag"}
                         </button>
                         <button type="button" className="c-btn c-btn-sm c-btn-danger" onClick={() => decide(v, "confirm")}>
-                          <Check className="size-3.5" aria-hidden />
+                          <X className="size-3.5" aria-hidden />
                           {v.status === "appealed" ? "Reject appeal" : "Confirm violation"}
                         </button>
                       </div>

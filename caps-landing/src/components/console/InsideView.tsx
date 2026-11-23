@@ -44,7 +44,8 @@ function LeftRecentlyPanel() {
         <EmptyState title="No exits yet">People appear here after they tap out at the gate.</EmptyState>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm md:table-fixed">
+            <colgroup className="hidden md:table-column-group"><col className="w-[40%]" /><col className="w-[30%]" /><col className="w-[15%]" /><col className="w-[15%]" /></colgroup>
             <thead className="text-xs text-ink-muted">
               <tr>
                 <th className="px-4 py-2 font-medium sm:px-5">Driver</th>

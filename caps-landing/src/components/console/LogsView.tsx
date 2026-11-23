@@ -49,6 +49,7 @@ export function LogsView() {
     for (const u of state.users) map.set(u.id, u.role);
     return map;
   }, [state.users]);
+  const studentIdOf = (l: LogEntry) => (l.userId ? state.users.find((u) => u.id === l.userId)?.studentId : undefined) ?? "";
   const roleOf = (l: LogEntry) => (l.userId ? roleById.get(l.userId) : undefined);
 
   const days = useMemo(() => dayRanges(state.now), [state.now]);
@@ -85,7 +86,7 @@ export function LogsView() {
           new Date(l.at).toISOString(),
           l.event,
           l.userName ?? "Unregistered",
-          l.nfcId,
+          studentIdOf(l),
           role ? ROLE_LABEL[role] : "",
           l.floor ?? "",
           l.slot,
@@ -221,7 +222,7 @@ export function LogsView() {
                         <td className="font-semibold text-ink">
                           {l.userName ?? <span className="font-normal text-ink-muted">Unregistered card</span>}
                         </td>
-                        <td className="font-mono text-[0.8125rem]">{l.nfcId}</td>
+                        <td className="font-mono text-[0.8125rem]">{studentIdOf(l) || <span className="font-sans text-ink-faint">—</span>}</td>
                         <td>{role ? ROLE_LABEL[role] : "—"}</td>
                         <td className="num">{l.floor ?? "—"}</td>
                         <td className="font-mono text-[0.8125rem]">{l.slot ?? "—"}</td>

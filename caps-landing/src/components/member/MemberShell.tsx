@@ -92,7 +92,10 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
                 <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-gold/15 font-display text-sm font-bold text-gold">
                   {email.charAt(0).toUpperCase()}
                 </span>
-                <p className="min-w-0 flex-1 truncate text-sm text-ink-muted">{email}</p>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <p className="truncate text-sm font-semibold text-ink">Member</p>
+                  <p className="truncate text-xs text-ink-muted" title={email}>{email}</p>
+                </div>
                 <button
                   type="button"
                   onClick={handleSignOut}
