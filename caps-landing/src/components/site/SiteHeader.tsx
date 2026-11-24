@@ -43,6 +43,14 @@ export function SiteHeader() {
         </ul>
 
         <div className="flex items-center gap-2">
+          {!staffIn && (
+            <Link
+              href="/admin/login"
+              className="hidden rounded-lg px-3 py-2 text-sm font-medium text-ink-muted transition-colors hover:text-ink md:inline-flex"
+            >
+              Staff sign in
+            </Link>
+          )}
           {staffIn ? (
             <Link href="/admin" className="btn btn-ghost px-4 py-2 text-sm">
               <LayoutDashboard className="size-4" aria-hidden />
