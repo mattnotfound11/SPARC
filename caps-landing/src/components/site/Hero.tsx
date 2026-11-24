@@ -11,10 +11,10 @@ export function Hero() {
         <Reveal delay={90}>
           <h1 id="hero-title" className="display-xl text-[clamp(2.75rem,7.4vw,4.75rem)] text-ink">
             <span className="line-mask" style={{ "--line-delay": "120ms" } as React.CSSProperties}>
-              <span>Smart parking access</span>
+              <span>SPARC: Smart Parking Access</span>
             </span>
             <span className="line-mask" style={{ "--line-delay": "260ms" } as React.CSSProperties}>
-              <span>for a campus that never waits.</span>
+              <span>and Real-Time Count</span>
             </span>
           </h1>
         </Reveal>
