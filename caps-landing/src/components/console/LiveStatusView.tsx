@@ -16,6 +16,7 @@ import {
   dayRanges,
   dayReport,
   floorStats,
+  floorVehicle,
   formatDate,
   formatDateTime,
   isExpired,
@@ -47,7 +48,8 @@ function RevealPanel({ delay = 0, className = "", children }: { delay?: number; 
 function BuildingPanel() {
   const state = useSparcState();
   usePortalState(); // event holds change the free count
-  const totals = buildingTotals(floorStats(state.config, state.slots));
+  const levels = floorStats(state.config, state.slots);
+  const totals = buildingTotals(levels);
   const pct = (n: number) => (totals.total ? (n / totals.total) * 100 : 0);
 
   return (
@@ -91,6 +93,21 @@ function BuildingPanel() {
           </div>
         ))}
       </dl>
+
+      <ul className="mt-5 grid gap-x-8 gap-y-4 border-t border-line pt-4 sm:grid-cols-2 xl:grid-cols-3">
+        {levels.map((l) => {
+          return (
+            <li key={l.floor} className="min-w-0">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="min-w-0">
+                  <span className="font-semibold text-ink">Level {l.floor}</span>
+                  <span className="block truncate text-xs text-ink-muted">{floorVehicle(l.floor)}</span>
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </Panel>
   );
 }

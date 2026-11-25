@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePortalState } from "@/lib/portal/usePortal";
 import { SparcGate, useSparcState, useSparcStoreOrNull } from "@/lib/sparc/SparcProvider";
 import { useSharedAvailability } from "@/lib/sparc/useShared";
-import { availabilityTone, buildingTotals, floorStats } from "@/lib/sparc/selectors";
+import { availabilityTone, buildingTotals, floorStats, floorVehicle } from "@/lib/sparc/selectors";
 import { ParkingExplorer } from "@/components/console/ParkingExplorer";
 import { ParkingTowers } from "@/components/console/ParkingTowers";
 import { Badge, EmptyState, PageHeader, Panel, PanelHeader, useToast } from "@/components/console/ui";
@@ -155,27 +155,44 @@ function LiveHero() {
   );
 }
 
-function StatusTile({ data }: { data: MemberData }) {
+function FloorRows() {
+  const state = useSparcState();
+  usePortalState();
+  const levels = floorStats(state.config, state.slots);
+  return (
+    <ul className="mt-auto space-y-1.5">
+      {levels.map((l) => (
+        <li key={l.floor} className="flex items-baseline justify-between gap-3 text-sm">
+          <span className="min-w-0 text-ink">
+            <span className="num font-semibold">Level {l.floor}</span>
+            <span className="text-ink-muted"> · {floorVehicle(l.floor)}</span>
+          </span>
+          <span className={`num shrink-0 font-semibold ${l.free === 0 ? "text-crimson" : "text-live"}`}>{l.free === 0 ? "Full" : `${l.free} free`}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Which vehicles each floor takes, with how many bays are free on it. */
+function FloorVehicleTile({ data }: { data: MemberData }) {
+  const store = useSparcStoreOrNull();
   const visits = useMemo(() => buildVisits(data.logs), [data.logs]);
   const latest = visits[0];
   const parked = !!latest && latest.entryAt !== null && latest.exitAt === null;
   return (
-    <Tile label="Status" aside={parked ? <Badge tone="live">Parked now</Badge> : undefined}>
-      {parked ? (
-        <>
-          <p className="display text-[1.5rem] leading-tight text-ink">Level {latest.floor ?? "—"}</p>
-          <p className="mt-auto pt-2 text-xs text-ink-muted">Slot {latest.slot ?? "—"}, in at {time(latest.entryAt!)}</p>
-        </>
-      ) : latest ? (
-        <>
-          <p className="display text-[1.5rem] leading-tight text-ink">Not parked</p>
-          <p className="mt-auto pt-2 text-xs text-ink-muted">Last visit {day(latest.entryAt ?? latest.exitAt ?? 0)}. {visits.length} in total.</p>
-        </>
+    <Tile label="Where to park" aside={parked ? <Badge tone="live">Parked: Level {latest.floor ?? "—"}</Badge> : undefined}>
+      {store ? (
+        <FloorRows />
       ) : (
-        <>
-          <p className="display text-[1.5rem] leading-tight text-ink">No visits yet</p>
-          <p className="mt-auto pt-2 text-xs text-ink-muted">Tap your card at the gate.</p>
-        </>
+        <ul className="mt-auto space-y-1.5">
+          {[1, 2, 3, 4, 5].map((f) => (
+            <li key={f} className="text-sm text-ink">
+              <span className="num font-semibold">Level {f}</span>
+              <span className="text-ink-muted"> · {floorVehicle(f)}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </Tile>
   );
@@ -525,7 +542,7 @@ export function MemberHome() {
           <div data-enter className="grid gap-3 lg:grid-cols-3">
             <LiveHero />
             <PassTile data={data} now={now} />
-            <StatusTile data={data} />
+            <FloorVehicleTile data={data} />
           </div>
           <SparcGate fallback={<MapLoading />}>
             <div data-enter><ParkingExplorer /></div>
