@@ -14,6 +14,9 @@ export type FloorStat = {
   held: number;
 };
 
+/** Floors 1-2 take SUVs and vans, floors 3-5 lighter vehicles (same rule as the seeded slots in schema.sql). */
+export const floorVehicle = (floor: number) => (floor <= 2 ? "SUVs and vans" : "Cars and light vehicles");
+
 export function floorStats(config: FloorConfig[], slots: Slot[], now: number = Date.now()): FloorStat[] {
   const holds = holdsFor(portal.get().event, now);
   return config.map((f) => {
